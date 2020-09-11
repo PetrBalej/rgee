@@ -1,2 +1,2 @@
 # rgee
-Testovací skripty.
+Testovací skripty Google Earth Engine for R (https://github.com/r-spatial/rgee).
