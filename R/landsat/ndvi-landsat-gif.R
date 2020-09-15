@@ -47,7 +47,8 @@ region <- boundingBox_ee$bounds()
 
 
 
-# modis
+# Landsat 8 Collection 1 Tier 1 32-Day NDVI Composite
+# https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC08_C01_T1_32DAY_NDVI
 col <- ee$ImageCollection('LANDSAT/LC08/C01/T1_32DAY_NDVI')$select('NDVI')
 
 
