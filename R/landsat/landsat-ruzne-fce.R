@@ -43,3 +43,20 @@ img <- ee$Image('LANDSAT/LC08/C01/T1/LC08_044034_20140318')
 img$bandNames()$getInfo()
 
 
+# -----------------------------------------------------------------------
+
+maskL8sr <- function(image) {
+  # Bits 3 and 5 are cloud shadow and cloud, respectively.
+
+  # Get the pixel QA band.
+  qa <- image$select('pixel_qa')
+  # Both flags should be set to zero, indicating clear conditions.
+  mask <- qa$rightShift(4)$mod(2^1)$eq(0)$and(qa$rightShift(4)$mod(2^1)$eq(0));
+  return (image$updateMask(mask))
+}
+
+
+date <- c('2016-04-05', '2016-04-06') 
+
+dataset_SR <- ee$ImageCollection('LANDSAT/LC08/C01/T1_SR')$filterDate(date[1], date[2])$map(maskL8sr);
+
