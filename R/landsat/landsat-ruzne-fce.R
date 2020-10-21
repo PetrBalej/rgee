@@ -51,7 +51,7 @@ maskL8sr <- function(image) {
   # Get the pixel QA band.
   qa <- image$select('pixel_qa')
   # Both flags should be set to zero, indicating clear conditions.
-  mask <- qa$rightShift(4)$mod(2^1)$eq(0)$and(qa$rightShift(4)$mod(2^1)$eq(0));
+  mask <- qa$eq(322)$bitwiseOr(qa$eq(324));
   return (image$updateMask(mask))
 }
 
