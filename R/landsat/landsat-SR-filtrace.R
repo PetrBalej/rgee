@@ -53,19 +53,96 @@ maskL8sr <- function(image) {
   return (image$updateMask(mask))
 }
 
+#date <- c('2016-04-05', '2016-04-06') 
+date <- c('2016-04-01', '2016-09-30') 
 
-date <- c('2016-04-05', '2016-04-06') 
+dataset_SR <- ee$ImageCollection('LANDSAT/LC08/C01/T1_SR')$filterDate(date[1], date[2])$select('B3') %>% ee$ImageCollection$median()
 
-dataset_SR <- ee$ImageCollection('LANDSAT/LC08/C01/T1_SR')$filterDate(date[1], date[2])$map(maskL8sr);
+
+#$map(maskL8sr)
+#$map(function(x) x$reproject("EPSG:4326"))
+
+#$select('B[1-12]')
 
 tmp <- tempdir()
 
-## Export do rastru???
+# ee_crs <- dataset_SR$first()$projection()$getInfo()$crs
+# proj <- ee$Projection();
+
+# Export do rastru???
 ic_drive_files <- ee_imagecollection_to_local(
   ic = dataset_SR,
   region = region,
   scale = 100,
-  dsn = file.path(tmp, "test_export_")
+  dsn = file.path(tmp, "test_export5_")
 )
+
+
+
+l8sr <- ee$ImageCollection('LANDSAT/LC08/C01/T1_SR')
+
+noClipNeeded <- l8sr$
+  select('B[1-12]')$                          # Good.
+  filterBounds(region)$          # Good.
+  filterDate('2019-01-01', '2019-12-31')$ # Good.
+  median()$
+  reduceRegion(
+    reducer = ee$Reducer$median(),
+    geometry = region, # Geometry is specified here.
+    scale = 30,
+    maxPixels = 1e10
+  )
+
+#
+# -----------------------------------------------------------------------------------------------
+#
+
+library(rgee)
+library(raster)
+ee_Initialize()
+
+# USDA example
+#loc <- ee$Geometry$Point(13.0, 50.0)
+
+loc <- ee$Geometry$Polygon(
+  coords = list(
+    c(xmin, ymin),
+    c(xmin, ymax),
+    c(xmax, ymax),
+    c(xmax, ymin),
+    c(xmin, ymin)
+  ),
+  proj = "EPSG:4326",
+  geodesic = FALSE
+)
+
+
+collection <- ee$ImageCollection('LANDSAT/LC08/C01/T1_SR')$
+  filterBounds(loc)$
+  #filterDate('2018-01-01', '2020-01-01')$
+  filterDate(date[1], date[2])$
+  map(maskL8sr)$
+  select('B3')$
+  median()
+#  reduceRegion(
+#    reducer = ee$Reducer$median(),
+#    geometry = region, # Geometry is specified here.
+#    scale = 100,
+#    maxPixels = 1e10
+#  )
+
+# From ImageCollection to local directory
+ee_crs <- collection$first()$projection()$getInfo()$crs
+geometry <- collection$first()$geometry(proj = ee_crs)$bounds()
+tmp <- tempdir()
+
+## Using drive
+ic_drive_files <- ee_imagecollection_to_local(
+  ic = collection,
+  region = geometry,
+  scale = 100,
+  dsn = file.path(tmp, "driveqqq4_")
+)
+
 
 
