@@ -15,7 +15,7 @@ str_evropa <- list(xmin = 8.5, xmax = 22.0, ymin = 46.0, ymax = 53.5)
 # výběr území
 bb <- sz_cechy
 
-# výsledná velikost pixelu v km
+# výsledná velikost pixelu v m
 scale = 10000 
 
 # rozsah snímků od/do
@@ -71,7 +71,8 @@ l8_sr_collection <- ee$ImageCollection('LANDSAT/LC08/C01/T1_SR')$
 
 bands_vis = c("B4", "B3", "B2")
 bands_all = c("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B10", "B11")
-# l8_sr_collection_reduce = l8_sr_collection$select(bands_prep)$reduce(ee$Reducer$median())$rename(bands_prep) #$reproject("EPSG:32633")
+
+# medián pro výslednou hodnotu pixelu
 l8_sr_collection_reduce = l8_sr_collection$select(bands_all)$reduce(ee$Reducer$median())$rename(bands_all) #$reproject("EPSG:32633")
 
 # vizualizace v mapovém okně
