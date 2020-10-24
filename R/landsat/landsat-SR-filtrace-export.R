@@ -6,8 +6,10 @@ install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 ee_Initialize(drive = FALSE, gcs = FALSE)
 # ee_user_info()
+# při odpojení nebo zneplatnění původního přihlašovacího tokenu
+# ee_clean_credentials()
 
-# odefinice obálek (bounding box) různě velkých území pro testování
+# definice obálek (bounding box) různě velkých území pro testování
 sz_cechy <- list(xmin = 13.0, xmax = 13.5, ymin = 50.0, ymax = 50.5)
 cesko <- list(xmin = 12.0, xmax = 19.0, ymin = 48.5, ymax = 51.5)
 str_evropa <- list(xmin = 8.5, xmax = 22.0, ymin = 46.0, ymax = 53.5)
@@ -93,7 +95,7 @@ geometry <- ee$Geometry$Rectangle(
   geodesic = FALSE
 )
 
-#Map$setCenter(13.0, 50.0, 10)
+# Map$setCenter(13.0, 50.0, 10)
 Map$centerObject(geometry, zoom = 9)
 l1 <- Map$addLayer(geometry, visParams = list(color = "FF0000"), opacity = 0.3, name = "vybraná obálka (bounding box)")
 l2 <- Map$addLayer(l8_sr_collection_reduce, visparams, name = "LANDSAT/LC08/C01/T1_SR filtered median") 
