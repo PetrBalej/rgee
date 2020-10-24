@@ -1,6 +1,10 @@
 library(rgee)
 
-ee_Initialize()
+# kontrola (do)instalace všech dodatečně potřebných balíčků
+required_packages <- c("sp", "rgdal", "mapview", "raster", "geojsonio", "stars", "httpuv") # , "googledrive", "httpuv"
+install.packages(setdiff(required_packages, rownames(installed.packages())))
+
+ee_Initialize(drive = FALSE, gcs = FALSE)
 # ee_user_info()
 
 # odefinice obálek (bounding box) různě velkých území pro testování
@@ -100,8 +104,9 @@ l2 + l1
 result_raster <- ee_as_raster(
   image = l8_sr_collection_reduce, #$reproject("EPSG:32633")
   region = geometry,
-  scale = scale 
-  #maxPixels = 1e10
+  scale = scale,
+  via = "getInfo" # na Ubuntu nebylo nutné vůbec uvádět tento parametr, na Win10 si to jinak vynucovalo přihlášení a následné ukládání na Google disk
+  # maxPixels = 1e10
 )
 
 # pro zjištění vygenerovaného názvu tiff-u v /temp
