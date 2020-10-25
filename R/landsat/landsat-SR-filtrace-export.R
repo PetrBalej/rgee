@@ -109,6 +109,7 @@ result_raster <- ee_as_raster(
   scale = scale,
   via = "getInfo" # na Ubuntu nebylo nutné vůbec uvádět tento parametr, na Win10 si to jinak vynucovalo přihlášení a následné ukládání na Google disk
   # maxPixels = 1e10
+  # dsn = "filename" # Output filename. If missing, will create a temporary file.
 )
 
 # pro zjištění vygenerovaného názvu tiff-u v /temp
@@ -118,6 +119,12 @@ result_raster <- ee_as_raster(
 # result_raster$B1[2,3] # hodnota pixelu B1 bandu na 2. řádku a 3. sloupci
 # result_raster$B1[1:3,1:2] # hodnota pixelu B1 bandu na 1-3. řádku a 1-2. sloupci
 
+
+# NDVI z kolekce
+# ndvi <- l8_sr_collection_reduce$normalizedDifference(c("B5", "B4"))
+
+# export jednoho bandu
+# l8_sr_collection_reduce_B2 <- l8_sr_collection_reduce$select("B2")
 
 
 library(raster) # pro použití writeRaster
