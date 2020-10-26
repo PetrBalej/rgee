@@ -30,6 +30,16 @@ years_range <- list(from = '2017-01-01', to = '2019-12-31')
 # rozsah jedné sezóny v měsících (podvýběr z vybraného období years_range výše)
 season_months_range <- list(from = 4, to = 9) 
 
+# domovský adresář
+home_path <- path.expand("~")
+
+# adresář pro exportované soubory v rámci home_path
+export_path <- paste0(home_path, "/Downloads/rgee2/export")
+
+# adresář pro dočasné soubory v rámci export_path
+temp_path <- paste0(export_path, "/temp")
+
+
 ####################################################################################
 
 
@@ -39,17 +49,24 @@ ymin <- bb$ymin
 ymax <- bb$ymax
 
 
-bb_polygon <- ee$Geometry$Polygon(
-  coords = list(
-    c(xmin, ymin),
-    c(xmin, ymax),
-    c(xmax, ymax),
-    c(xmax, ymin),
-    c(xmin, ymin)
-  ),
+#bb_polygon <- ee$Geometry$Polygon(
+#  coords = list(
+#    c(xmin, ymin),
+#    c(xmin, ymax),
+#    c(xmax, ymax),
+#    c(xmax, ymin),
+#    c(xmin, ymin)
+#  ),
+#  proj = "EPSG:4326",
+#  geodesic = FALSE
+#)
+
+bb_geometry_rectangle <- ee$Geometry$Rectangle(
+  coords = c(xmin, ymin, xmax, ymax),
   proj = "EPSG:4326",
   geodesic = FALSE
 )
+
 
 
 # odstranění stínů a oblačnosti
@@ -70,7 +87,7 @@ mask_L8_sr <- function(image) {
 
 
 l8_sr_collection <- ee$ImageCollection('LANDSAT/LC08/C01/T1_SR')$
-  filterBounds(bb_polygon)$
+  filterBounds(bb_geometry_rectangle)$
   filterDate(years_range$from, years_range$to)$
   filter(ee$Filter$calendarRange(season_months_range$from, season_months_range$to, "month"))$
   map(mask_L8_sr)
@@ -89,15 +106,11 @@ visparams <- list(
   gamma = 1.4
 )
 
-geometry <- ee$Geometry$Rectangle(
-  coords = c(xmin, ymin, xmax, ymax),
-  proj = "EPSG:4326",
-  geodesic = FALSE
-)
+
 
 # Map$setCenter(13.0, 50.0, 10)
-Map$centerObject(geometry, zoom = 9)
-l1 <- Map$addLayer(geometry, visParams = list(color = "FF0000"), opacity = 0.3, name = "vybraná obálka (bounding box)")
+Map$centerObject(bb_geometry_rectangle, zoom = 9)
+l1 <- Map$addLayer(bb_geometry_rectangle, visParams = list(color = "FF0000"), opacity = 0.3, name = "vybraná obálka (bounding box)")
 l2 <- Map$addLayer(l8_sr_collection_reduce, visparams, name = "LANDSAT/LC08/C01/T1_SR filtered median") 
 l2 + l1
 
@@ -105,11 +118,11 @@ l2 + l1
 # export do rasteru se všemi bandy (RasterStack object)
 result_raster <- ee_as_raster(
   image = l8_sr_collection_reduce, #$reproject("EPSG:32633")
-  region = geometry,
+  region = bb_geometry_rectangle,
   scale = scale,
-  via = "getInfo" # na Ubuntu nebylo nutné vůbec uvádět tento parametr, na Win10 si to jinak vynucovalo přihlášení a následné ukládání na Google disk
+  via = "getInfo", # na Ubuntu nebylo nutné vůbec uvádět tento parametr, na Win10 si to jinak vynucovalo přihlášení a následné ukládání na Google disk
   # maxPixels = 1e10
-  # dsn = "filename" # Output filename. If missing, will create a temporary file.
+  dsn = paste0(temp_path, "/result_raster_", Sys.time(), ".tif") # Output filename. If missing, will create a temporary file.
 )
 
 # pro zjištění vygenerovaného názvu tiff-u v /temp
@@ -129,8 +142,6 @@ result_raster <- ee_as_raster(
 
 library(raster) # pro použití writeRaster
 
-home_path <- path.expand("~") # domovský adresář
-
 # 'ascii' je přímo ESRI Ascii formát 
-writeRaster(result_raster$B3, paste0(home_path, "/export_band.asc"), 'ascii', overwrite = TRUE)
+writeRaster(result_raster$B3, paste0(temp_path, "/export_band_", Sys.time(), ".asc"), 'ascii', overwrite = TRUE)
 
