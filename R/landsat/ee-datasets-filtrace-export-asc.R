@@ -266,8 +266,8 @@ writeRaster(result_raster[["elevation"]], paste0(temp_path, "/srtm_", time_name,
 
 
 if(vis_map){
-
-bands_vis = c("B4", "B3", "B2")
+bands_vis <- c("B4", "B3", "B2")
+l8_sr_collection_reduce <- l8_sr_collection$select(bands_vis)$reduce(ee$Reducer$median())$rename(bands_vis) #$reproject("EPSG:32633")
 
 # vizualizace v mapovém okně
 visparams <- list(
