@@ -1,5 +1,6 @@
 start_time <- Sys.time()
 library(rgee)
+library(raster)
 
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <- c("sp", "rgdal", "mapview", "raster", "geojsonio", "stars", "httpuv") # , "googledrive", "httpuv"
@@ -49,6 +50,8 @@ vis_map <- FALSE
 # parametry použitých datasetů z GEE
 gee_datasets <- read.csv(file = 'gee_datasets/gee-pouzite-datasety.csv')
 # cell <- subset(gee_datasets, short == "landsat", select = "geeSnippet")
+
+time_name <- Sys.time()
 
 
 # v cyklu průběžně promazávat temp tiffy s jedním bandem
@@ -100,8 +103,11 @@ mask_L8_sr <- function(image) {
   return (image$updateMask(mask))
 }
 
+################################
+# L8 _SR 'LANDSAT/LC08/C01/T1_SR' - raw bandy
+################################
 
-l8_sr_collection <- ee$ImageCollection('LANDSAT/LC08/C01/T1_SR')$
+l8_sr_collection <- ee$ImageCollection(gdl$landsat$geeSnippet)$
   filterBounds(bb_geometry_rectangle)$
   filterDate(years_range$from, years_range$to)$
   filter(ee$Filter$calendarRange(season_months_range$from, season_months_range$to, "month"))$
@@ -117,11 +123,11 @@ l8_sr_collection <- ee$ImageCollection('LANDSAT/LC08/C01/T1_SR')$
 # B11 - nedoporučeno používat
 # B10 jen s atm. korekcemi z atmcorr.gsfc.nasa.gov - jsou součástí }spo4tenz] GEE L8 _SR datasetů?!
 # u B10 by navíc bylo vhodné odfiltrovat pryč vodní toky a plochy, pokud se na nich něco nemůže vyskytovat (tváří se jako lesy a jiná chladná místa)
-bands_all = c("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B10") 
+bands_all <- c("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B10") 
 
 # mělo by být funkční pro kteroukoliv kolekci z GEE (dodělat)
 # - u každé kolekce/datasetu ale stejně PŘEDEM musím vědět které bandy (případně i s jakými analýzami nad nimi) použít
-time_name <- Sys.time();
+
 
 for (band in bands_all) {
 print(band)
@@ -132,17 +138,113 @@ result_raster <- ee_as_raster(
   image = l8_sr_collection_reduce_1_band, #$reproject("EPSG:32633")
   region = bb_geometry_rectangle,
   scale = scale,
-  via = "getInfo" # na Ubuntu nebylo nutné vůbec uvádět tento parametr, na Win10 si to jinak vynucovalo přihlášení a následné ukládání na Google disk
+  via = "getInfo", # na Ubuntu nebylo nutné vůbec uvádět tento parametr, na Win10 si to jinak vynucovalo přihlášení a následné ukládání na Google disk
   # maxPixels = 1e10
-  # dsn = raster_name # Output filename. If missing, will create a temporary file.
+  dsn = paste0(temp_path, "/l8_", time_name, "_", band, ".tif") # Output filename. If missing, will create a temporary file.
 )
 
 # 'ascii' je přímo ESRI Ascii formát 
 #  jak tam dostat nodata value???
-writeRaster(result_raster[[band]], paste0(temp_path, "/e_", time_name, "_", band, ".asc"), 'ascii', overwrite = TRUE)
+writeRaster(result_raster[[band]], paste0(temp_path, "/l8_", time_name, "_", band, ".asc"), 'ascii', overwrite = TRUE)
 
 }
 
+
+
+################################
+# L8 _SR 'LANDSAT/LC08/C01/T1_SR' - NDVI
+################################
+
+bands_all <- c("B5", "B4") 
+
+# ndvi <- l8_sr_collection_reduce$normalizedDifference(c("B5", "B4"))
+ndvi <- l8_sr_collection$select(bands_all)$reduce(ee$Reducer$median())$rename(bands_all)$normalizedDifference(bands_all)$rename("NDVI")
+
+result_raster <- ee_as_raster(
+  image = ndvi$select("NDVI"), #$reproject("EPSG:32633")
+  region = bb_geometry_rectangle,
+  scale = scale,
+  via = "getInfo", # na Ubuntu nebylo nutné vůbec uvádět tento parametr, na Win10 si to jinak vynucovalo přihlášení a následné ukládání na Google disk
+  # maxPixels = 1e10
+  dsn = paste0(temp_path, "/ndvi_", time_name, ".tif") # Output filename. If missing, will create a temporary file.
+)
+
+writeRaster(result_raster[["NDVI"]], paste0(temp_path, "/ndvi_", time_name, ".asc"), 'ascii', overwrite = TRUE)
+
+
+################################
+# Worldclim/Bioclim 'WORLDCLIM/V1/BIO'
+################################
+
+wc <- ee$Image(gdl$worldclim$geeSnippet)
+
+bands_all <- wc$bandNames()$getInfo()
+
+for (band in bands_all) {
+print(band)
+wc_1_band <- wc$select(band)$rename(band) #$reproject("EPSG:32633")
+
+# export do meziproduktu v podobě tiffu s jedním bandem
+result_raster <- ee_as_raster(
+  image = wc_1_band, #$reproject("EPSG:32633")
+  region = bb_geometry_rectangle,
+  scale = scale,
+  via = "getInfo", # na Ubuntu nebylo nutné vůbec uvádět tento parametr, na Win10 si to jinak vynucovalo přihlášení a následné ukládání na Google disk
+  # maxPixels = 1e10
+  dsn = paste0(temp_path, "/wc_", time_name, "_", band, ".tif") # Output filename. If missing, will create a temporary file.
+)
+
+writeRaster(result_raster[[band]], paste0(temp_path, "/wc_", time_name, "_", band, ".asc"), 'ascii', overwrite = TRUE)
+
+}
+
+
+
+
+################################
+# SRTM 'USGS/SRTMGL1_003'
+################################
+
+srtm <- ee$Image(gdl$srtm$geeSnippet)$select(c("elevation"))
+
+# export do meziproduktu v podobě tiffu s jedním bandem
+result_raster <- ee_as_raster(
+  image = srtm, #$reproject("EPSG:32633")
+  region = bb_geometry_rectangle,
+  scale = scale,
+  via = "getInfo", # na Ubuntu nebylo nutné vůbec uvádět tento parametr, na Win10 si to jinak vynucovalo přihlášení a následné ukládání na Google disk
+  # maxPixels = 1e10
+  dsn = paste0(temp_path, "/srtm_", time_name, "_", band, ".tif") # Output filename. If missing, will create a temporary file.
+)
+
+writeRaster(result_raster[["elevation"]], paste0(temp_path, "/srtm_", time_name, ".asc"), 'ascii', overwrite = TRUE)
+
+
+################################
+# SRTM 'USGS/SRTMGL1_003' + slope, aspect...
+################################
+
+
+
+
+
+################################
+# corine 'COPERNICUS/CORINE/V20/100m/2018'
+################################
+
+# corine <- ee$Image(gdl$corine$geeSnippet)$select(c("landcover"))
+
+# export do meziproduktu v podobě tiffu s jedním bandem
+# result_raster <- ee_as_raster(
+#   image = corine, #$reproject("EPSG:32633")
+#   region = bb_geometry_rectangle,
+#   scale = scale,
+#   via = "getInfo", # na Ubuntu nebylo nutné vůbec uvádět tento parametr, na Win10 si to jinak vynucovalo přihlášení a následné ukládání na Google disk
+#   # maxPixels = 1e10
+#   dsn = paste0(temp_path, "/corine_", time_name, ".tif") # Output filename. If missing, will create a temporary file.
+# )
+
+# writeRaster(result_raster[["elevation"]], paste0(temp_path, "/srtm_", time_name, ".asc"), 'ascii', overwrite = TRUE)
 
 
 
