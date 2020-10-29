@@ -46,6 +46,11 @@ temp_path <- paste0(export_path, "/temp")
 # zobrazit mapové okno s polygonem oblasti a RGB kompozitem?
 vis_map <- FALSE
 
+# parametry použitých datasetů z GEE
+gee_datasets <- read.csv(file = 'gee_datasets/gee-pouzite-datasety.csv')
+# cell <- subset(gee_datasets, short == "landsat", select = "geeSnippet")
+
+
 # v cyklu průběžně promazávat temp tiffy s jedním bandem
 
 ####################################################################################
@@ -55,22 +60,21 @@ clear_temp <- function() {
 unlink(paste0(normalizePath(tempdir()), "/", dir(tempdir())), recursive = TRUE)
 }
 
+# gc() # Force R to release memory it is no longer using
+
+
+# převod gee_datasets do přístuupnějšího listu
+gdl <- list()
+for(i in 1:nrow(gee_datasets)) 
+{
+sublist <- list(geeSnippet = toString(gee_datasets[i, "geeSnippet"]), type = toString(gee_datasets[i, "type"]))
+gdl[toString(gee_datasets[i, "short"])] <- list(sublist)
+}
+
 xmin <- bb$xmin
 xmax <- bb$xmax
 ymin <- bb$ymin
 ymax <- bb$ymax
-
-#bb_polygon <- ee$Geometry$Polygon(
-#  coords = list(
-#    c(xmin, ymin),
-#    c(xmin, ymax),
-#    c(xmax, ymax),
-#    c(xmax, ymin),
-#    c(xmin, ymin)
-#  ),
-#  proj = "EPSG:4326",
-#  geodesic = FALSE
-#)
 
 bb_geometry_rectangle <- ee$Geometry$Rectangle(
   coords = c(xmin, ymin, xmax, ymax),
