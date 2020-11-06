@@ -59,7 +59,7 @@ git_project_path <- paste0(home_path, "/Downloads/rgee2/rgee")
 vis_map <- FALSE
 
 # jednotná "značka" přidaná ke všem output rasterům z jednoho běhu skriptu (stejné nastavení parametrů)
-tag_name <- Sys.time()
+tag_name <- gsub('[^0-9-]', '-', Sys.time())
 
 ########################################################################################################################################################################
 
