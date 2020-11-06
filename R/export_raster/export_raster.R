@@ -18,10 +18,24 @@ ee_Initialize(drive = FALSE, gcs = FALSE)
 # tempdir() # dočasný adresář pro aktuální R session
 
 
+# # # # # # # # # # # # # # # # # # # # # #
+# nastavení základních parametrů [start]  #
+# # # # # # # # # # # # # # # # # # # # # #
 
-########################################################################################################################################################################
 
-# nastavení základních parametrů
+## cesty k souborům, předpoklad je stáhnutí celého repozitáře https://github.com/PetrBalej/rgee/archive/master.zip
+
+# domovský adresář (nebo jiný), z něhož se odvodí další cesty
+home_path <- path.expand("~")
+
+# adresář pro exportované soubory (v rámci home_path)
+export_path <- paste0(home_path, "/Downloads/rgee2/export")
+
+# GIT project directory (kompletní repozitář rgee z github.com: po rozbalení zipu v rgee-master/rgee-master)
+git_project_path <- paste0(home_path, "/Downloads/rgee2/rgee")
+
+
+## výběr regionu
 
 # definice obálek (bounding box) různě velkých území pro testování
 sz_cechy <- list(xmin = 13.0, xmax = 13.5, ymin = 50.0, ymax = 50.5)
@@ -31,8 +45,8 @@ str_evropa <- list(xmin = 8.5, xmax = 22.0, ymin = 46.0, ymax = 53.5)
 # výběr konkrétního území
 bb <- sz_cechy
 
-# výsledná velikost pixelu v m
-scale <- 10000
+
+## časové rozsahy
 
 # rozsah snímků od/do
 years_range <- list(from = '2017-01-01', to = '2019-12-31')
@@ -40,28 +54,23 @@ years_range <- list(from = '2017-01-01', to = '2019-12-31')
 # rozsah jedné sezóny v měsících (podvýběr z vybraného období years_range výše)
 season_months_range <- list(from = 4, to = 9)
 
-# výstupní fotmát exportovaných rasterů
+
+## výsledná velikost pixelu v m
+scale <- 10000
+
+## výstupní fotmát exportovaných rasterů
 output_raster_ext <- "asc" # tif, grd, envi, img
 
-# domovský adresář
-home_path <- path.expand("~")
-
-# adresář pro exportované soubory v rámci home_path
-export_path <- paste0(home_path, "/Downloads/rgee2/export")
-
-# adresář pro dočasné soubory v rámci export_path
-temp_path <- paste0(export_path, "/temp")
-
-# GIT project directory (kompletní repozitář rgee z github.com: po rozbalení zipu v rgee-master/)
-git_project_path <- paste0(home_path, "/Downloads/rgee2/rgee")
-
-# zobrazit mapové okno s polygonem oblasti a RGB kompozitem?
+## zobrazit mapové okno s polygonem oblasti a RGB kompozitem?
 vis_map <- FALSE
 
-# jednotná "značka" přidaná ke všem output rasterům z jednoho běhu skriptu (stejné nastavení parametrů)
+## jednotná "značka" přidaná ke všem output rasterům z jednoho běhu skriptu (stejné nastavení parametrů)
 tag_name <- gsub('[^0-9-]', '-', Sys.time())
 
-########################################################################################################################################################################
+
+# # # # # # # # # # # # # # # # # # # # # #
+# nastavení základních parametrů [konec]  #
+# # # # # # # # # # # # # # # # # # # # # #
 
 
 
@@ -112,7 +121,7 @@ for (band in bands_all) {
   # medián pro výslednou hodnotu pixelu
   l8_sr_collection_reduce_1_band <- l8_sr_collection$select(band)$reduce(ee$Reducer$median())$rename(band) #$reproject("EPSG:32633")
 
-  file_name <- paste0(temp_path, "/l8_", tag_name, "_", band)
+  file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
   export_gee_image(l8_sr_collection_reduce_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band)
 
 }
@@ -128,7 +137,7 @@ bands_all <- c("B5", "B4")
 # ndvi <- l8_sr_collection_reduce$normalizedDifference(c("B5", "B4"))
 ndvi <- l8_sr_collection$select(bands_all)$reduce(ee$Reducer$median())$rename(bands_all)$normalizedDifference(bands_all)$rename("NDVI")$select("NDVI")
 
-file_name <- paste0(temp_path, "/l8_", tag_name, "_", "NDVI")
+file_name <- paste0(export_path, "/l8_", tag_name, "_", "NDVI")
 export_gee_image(ndvi, bb_geometry_rectangle, scale, file_name, output_raster_ext, "NDVI")
 
 
@@ -144,7 +153,7 @@ for (band in bands_all) {
   print(band)
   wc_1_band <- wc$select(band)$rename(band)
 
-  file_name <- paste0(temp_path, "/wc_", tag_name, "_", band)
+  file_name <- paste0(export_path, "/wc_", tag_name, "_", band)
   export_gee_image(wc_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band)
 
 }
@@ -158,7 +167,7 @@ for (band in bands_all) {
 
 srtm <- ee$Image(gdl$srtm$geeSnippet)$select("elevation")
 
-file_name <- paste0(temp_path, "/srtm_", tag_name, "_", "elevation")
+file_name <- paste0(export_path, "/srtm_", tag_name, "_", "elevation")
 export_gee_image(srtm, bb_geometry_rectangle, scale, file_name, output_raster_ext, "elevation")
 
 ################################################################
@@ -182,10 +191,10 @@ export_gee_image(srtm, bb_geometry_rectangle, scale, file_name, output_raster_ex
 #   scale = scale,
 #   via = "getInfo", # na Ubuntu nebylo nutné vůbec uvádět tento parametr, na Win10 si to jinak vynucovalo přihlášení a následné ukládání na Google disk
 #   # maxPixels = 1e10
-#   dsn = paste0(temp_path, "/corine_", tag_name, ".tif") # Output filename. If missing, will create a temporary file.
+#   dsn = paste0(export_path, "/corine_", tag_name, ".tif") # Output filename. If missing, will create a temporary file.
 # )
 
-# writeRaster(result_raster[["elevation"]], paste0(temp_path, "/srtm_", tag_name, ".asc"), 'ascii', overwrite = TRUE)
+# writeRaster(result_raster[["elevation"]], paste0(export_path, "/srtm_", tag_name, ".asc"), 'ascii', overwrite = TRUE)
 
 
 
