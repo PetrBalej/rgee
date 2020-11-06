@@ -167,15 +167,20 @@ for (band in bands_all) {
 
 srtm <- ee$Image(gdl$srtm$geeSnippet)$select("elevation")
 
+# elevation
 file_name <- paste0(export_path, "/srtm_", tag_name, "_", "elevation")
 export_gee_image(srtm, bb_geometry_rectangle, scale, file_name, output_raster_ext, "elevation")
 
-################################################################
-# SRTM 'USGS/SRTMGL1_003' + slope, aspect...
-################################################################
+# slope
+slope <- ee$Terrain$slope(srtm)
+file_name <- paste0(export_path, "/srtm_", tag_name, "_", "slope")
+export_gee_image(slope, bb_geometry_rectangle, scale, file_name, output_raster_ext, "slope")
 
+# aspect (ve stupních)
+aspect <- ee$Terrain$aspect(srtm) # $divide(180)$multiply(pi)$sin() # převod na radiány
+file_name <- paste0(export_path, "/srtm_", tag_name, "_", "aspect")
+export_gee_image(aspect, bb_geometry_rectangle, scale, file_name, output_raster_ext, "aspect")
 
-# dodělat
 
 
 ################################################################
