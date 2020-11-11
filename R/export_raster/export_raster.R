@@ -107,7 +107,7 @@ l8_sr_collection <- ee$ImageCollection(gdl$landsat$geeSnippet)$
   map(mask_L8_sr)
 
 ## medián pro výslednou hodnotu pixelu - export všech bandů
-## l8_sr_collection_reduce <- l8_sr_collection$select(bands_all)$reduce(ee$Reducer$median())$rename(bands_all) #$reproject("EPSG:32633")
+## l8_sr_collection_reduce <- l8_sr_collection$select(bands_all)$median() #$reproject("EPSG:32633")
 ## bands_all <-  l8_sr_collection$first()$bandNames()$getInfo()
 
 # https://landsat.gsfc.nasa.gov/data/how-to-use-landsat-data/
@@ -119,7 +119,7 @@ bands_all <- c("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B10")
 for (band in bands_all) {
   print(band)
   # medián pro výslednou hodnotu pixelu
-  l8_sr_collection_reduce_1_band <- l8_sr_collection$select(band)$reduce(ee$Reducer$median())$rename(band) #$reproject("EPSG:32633")
+  l8_sr_collection_reduce_1_band <- l8_sr_collection$select(band)$median() #$reproject("EPSG:32633")
 
   file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
   export_gee_image(l8_sr_collection_reduce_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band)
@@ -135,7 +135,7 @@ for (band in bands_all) {
 bands_all <- c("B5", "B4")
 
 # ndvi <- l8_sr_collection_reduce$normalizedDifference(c("B5", "B4"))
-ndvi <- l8_sr_collection$select(bands_all)$reduce(ee$Reducer$median())$rename(bands_all)$normalizedDifference(bands_all)$rename("NDVI")$select("NDVI")
+ndvi <- l8_sr_collection$select(bands_all)$median()$normalizedDifference(bands_all)$rename("NDVI")$select("NDVI")
 
 file_name <- paste0(export_path, "/l8_", tag_name, "_", "NDVI")
 export_gee_image(ndvi, bb_geometry_rectangle, scale, file_name, output_raster_ext, "NDVI")
@@ -151,7 +151,7 @@ bands_all <- wc$bandNames()$getInfo()
 
 for (band in bands_all) {
   print(band)
-  wc_1_band <- wc$select(band)$rename(band)
+  wc_1_band <- wc$select(band)
 
   file_name <- paste0(export_path, "/wc_", tag_name, "_", band)
   export_gee_image(wc_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band)
@@ -222,7 +222,7 @@ export_gee_image(aspect, bb_geometry_rectangle, scale, file_name, output_raster_
 
 if (vis_map) {
   bands_vis <- c("B4", "B3", "B2")
-  l8_sr_collection_reduce <- l8_sr_collection$select(bands_vis)$reduce(ee$Reducer$median())$rename(bands_vis) #$reproject("EPSG:32633")
+  l8_sr_collection_reduce <- l8_sr_collection$select(bands_vis)$median() #$reproject("EPSG:32633")
 
   # vizualizace v mapovém okně
   visparams <- list(
