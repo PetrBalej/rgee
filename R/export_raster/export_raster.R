@@ -67,6 +67,12 @@ vis_map <- FALSE
 ## jednotná "značka" přidaná ke všem output rasterům z jednoho běhu skriptu (stejné nastavení parametrů)
 tag_name <- gsub('[^0-9-]', '-', Sys.time())
 
+## NoDataValue
+no_data_value <- -9999 # vede k -3.4e+38 
+
+## minimum sat. snímků k použití pixelu pro analýzu, jinak no_data_value
+# nechávat raději 0 a až dodatečně použít příslušný vygenerovaný raster k domaskování? Jinak tím poznamenám všechny uložené rastery (dořešit)
+threshold_px_count <- 3
 
 # # # # # # # # # # # # # # # # # # # # # #
 # nastavení základních parametrů [konec]  #
@@ -100,26 +106,31 @@ bb_geometry_rectangle <- ee$Geometry$Rectangle(
 # L8 _SR 'LANDSAT/LC08/C01/T1_SR' - raw bandy
 ################################################################
 
+# aplikace základních geogracických, časových a odmračňovacích/odstiňovacích filtrů
 l8_sr_collection <- ee$ImageCollection(gdl$landsat$geeSnippet)$
   filterBounds(bb_geometry_rectangle)$
   filterDate(years_range$from, years_range$to)$
   filter(ee$Filter$calendarRange(season_months_range$from, season_months_range$to, "month"))$
   map(mask_L8_sr)
 
-## medián pro výslednou hodnotu pixelu - export všech bandů
-## l8_sr_collection_reduce <- l8_sr_collection$select(bands_all)$median() #$reproject("EPSG:32633")
-## bands_all <-  l8_sr_collection$first()$bandNames()$getInfo()
+# příprava vrstvy s počtem snímků použitých na jeden pixel pro následné odmaskování (odstranění) pixelů s příliš nízkou hodnotou (threshold_px_count) snímků, které se na něm podílely
+# zde na B1, nemělo by záležet o který band jde (raději ověřit?), i odmračnění probíhá hromadně skrz všechny bandy, počet použitých snímků pixelů bude u všech bandů stejný
+l8_sr_collection_px_count <- l8_sr_collection$select("B1")$count()$rename("px_count")$gte(threshold_px_count)
+file_name <- paste0(export_path, "/l8_", tag_name, "_", "px_count")
+export_gee_image(l8_sr_collection_px_count, bb_geometry_rectangle, scale, file_name, output_raster_ext, "px_count")
+
+# medián pro výslednou hodnotu pixelu - export všech bandů
 
 # https://landsat.gsfc.nasa.gov/data/how-to-use-landsat-data/
 # B11 - nedoporučeno používat
-# B10 jen s atm. korekcemi z atmcorr.gsfc.nasa.gov - jsou součástí }spo4tenz] GEE L8 _SR datasetů?!
+# B10 jen s atm. korekcemi z atmcorr.gsfc.nasa.gov - jsou součástí dopočtených GEE L8 _SR datasetů?!
 # u B10 by navíc bylo vhodné odfiltrovat pryč vodní toky a plochy, pokud se na nich něco nemůže vyskytovat (tváří se jako lesy a jiná chladná místa)
 bands_all <- c("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B10")
 
 for (band in bands_all) {
   print(band)
-  # medián pro výslednou hodnotu pixelu
-  l8_sr_collection_reduce_1_band <- l8_sr_collection$select(band)$median() #$reproject("EPSG:32633")
+  # medián pro výslednou hodnotu pixelu a aplikace vrstvy na odmaskování pixelů s nízkým podílem snímků
+  l8_sr_collection_reduce_1_band <- l8_sr_collection$select(band)$median()$updateMask(l8_sr_collection_px_count)$unmask(no_data_value) # -3.4e+38
 
   file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
   export_gee_image(l8_sr_collection_reduce_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band)
@@ -134,8 +145,8 @@ for (band in bands_all) {
 
 bands_all <- c("B5", "B4")
 
-# ndvi <- l8_sr_collection_reduce$normalizedDifference(c("B5", "B4"))
-ndvi <- l8_sr_collection$select(bands_all)$median()$normalizedDifference(bands_all)$rename("NDVI")$select("NDVI")
+# výpočet + odmaskování pixelů s nízkým podílem snímků
+ndvi <- l8_sr_collection$select(bands_all)$median()$normalizedDifference(bands_all)$rename("NDVI")$select("NDVI")$updateMask(l8_sr_collection_px_count)$unmask(no_data_value)
 
 file_name <- paste0(export_path, "/l8_", tag_name, "_", "NDVI")
 export_gee_image(ndvi, bb_geometry_rectangle, scale, file_name, output_raster_ext, "NDVI")

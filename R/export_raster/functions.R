@@ -25,7 +25,7 @@ gee_datasets_list <- function(gee_datasets_path_csv) {
 # odstranění stínů a oblačnosti
 mask_L8_sr <- function(image) {
   # Get the pixel QA band.
-  qa <- image$select('pixel_qa')
+  qa <- image$select("pixel_qa")
 
   # https://www.usgs.gov/media/files/landsat-8-collection-1-land-surface-reflectance-code-product-guide
   # Landsat 8 Collection 1 (C1) Land Surface Reflectance Code (LaSRC) Product Guide
