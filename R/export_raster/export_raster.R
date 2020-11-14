@@ -23,16 +23,12 @@ ee_Initialize(drive = FALSE, gcs = FALSE)
 # # # # # # # # # # # # # # # # # # # # # #
 
 
-## cesty k souborům, předpoklad je stáhnutí celého repozitáře https://github.com/PetrBalej/rgee/archive/master.zip
+# adresář pro exportované soubory (v rámci wd)
+export_path <- paste0(getwd(), "/../export/raster/")
 
-# domovský adresář (nebo jiný), z něhož se odvodí další cesty
-home_path <- path.expand("~")
-
-# adresář pro exportované soubory (v rámci home_path)
-export_path <- paste0(home_path, "/Downloads/rgee2/export")
 
 # GIT project directory (kompletní repozitář rgee z github.com: po rozbalení zipu v rgee-master/rgee-master)
-git_project_path <- paste0(home_path, "/Downloads/rgee2/rgee")
+git_project_path <- getwd()
 
 
 ## výběr regionu
@@ -78,8 +74,8 @@ threshold_px_count <- 3
 # nastavení základních parametrů [konec]  #
 # # # # # # # # # # # # # # # # # # # # # #
 
-
-
+# vytvoří adresář pro export, pokud neexistuje
+dir.create(export_path, showWarnings = FALSE)
 
 # parametry použitých datasetů z GEE - export z gee_datasets/gee-pouzite-datasety.xlsx
 gee_datasets_path_csv <- paste0(git_project_path, "/gee_datasets/gee-pouzite-datasety.csv")
