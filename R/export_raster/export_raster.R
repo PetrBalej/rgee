@@ -52,7 +52,7 @@ bb <- sz_cechy
 years_range <- list(from = '2017-01-01', to = '2019-12-31')
 
 # rozsah jedné sezóny v měsících (podvýběr z vybraného období years_range výše)
-season_months_range <- list(from = 4, to = 9)
+season_months_range <- list(from = 4, to = 7)
 
 
 ## výsledná velikost pixelu v m
