@@ -11,6 +11,7 @@ set_cols <- cols(PORADI = "i", ID_LOKAL = "i", STRUKT_POZN = "c", DATUM_OD = col
 
 csv_ndop_ll <- read_csv(paste0(import_path_ndop, "/Locustella_luscinioides_tab.csv"), col_types = set_cols, locale = locale("cs", decimal_mark = ","))
 
+# vypíše špatně rozparsované řádky
 problems(csv_ndop_ll)
 
 # csv_ndop_ll <- as_tibble(csv_ndop_ll) # netřeba?
@@ -21,28 +22,43 @@ problems(csv_ndop_ll)
 # & GARANCE == "Garantováno" & VEROH == 0 & NEGATIV == 0 
 # VEROH == 1 odpovídá GARANCE == "Garantováno" ???
 
-# Rozmezí datumů (sezóny a let) musí být stejné jako u filtru prediktorů! - Dodělat! - Ideálně přebírat společnou hodnotu jednoho parametru?
+# Rozmezí datumů (sezóny a let) musí být stejné jako u filtru prediktorů! - Dodělat!!! - Ideálně přebírat společnou hodnotu jednoho parametru?
 
 # přesnost by měla být nižší hodnota než velikost cellsize prediktoru => měnit dynamicky?
 
+# základní dofiltrovaní nálezů z NDOPu
 csv_ndop_ll_filter <- csv_ndop_ll %>% filter(DATUM_OD > "2015-01-01" & VEROH == 1 & NEGATIV == 0 & CXPRESNOST > 100)
 
-csv_ndop_ll_selected_cols <- select(csv_ndop_ll_filter, PORADI, DRUH, DATUM_OD, X, Y)
-
-# 
-# převod souřadnic z S-JTSK do WGS 84 (přidání nových sloupců: lat, lon)
-# 
+#
+# převod souřadnic z S-JTSK do WGS 84 (přidání nových sloupců: lat, lon) a filtrace polygonem (Česko)
+#
 
 library(sf)
 
-wqs84 <- csv_ndop_ll_filter %>%
+# načtení shapefile polygonu Česka
+shpPath <- "shp/ne_50m_admin_0_countries/czechia/cz_4326.shp"
+czechia <- st_read(shpPath)
+
+# převod souřadnic S-JTSK do WGS84
+wgs84 <- csv_ndop_ll_filter %>%
   st_as_sf(coords = c("X", "Y"), crs = 5514) %>%
-  st_transform(4326) %>%
-  st_coordinates() %>%
+  st_transform(4326) 
+
+# označení záznamů se souřadnicemi uvnitř polygonu Česka (T/F) a přidání jako samostatného sloupce
+wgs84_czechia <- wgs84$geometry %>% 
+  st_intersects(czechia) %>% lengths > 0 
+csv_ndop_ll_filter <- csv_ndop_ll_filter %>% mutate(wgs84_czechia)
+
+# vytvoření sloupců s WGS84 souřadnicemi - nebo raději jako sf geometrii typu POINT?
+wgs84_coords <- wgs84 %>%
+  st_coordinates() %>% 
   as_tibble()  %>%
   rename(lat = Y, lon = X)
 
-# Dodělat filtraci polygonem Česka.
-
 options(pillar.sigfig = 7) # jen pro případnou vizualizaci
-csv_ndop_ll_s_wgs84 <- csv_ndop_ll_filter %>% mutate(wqs84) %>% select(PORADI, DRUH, lat, lon)
+
+# přidání sloupců s WGS84 souřadnicemi, výběr záznamů z polygonu a potřebných sloupců
+csv_ndop_ll_s_wgs84 <- csv_ndop_ll_filter %>% 
+  mutate(wgs84_coords) %>% 
+  filter(wgs84_czechia == TRUE) %>% 
+  select(PORADI, DRUH, lat, lon)
