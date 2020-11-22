@@ -1,56 +1,119 @@
-# kontrola (do)instalace všech dodatečně potřebných balíčků
-required_packages <- c("tidyverse", "rgbif", "sf")
-install.packages(setdiff(required_packages, rownames(installed.packages())))
+gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7)) {
+  # kontrola (do)instalace všech dodatečně potřebných balíčků
+  required_packages <- c("tidyverse", "rgbif", "sf", "lubridate")
+  install.packages(setdiff(required_packages, rownames(installed.packages())))
 
-library(tidyverse)
-library(rgbif)
-library(sf)
+  library(tidyverse)
+  library(rgbif)
+  library(sf)
+  library(lubridate)
 
-# # # # # # # # # # # # # # # # # # # # # #
-# nastavení základních parametrů [start]  #
-# # # # # # # # # # # # # # # # # # # # # #
+  # # # # # # # # # # # # # # # # # # # # # #
+  # nastavení základních parametrů [start]  #
+  # # # # # # # # # # # # # # # # # # # # # #
 
-## výběr regionu
+  ## výběr regionu
 
-# definice obálek (bounding box) různě velkých území pro testování
-sz_cechy <- list(xmin = 13.0, xmax = 13.5, ymin = 50.0, ymax = 50.5)
-cesko <- list(xmin = 12.0, xmax = 19.0, ymin = 48.5, ymax = 51.5)
-str_evropa <- list(xmin = 8.5, xmax = 22.0, ymin = 46.0, ymax = 53.5)
+  # Předávat parametricky???
+  # definice obálek (bounding box) různě velkých území pro testování
+  sz_cechy <- list(xmin = 13.0, xmax = 13.5, ymin = 50.0, ymax = 50.5)
+  cesko <- list(xmin = 12.0, xmax = 19.0, ymin = 48.5, ymax = 51.5)
+  str_evropa <- list(xmin = 8.5, xmax = 22.0, ymin = 46.0, ymax = 53.5)
 
-# výběr konkrétního území
-bb <- sz_cechy
+  # výběr konkrétního území
+  bb <- sz_cechy
 
-## časové rozsahy
+  ## časové rozsahy
 
-# Rozmezí datumů (sezóny a let) musí být stejné jako u filtru prediktorů! Ideálně přebírat společnou hodnotu jednoho parametru?
+  # Rozmezí datumů (sezóny a let) musí být stejné jako u filtru prediktorů! Ideálně přebírat společnou hodnotu jednoho parametru?
 
-# rozsah snímků od/do
-years_range <- list(from = '2017-01-01', to = '2019-12-31')
+  # rozsah snímků od/do
+  # years_range <- list(from = '2017-01-01', to = '2019-12-31')
 
-# rozsah jedné sezóny v měsících (podvýběr z vybraného období years_range výše)
-season_months_range <- list(from = 4, to = 7)
+  # rozsah jedné sezóny v měsících (podvýběr z vybraného období years_range výše)
+  # season_months_range <- list(from = 4, to = 7)
 
-# # # # # # # # # # # # # # # # # # # # # #
-# nastavení základních parametrů [konec]  #
-# # # # # # # # # # # # # # # # # # # # # #
+  # # # # # # # # # # # # # # # # # # # # # #
+  # nastavení základních parametrů [konec]  #
+  # # # # # # # # # # # # # # # # # # # # # #
 
-xmin <- bb$xmin
-xmax <- bb$xmax
-ymin <- bb$ymin
-ymax <- bb$ymax
+  xmin <- bb$xmin
+  xmax <- bb$xmax
+  ymin <- bb$ymin
+  ymax <- bb$ymax
 
-boundingBox <- cbind(c(xmin, xmin, xmax, xmax, xmin), c(ymin, ymax, ymax, ymin, ymin))
-boundingBox_wkt <- st_as_text(st_polygon(list(boundingBox)))
+  boundingBox <- cbind(c(xmin, xmin, xmax, xmax, xmin), c(ymin, ymax, ymax, ymin, ymin))
+  boundingBox_wkt <- st_as_text(st_polygon(list(boundingBox)))
 
 
-# issue
-# occ_search() vs occ_data()
+  # Předávat parametricky???
+  scientificNamesList <- list("Charadrius dubius" = 7937336, "Cinclus cinclus" = 2495093, "Locustella luscinioides" = 2493551, "Loxia curvirostra" = 9629160)
+  # jen klíče
+  taxonKeys <- as.vector(unlist(scientificNamesList))
 
-# do cyklu províce druhů
-gbif <- occ_data(scientificName = "Locustella luscinioides",
-  geometry = boundingBox_wkt,
-  hasCoordinate = TRUE,
-  hasGeospatialIssue = FALSE,
-  limit = 10)
 
-print(as_tibble(gbif$data), n = 10)
+
+  # pouze do 500 záznamů 
+  # do cyklu províce druhů
+
+  # scientificNames <- c("Charadrius dubius", "Cinclus cinclus", "Locustella luscinioides", "Loxia curvirostra")
+  # gbif <- occ_data(
+  # scientificName = scientificNames,
+  # geometry = boundingBox_wkt,
+  # hasCoordinate = TRUE,
+  # hasGeospatialIssue = FALSE,
+  # limit = 10
+  # )
+  # print(as_tibble(gbif$data), n = 10)
+  # return(gbif)
+
+
+
+  # 
+  # Authentication (GBIF), nezbytná pro stažení > 500 záznamů
+  # 
+
+  # For user, pwd, and email parameters, you can set them in one of three ways:
+  # •  Set them in your .Rprofile file with the names gbif_user, gbif_pwd, and gbif_email
+  # •  Set  them  in  your .Renviron/.bash_profile (or  similar)  file  with  the  names GBIF_USER, GBIF_PWD, and GBIF_EMAIL
+  # •  Simply pass strings to each of the parameters in the function call
+
+  # /home/USER/.Renviron
+
+  # 
+  # Vytvořit i alternativu pro ruční stažení a následné manuální rozparsování ze složky??? Stejně budu potom rozparsovávat zazipovaný .csv ...
+  #
+
+  rd <- occ_download(
+  # pred("taxonKey", 2493551),
+  pred_in("taxonKey", taxonKeys),
+  # pred("scientificName", "Locustella luscinioides"), # nefunguje
+  # pred("species", "Locustella luscinioides"),  # nefunguje
+  # pred_gte("eventDate", years_range$from),
+  # pred_lte("eventDate", years_range$to),
+  pred_gte("year", year(years_range$from)),
+  pred_lte("year", year(years_range$to)),
+  pred_gte("month", season_months_range$from),
+  pred_lte("month", season_months_range$to),
+  # pred_lte("coordinateUncertaintyInMeters", 100), # až při dofiltrování, nelze přes API
+  # pred("geometry", boundingBox_wkt),
+  pred_within(boundingBox_wkt),
+  pred("hasCoordinate", TRUE),
+  pred("hasGeospatialIssue", FALSE),
+  format = "SIMPLE_CSV"
+  )
+
+  occ_download_wait(rd)
+
+  # Cestu k uložení exportu parametricky do funkce???
+  occ_download_get(rd, path = paste0(getwd(), "/../gbif/"))
+
+  # dodělat rozbalení a načtení dat...
+  # rd[1] # obsahuje klíč (unikátní identifikátor) ke stažení, nebo k identifikaci .zip-u
+
+  return(rd)
+}
+# res <- gbif(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7))
+# str(res$"Charadrius dubius"$data)
+# print(res$"Charadrius dubius"$data %>% select(key, scientificName, decimalLatitude, decimalLongitude))
+
