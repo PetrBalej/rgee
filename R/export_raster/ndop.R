@@ -30,7 +30,7 @@ ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
   # # # # # # # # # # # # # # # # # # # # # #
 
 
-  set_cols <- cols(PORADI = "i", ID_LOKAL = "c", STRUKT_POZN = "c", DATUM_OD = col_date("%Y%m%d"), DATUM_DO = col_date("%Y%m%d"), VEROH = "i", ID_NALEZ = "i")
+  set_cols <- cols(PORADI = "i", ID_LOKAL = "c", STRUKT_POZN = "c", DATUM_OD = col_date("%Y%m%d"), DATUM_DO = col_date("%Y%m%d"), VEROH = "i", ID_NALEZ = "n")
 
   # csv_ndop <- read_csv(paste0(import_path_ndop, "/Locustella_luscinioides_tab.csv"), col_types = set_cols, locale = locale("cs", decimal_mark = ","))
 
@@ -95,8 +95,10 @@ ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
   mutate(wgs84_coords) %>%
   filter(wgs84_czechia == TRUE) %>%
   select(ID_NALEZ, DRUH, lat, lon) %>%
-  rename(key = ID_NALEZ, scientificName = DRUH, decimalLatitude = lat, decimalLongitude = lon)
+  rename(key = ID_NALEZ, species = DRUH, latitude = lat, longitude = lon)
 
   # print(as_tibble(csv_ndop_s_wgs84), n = 10)
   return(csv_ndop_s_wgs84)
 }
+# res <- ndop(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7), paste0(getwd(), "/../ndop/csv"))
+# print(as_tibble(res), n = 10)

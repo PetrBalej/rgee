@@ -1,4 +1,4 @@
-gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7)) {
+gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7), path = "/../gbif/", csv_name = NULL) {
   # kontrola (do)instalace všech dodatečně potřebných balíčků
   required_packages <- c("tidyverse", "rgbif", "sf", "lubridate")
   install.packages(setdiff(required_packages, rownames(installed.packages())))
@@ -67,51 +67,69 @@ gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
 
 
 
-  # 
-  # Authentication (GBIF), nezbytná pro stažení > 500 záznamů
-  # 
+  if (is.null(csv_name)) {
 
-  # For user, pwd, and email parameters, you can set them in one of three ways:
-  # •  Set them in your .Rprofile file with the names gbif_user, gbif_pwd, and gbif_email
-  # •  Set  them  in  your .Renviron/.bash_profile (or  similar)  file  with  the  names GBIF_USER, GBIF_PWD, and GBIF_EMAIL
-  # •  Simply pass strings to each of the parameters in the function call
+    #
+    # Authentication (GBIF), nezbytná pro stažení > 500 záznamů
+    #
 
-  # /home/USER/.Renviron
+    # For user, pwd, and email parameters, you can set them in one of three ways:
+    # •  Set them in your .Rprofile file with the names gbif_user, gbif_pwd, and gbif_email
+    # •  Set  them  in  your .Renviron/.bash_profile (or  similar)  file  with  the  names GBIF_USER, GBIF_PWD, and GBIF_EMAIL
+    # •  Simply pass strings to each of the parameters in the function call
 
-  # 
-  # Vytvořit i alternativu pro ruční stažení a následné manuální rozparsování ze složky??? Stejně budu potom rozparsovávat zazipovaný .csv ...
-  #
+    # /home/USER/.Renviron
 
-  rd <- occ_download(
-  # pred("taxonKey", 2493551),
+    # "prefiltr" už při downloadu, mohl bych ale chtít uložit vše pro daný druh a datum filtrovat až dodatečně (postfiltr), pak bych nemusel pokaždé stahovat z GBIFu. Dodělat???
+
+    rd <- occ_download(
+    # pred("taxonKey", 2493551),
   pred_in("taxonKey", taxonKeys),
-  # pred("scientificName", "Locustella luscinioides"), # nefunguje
-  # pred("species", "Locustella luscinioides"),  # nefunguje
-  # pred_gte("eventDate", years_range$from),
-  # pred_lte("eventDate", years_range$to),
+    # pred("scientificName", "Locustella luscinioides"), # nefunguje
+    # pred("species", "Locustella luscinioides"), # nefunguje
+    # pred_gte("eventDate", years_range$from), # nefunguje, chybí přidat "T00:00:00"?
+    # pred_lte("eventDate", years_range$to), # nefunguje, chybí přidat "T00:00:00"?
   pred_gte("year", year(years_range$from)),
   pred_lte("year", year(years_range$to)),
   pred_gte("month", season_months_range$from),
   pred_lte("month", season_months_range$to),
-  # pred_lte("coordinateUncertaintyInMeters", 100), # až při dofiltrování, nelze přes API
-  # pred("geometry", boundingBox_wkt),
+    # pred("geometry", boundingBox_wkt),
   pred_within(boundingBox_wkt),
   pred("hasCoordinate", TRUE),
   pred("hasGeospatialIssue", FALSE),
   format = "SIMPLE_CSV"
   )
 
-  occ_download_wait(rd)
+    occ_download_wait(rd)
 
-  # Cestu k uložení exportu parametricky do funkce???
-  occ_download_get(rd, path = paste0(getwd(), "/../gbif/"))
+    # uložení exportu
+    occ_download_get(rd, path = path)
 
-  # dodělat rozbalení a načtení dat...
-  # rd[1] # obsahuje klíč (unikátní identifikátor) ke stažení, nebo k identifikaci .zip-u
+    # rd[1] # obsahuje klíč (unikátní identifikátor) ke stažení, nebo k identifikaci .zip-u
+    zip <- paste0(path, "/", rd[1], ".zip")
+    csv <- paste0(path, "/", rd[1], ".csv")
 
-  return(rd)
+    unzip(zip, exdir = path)
+  } else {
+    csv <- paste0(path, "/", csv_name)
+  }
+
+  set_cols <- cols(gbifID = "n", coordinateUncertaintyInMeters = "d", coordinatePrecision = "d", day = "i", month = "i", year = "i")
+
+  csv_gbif <- read_tsv(csv, col_types = set_cols)
+
+  # coordinateUncertaintyInMeters, coordinatePrecision - problematické, většinou neuvedeno vůbec...
+  csv_gbif_filter <- csv_gbif %>%
+  filter(
+    (coordinateUncertaintyInMeters <= 100 | is.na(coordinateUncertaintyInMeters)) &
+    (coordinatePrecision <= 100 | is.na(coordinatePrecision))
+    ) %>%
+  select(gbifID, species, decimalLatitude, decimalLongitude) %>%
+  rename(key = gbifID, latitude = decimalLatitude, longitude = decimalLongitude)
+
+  return(csv_gbif_filter)
 }
-res <- gbif(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7))
-# str(res$"Charadrius dubius"$data)
-# print(res$"Charadrius dubius"$data %>% select(key, scientificName, decimalLatitude, decimalLongitude))
+# res <- gbif(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7), paste0(getwd(), "/../gbif/csv"), "0119526-200613084148143.csv")
+# print(as_tibble(res), n = 10)
+
 

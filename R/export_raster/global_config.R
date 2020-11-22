@@ -12,4 +12,5 @@ setwd(wd)
 
 # fitrace GBIF záznamů
 # source(paste0(wd, "/R/export_raster/gbif.R"))
-# print(gbif(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7)))
+# print(gbif(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7), paste0(getwd(), "/../gbif/csv")))
+# print(gbif(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7), paste0(getwd(), "/../gbif/csv"), "0119526-200613084148143.csv"))
