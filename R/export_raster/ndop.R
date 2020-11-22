@@ -1,4 +1,4 @@
-ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7), import_path_ndop = "/../ndop/csv", import_path_ndop = "/../ndop/csv") {
+ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7), import_path_ndop = "/../ndop/csv") {
 
   # kontrola (do)instalace všech dodatečně potřebných balíčků
   required_packages <- c("tidyverse", "sf", "lubridate")
@@ -69,7 +69,7 @@ ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
 
   library(sf)
 
-  # načtení shapefile polygonu Česka (časem možná možnost i předání parametrem jiný shapefile nebo geometrii polygonu)
+  # načtení shapefile polygonu Česka (časem i možnost předání parametrem jiný shapefile nebo rovnou geometrii polygonu?)
   shpPath <- "shp/ne_50m_admin_0_countries/czechia/cz_4326.shp" # zjednodušený polygon Česka
   czechia <- st_read(shpPath)
 
