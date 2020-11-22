@@ -46,6 +46,11 @@ boundingBox_wkt <- st_as_text(st_polygon(list(boundingBox)))
 # issue
 # occ_search() vs occ_data()
 
-res <- occ_data(scientificName ='Lacerta agilis', geometry = boundingBox_wkt, limit = 10)
+# do cyklu províce druhů
+gbif <- occ_data(scientificName = "Locustella luscinioides", 
+  geometry = boundingBox_wkt, 
+  hasCoordinate = TRUE,
+  hasGeospatialIssue = FALSE,
+  limit = 10)
 
-print(as_tibble(res$data), n = 10)
+print(as_tibble(gbif$data), n = 10)
