@@ -4,8 +4,29 @@ install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 library(tidyverse)
 
+
+# # # # # # # # # # # # # # # # # # # # # #
+# nastavení základních parametrů [start]  #
+# # # # # # # # # # # # # # # # # # # # # #
+
+## časové rozsahy
+
+# Rozmezí datumů (sezóny a let) musí být stejné jako u filtru prediktorů! Ideálně přebírat společnou hodnotu jednoho parametru?
+
+# rozsah snímků od/do
+years_range <- list(from = '2017-01-01', to = '2019-12-31')
+
+# rozsah jedné sezóny v měsících (podvýběr z vybraného období years_range výše)
+season_months_range <- list(from = 4, to = 7)
+
+
 # adresář pro exportované csv z NDOP pro další zpracování (pomocí QGIS pluginu https://github.com/OpenGeoLabs/qgis-ndop-downloader)
 import_path_ndop <- paste0(getwd(), "/../ndop/csv")
+
+# # # # # # # # # # # # # # # # # # # # # #
+# nastavení základních parametrů [konec]  #
+# # # # # # # # # # # # # # # # # # # # # #
+
 
 set_cols <- cols(PORADI = "i", ID_LOKAL = "i", STRUKT_POZN = "c", DATUM_OD = col_date("%Y%m%d"), DATUM_DO = col_date("%Y%m%d"), VEROH = "i", ID_NALEZ = "i")
 
@@ -22,12 +43,17 @@ problems(csv_ndop_ll)
 # & GARANCE == "Garantováno" & VEROH == 0 & NEGATIV == 0 
 # VEROH == 1 odpovídá GARANCE == "Garantováno" ???
 
-# Rozmezí datumů (sezóny a let) musí být stejné jako u filtru prediktorů! - Dodělat!!! - Ideálně přebírat společnou hodnotu jednoho parametru?
-
 # přesnost by měla být nižší hodnota než velikost cellsize prediktoru => měnit dynamicky?
 
 # základní dofiltrovaní nálezů z NDOPu
-csv_ndop_ll_filter <- csv_ndop_ll %>% filter(DATUM_OD > "2015-01-01" & VEROH == 1 & NEGATIV == 0 & CXPRESNOST > 100)
+csv_ndop_ll_filter <- csv_ndop_ll %>% 
+  filter(DATUM_OD >= years_range$from & DATUM_OD <= years_range$to & 
+    DATUM_DO >= years_range$from & DATUM_DO <= years_range$to & 
+    between(month(DATUM_OD), season_months_range$from, season_months_range$to) & 
+    between(month(DATUM_DO), season_months_range$from, season_months_range$to) & 
+    VEROH == 1 & 
+    NEGATIV == 0 & 
+    CXPRESNOST <= 100)
 
 #
 # převod souřadnic z S-JTSK do WGS 84 (přidání nových sloupců: lat, lon) a filtrace polygonem (Česko)
@@ -62,3 +88,5 @@ csv_ndop_ll_s_wgs84 <- csv_ndop_ll_filter %>%
   mutate(wgs84_coords) %>% 
   filter(wgs84_czechia == TRUE) %>% 
   select(PORADI, DRUH, lat, lon)
+
+# print(as_tibble(csv_ndop_ll_s_wgs84), n = 10)
