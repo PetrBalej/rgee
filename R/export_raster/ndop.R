@@ -1,9 +1,9 @@
 # kontrola (do)instalace všech dodatečně potřebných balíčků
-required_packages <- c("tidyverse", "sf")
+required_packages <- c("tidyverse", "sf", "lubridate")
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 library(tidyverse)
-
+library(lubridate)
 
 # # # # # # # # # # # # # # # # # # # # # #
 # nastavení základních parametrů [start]  #
@@ -78,7 +78,7 @@ csv_ndop_ll_filter <- csv_ndop_ll_filter %>% mutate(wgs84_czechia)
 # vytvoření sloupců s WGS84 souřadnicemi - nebo raději jako sf geometrii typu POINT?
 wgs84_coords <- wgs84 %>%
   st_coordinates() %>% 
-  as_tibble()  %>%
+  as_tibble() %>%
   rename(lat = Y, lon = X)
 
 options(pillar.sigfig = 7) # jen pro případnou vizualizaci
@@ -87,6 +87,7 @@ options(pillar.sigfig = 7) # jen pro případnou vizualizaci
 csv_ndop_ll_s_wgs84 <- csv_ndop_ll_filter %>% 
   mutate(wgs84_coords) %>% 
   filter(wgs84_czechia == TRUE) %>% 
-  select(PORADI, DRUH, lat, lon)
+  select(ID_NALEZ, DRUH, lat, lon)  %>%
+  rename(key = ID_NALEZ, scientificName = DRUH, decimalLatitude = lat, decimalLongitude = lon)
 
 # print(as_tibble(csv_ndop_ll_s_wgs84), n = 10)
