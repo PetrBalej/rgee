@@ -4,8 +4,8 @@ ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
   required_packages <- c("tidyverse", "sf", "lubridate")
   install.packages(setdiff(required_packages, rownames(installed.packages())))
 
-  library(tidyverse)
-  library(lubridate)
+  # načte všechny požadované knihovny jako dělá jednotlivě library()
+  lapply(required_packages, require, character.only = TRUE)
 
   # # # # # # # # # # # # # # # # # # # # # #
   # nastavení základních parametrů [start]  #
@@ -67,7 +67,6 @@ ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
   # převod souřadnic z S-JTSK do WGS 84 (přidání nových sloupců: lat, lon) a filtrace polygonem (Česko)
   #
 
-  library(sf)
 
   # načtení shapefile polygonu Česka (časem i možnost předání parametrem jiný shapefile nebo rovnou geometrii polygonu?)
   shpPath <- "shp/ne_50m_admin_0_countries/czechia/cz_4326.shp" # zjednodušený polygon Česka

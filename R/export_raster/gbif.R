@@ -3,10 +3,8 @@ gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
   required_packages <- c("tidyverse", "rgbif", "sf", "lubridate")
   install.packages(setdiff(required_packages, rownames(installed.packages())))
 
-  library(tidyverse)
-  library(rgbif)
-  library(sf)
-  library(lubridate)
+  # načte všechny požadované knihovny jako dělá jednotlivě library()
+  lapply(required_packages, require, character.only = TRUE)
 
   # # # # # # # # # # # # # # # # # # # # # #
   # nastavení základních parametrů [start]  #
@@ -113,7 +111,7 @@ gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
 
   return(rd)
 }
-# res <- gbif(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7))
+res <- gbif(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7))
 # str(res$"Charadrius dubius"$data)
 # print(res$"Charadrius dubius"$data %>% select(key, scientificName, decimalLatitude, decimalLongitude))
 

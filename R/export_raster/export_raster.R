@@ -7,7 +7,8 @@ library(rgee)
 required_packages <- c("sp", "rgdal", "mapview", "raster", "geojsonio", "stars", "httpuv")
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
-library(raster)
+# načte všechny požadované knihovny jako dělá jednotlivě library()
+lapply(required_packages, require, character.only = TRUE)
 
 ee_Initialize(drive = FALSE, gcs = FALSE)
 # ee_user_info()
