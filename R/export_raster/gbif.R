@@ -39,7 +39,7 @@ xmax <- bb$xmax
 ymin <- bb$ymin
 ymax <- bb$ymax
 
-boundingBox <- cbind(c(xmin,xmin,xmax,xmax,xmin),c(ymin,ymax,ymax,ymin,ymin))
+boundingBox <- cbind(c(xmin, xmin, xmax, xmax, xmin), c(ymin, ymax, ymax, ymin, ymin))
 boundingBox_wkt <- st_as_text(st_polygon(list(boundingBox)))
 
 
@@ -47,8 +47,8 @@ boundingBox_wkt <- st_as_text(st_polygon(list(boundingBox)))
 # occ_search() vs occ_data()
 
 # do cyklu províce druhů
-gbif <- occ_data(scientificName = "Locustella luscinioides", 
-  geometry = boundingBox_wkt, 
+gbif <- occ_data(scientificName = "Locustella luscinioides",
+  geometry = boundingBox_wkt,
   hasCoordinate = TRUE,
   hasGeospatialIssue = FALSE,
   limit = 10)
