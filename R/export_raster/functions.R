@@ -39,41 +39,37 @@ mask_L8_sr <- function(image) {
 }
 
 # export rasterů z GEE image
-export_gee_image <- function(image, region, scale, dsn, format, bands = c()) {
+export_gee_image <- function(image, region, scale, dsn = "default_file_name", format = NULL, bands = c(), set_extent = NULL, set_res = NULL) {
 
-  bands_count <- length(bands)
+  export_raster <- format != ""
 
-  multiband_support <- list(grd = "raster", nc = "CDF", tif = "GTiff", envi = "ENVI", bil = "EHdr", img = "HFA")
-  multiband_not_support <- list(asc = "ascii", sdat = "SAGA", rst = "IDRISI")
+  if (export_raster == TRUE) {
+    bands_count <- length(bands)
 
-  multiband_support_ext <- names(multiband_support)
-  multiband_not_support_ext <- names(multiband_not_support)
+    multiband_support <- list(grd = "raster", nc = "CDF", tif = "GTiff", envi = "ENVI", bil = "EHdr", img = "HFA")
+    multiband_not_support <- list(asc = "ascii", sdat = "SAGA", rst = "IDRISI")
 
-  all <- c(multiband_support, multiband_not_support)
-  all_ext <- c(multiband_support_ext, multiband_not_support_ext)
+    multiband_support_ext <- names(multiband_support)
+    multiband_not_support_ext <- names(multiband_not_support)
 
-  if (is.element(format, all)) {
-    w_t <- which(format == all)
-    ext <- names(all[w_t[[1]]])
-    ext_wr <- format
-  } else if (is.element(format, all_ext)) {
-    ext <- format
-    ext_wr <- all[[format]]
-  } else {
-    stop(paste0("Output file format ", format, " not supported!"))
-  }
+    all <- c(multiband_support, multiband_not_support)
+    all_ext <- c(multiband_support_ext, multiband_not_support_ext)
 
-  ee_as_raster_support <- c("tif", "envi", "img")
 
-  if (is.element(ext, multiband_not_support_ext) && bands_count > 1) {
-    stop(paste0("Output file format ", format, " have not multiband support!"))
-  }
+    if (is.element(format, all)) {
+      w_t <- which(format == all)
+      ext <- names(all[w_t[[1]]])
+      ext_wr <- format
+    } else if (is.element(format, all_ext)) {
+      ext <- format
+      ext_wr <- all[[format]]
+    } else {
+      stop(paste0("Output file format ", format, " not supported!"))
+    }
 
-  dsn_format <- paste0(dsn, ".", ext)
-  if (!is.element(ext, ee_as_raster_support)) {
-    # pokud nejde o formát podporovaný ee_as_raster tak nechám vytvořit jen v temp dočasný tif
-    dsn_format <- NULL
-    # průběžně promazávat temp tiffy s jedním bandem?
+    if (is.element(ext, multiband_not_support_ext) && bands_count > 1) {
+      stop(paste0("Output file format ", format, " have not multiband support!"))
+    }
   }
 
   result_raster <- ee_as_raster(
@@ -81,13 +77,26 @@ export_gee_image <- function(image, region, scale, dsn, format, bands = c()) {
     region = region,
     scale = scale,
     via = "getInfo",
-    dsn = dsn_format
+    dsn = NULL
   # maxPixels = 1e10
   )
 
-  if (!is.element(ext, ee_as_raster_support)) {
-    # musím použít writeRaster
-    writeRaster(result_raster[[bands[1]]], dsn, ext_wr, overwrite = TRUE)
+  # úprava extentu
+  if (!is.null(set_extent)) {
+    rr_e <- setExtent(result_raster[[bands[1]]], set_extent)
+  } else {
+    rr_e <- result_raster[[bands[1]]]
   }
 
+  # úprava resolution (velikosti pixelu)
+  if (!is.null(set_res)) {
+    res(rr_e) <- set_res
+  }
+
+  # uložení rasteru 
+  if (export_raster == TRUE) {
+    writeRaster(rr_e, dsn, ext_wr, overwrite = TRUE)
+  }
+
+  return(rr_e)
 }

@@ -56,7 +56,9 @@ season_months_range <- list(from = 4, to = 7)
 scale <- 10000
 
 ## výstupní fotmát exportovaných rasterů
-output_raster_ext <- "asc" # tif, grd, envi, img
+# pokud zadám koncovku, budou rastry uloženy jako fyzické soubory na disk
+# pokud NEzadám koncovku, tvoří se jen RasterLayer-y které se následně vloží do RasterStack-u do proměnné raster_stack
+output_raster_ext <- "" # asc, tif, grd, envi, img
 
 ## zobrazit mapové okno s polygonem oblasti a RGB kompozitem?
 vis_map <- FALSE
@@ -74,6 +76,8 @@ threshold_px_count <- 3
 # # # # # # # # # # # # # # # # # # # # # #
 # nastavení základních parametrů [konec]  #
 # # # # # # # # # # # # # # # # # # # # # #
+
+raster_stack_list <- list()
 
 # vytvoří adresář pro export, pokud neexistuje
 dir.create(export_path, showWarnings = FALSE)
@@ -114,7 +118,11 @@ l8_sr_collection <- ee$ImageCollection(gdl$landsat$geeSnippet)$
 # zde na B1, nemělo by záležet o který band jde (raději ověřit?), i odmračnění probíhá hromadně skrz všechny bandy, počet použitých snímků pixelů bude u všech bandů stejný
 l8_sr_collection_px_count <- l8_sr_collection$select("B1")$count()$rename("px_count")$gte(threshold_px_count)
 file_name <- paste0(export_path, "/l8_", tag_name, "_", "px_count")
-export_gee_image(l8_sr_collection_px_count, bb_geometry_rectangle, scale, file_name, output_raster_ext, "px_count")
+raster_stack_list[["px_count"]] <- export_gee_image(l8_sr_collection_px_count, bb_geometry_rectangle, scale, file_name, output_raster_ext, "px_count")
+
+# výchozí extent a resolution převezmu z L8
+default_extent <- extent(raster_stack_list[["px_count"]])
+default_res <- res(raster_stack_list[["px_count"]])
 
 # medián pro výslednou hodnotu pixelu - export všech bandů
 
@@ -122,7 +130,9 @@ export_gee_image(l8_sr_collection_px_count, bb_geometry_rectangle, scale, file_n
 # B11 - nedoporučeno používat
 # B10 jen s atm. korekcemi z atmcorr.gsfc.nasa.gov - jsou součástí dopočtených GEE L8 _SR datasetů?!
 # u B10 by navíc bylo vhodné odfiltrovat pryč vodní toky a plochy, pokud se na nich něco nemůže vyskytovat (tváří se jako lesy a jiná chladná místa)
+
 bands_all <- c("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B10")
+# bands_all <- c("B1", "B2")
 
 for (band in bands_all) {
   print(band)
@@ -130,10 +140,9 @@ for (band in bands_all) {
   l8_sr_collection_reduce_1_band <- l8_sr_collection$select(band)$median()$updateMask(l8_sr_collection_px_count)$unmask(no_data_value) # -3.4e+38
 
   file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
-  export_gee_image(l8_sr_collection_reduce_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band)
+  raster_stack_list[[band]] <- export_gee_image(l8_sr_collection_reduce_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
 
 }
-
 
 
 ################################################################
@@ -146,7 +155,7 @@ bands_all <- c("B5", "B4")
 ndvi <- l8_sr_collection$select(bands_all)$median()$normalizedDifference(bands_all)$rename("NDVI")$select("NDVI")$updateMask(l8_sr_collection_px_count)$unmask(no_data_value)
 
 file_name <- paste0(export_path, "/l8_", tag_name, "_", "NDVI")
-export_gee_image(ndvi, bb_geometry_rectangle, scale, file_name, output_raster_ext, "NDVI")
+raster_stack_list[["NDVI"]] <- export_gee_image(ndvi, bb_geometry_rectangle, scale, file_name, output_raster_ext, "NDVI", default_extent, default_res)
 
 
 ################################################################
@@ -156,13 +165,14 @@ export_gee_image(ndvi, bb_geometry_rectangle, scale, file_name, output_raster_ex
 wc <- ee$Image(gdl$worldclim$geeSnippet)
 
 bands_all <- wc$bandNames()$getInfo()
+# bands_all <- c("bio01", "bio02")
 
 for (band in bands_all) {
   print(band)
   wc_1_band <- wc$select(band)
 
   file_name <- paste0(export_path, "/wc_", tag_name, "_", band)
-  export_gee_image(wc_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band)
+  raster_stack_list[[band]] <- export_gee_image(wc_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
 
 }
 
@@ -177,17 +187,17 @@ srtm <- ee$Image(gdl$srtm$geeSnippet)$select("elevation")
 
 # elevation
 file_name <- paste0(export_path, "/srtm_", tag_name, "_", "elevation")
-export_gee_image(srtm, bb_geometry_rectangle, scale, file_name, output_raster_ext, "elevation")
+raster_stack_list[["elevation"]] <- export_gee_image(srtm, bb_geometry_rectangle, scale, file_name, output_raster_ext, "elevation", default_extent, default_res)
 
 # slope
 slope <- ee$Terrain$slope(srtm)
 file_name <- paste0(export_path, "/srtm_", tag_name, "_", "slope")
-export_gee_image(slope, bb_geometry_rectangle, scale, file_name, output_raster_ext, "slope")
+raster_stack_list[["slope"]] <- export_gee_image(slope, bb_geometry_rectangle, scale, file_name, output_raster_ext, "slope", default_extent, default_res)
 
 # aspect (ve stupních)
 aspect <- ee$Terrain$aspect(srtm) # $divide(180)$multiply(pi)$sin() # převod na radiány
 file_name <- paste0(export_path, "/srtm_", tag_name, "_", "aspect")
-export_gee_image(aspect, bb_geometry_rectangle, scale, file_name, output_raster_ext, "aspect")
+raster_stack_list[["aspect"]] <- export_gee_image(aspect, bb_geometry_rectangle, scale, file_name, output_raster_ext, "aspect", default_extent, default_res)
 
 
 
@@ -246,6 +256,10 @@ if (vis_map) {
   l2 <- Map$addLayer(l8_sr_collection_reduce, visparams, name = "LANDSAT/LC08/C01/T1_SR filtered median")
   l2 + l1
 }
+
+
+# uložení všech RasterLayer-ů do RasterStack
+raster_stack <- stack(raster_stack_list)
 
 end_time <- Sys.time()
 print(paste("start:", start_time))
