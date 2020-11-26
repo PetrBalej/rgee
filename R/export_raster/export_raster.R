@@ -23,9 +23,11 @@ ee_Initialize(drive = FALSE, gcs = FALSE)
 # nastavení základních parametrů [start]  #
 # # # # # # # # # # # # # # # # # # # # # #
 
+## jednotná "značka" přidaná ke všem output rasterům z jednoho běhu skriptu (stejné nastavení parametrů) a 
+tag_name <- gsub('[^0-9-]', '-', Sys.time())
 
-# adresář pro exportované soubory (v rámci wd)
-export_path <- paste0(getwd(), "/../export/raster/")
+# adresář pro exportované soubory (v rámci wd) + další tag_name
+export_path <- paste0(getwd(), "/../export/raster/", tag_name)
 
 
 # GIT project directory (kompletní repozitář rgee z github.com: po rozbalení zipu v rgee-master/rgee-master)
@@ -63,9 +65,6 @@ output_raster_ext <- "" # asc, tif, grd, envi, img
 ## zobrazit mapové okno s polygonem oblasti a RGB kompozitem?
 vis_map <- FALSE
 
-## jednotná "značka" přidaná ke všem output rasterům z jednoho běhu skriptu (stejné nastavení parametrů)
-tag_name <- gsub('[^0-9-]', '-', Sys.time())
-
 ## NoDataValue
 no_data_value <- -9999 # vede k -3.4e+38 
 
@@ -78,6 +77,7 @@ threshold_px_count <- 3
 # # # # # # # # # # # # # # # # # # # # # #
 
 raster_stack_list <- list()
+file_name_list <- list()
 
 # vytvoří adresář pro export, pokud neexistuje
 dir.create(export_path, showWarnings = FALSE)
@@ -116,9 +116,11 @@ l8_sr_collection <- ee$ImageCollection(gdl$landsat$geeSnippet)$
 
 # příprava vrstvy s počtem snímků použitých na jeden pixel pro následné odmaskování (odstranění) pixelů s příliš nízkou hodnotou (threshold_px_count) snímků, které se na něm podílely
 # zde na B1, nemělo by záležet o který band jde (raději ověřit?), i odmračnění probíhá hromadně skrz všechny bandy, počet použitých snímků pixelů bude u všech bandů stejný
-l8_sr_collection_px_count <- l8_sr_collection$select("B1")$count()$rename("px_count")$gte(threshold_px_count)
-file_name <- paste0(export_path, "/l8_", tag_name, "_", "px_count")
-raster_stack_list[["px_count"]] <- export_gee_image(l8_sr_collection_px_count, bb_geometry_rectangle, scale, file_name, output_raster_ext, "px_count")
+band <- "px_count"
+l8_sr_collection_px_count <- l8_sr_collection$select("B1")$count()$rename(band)$gte(threshold_px_count)
+file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
+file_name_list <- append(file_name_list, c(file_name))
+raster_stack_list[[band]] <- export_gee_image(l8_sr_collection_px_count, bb_geometry_rectangle, scale, file_name, output_raster_ext, band)
 
 # výchozí extent a resolution převezmu z L8
 default_extent <- extent(raster_stack_list[["px_count"]])
@@ -140,6 +142,7 @@ for (band in bands_all) {
   l8_sr_collection_reduce_1_band <- l8_sr_collection$select(band)$median()$updateMask(l8_sr_collection_px_count)$unmask(no_data_value) # -3.4e+38
 
   file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
+  file_name_list <- append(file_name_list, c(file_name))
   raster_stack_list[[band]] <- export_gee_image(l8_sr_collection_reduce_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
 
 }
@@ -151,11 +154,14 @@ for (band in bands_all) {
 
 bands_all <- c("B5", "B4")
 
-# výpočet + odmaskování pixelů s nízkým podílem snímků
-ndvi <- l8_sr_collection$select(bands_all)$median()$normalizedDifference(bands_all)$rename("NDVI")$select("NDVI")$updateMask(l8_sr_collection_px_count)$unmask(no_data_value)
+band <- "NDVI"
 
-file_name <- paste0(export_path, "/l8_", tag_name, "_", "NDVI")
-raster_stack_list[["NDVI"]] <- export_gee_image(ndvi, bb_geometry_rectangle, scale, file_name, output_raster_ext, "NDVI", default_extent, default_res)
+# výpočet + odmaskování pixelů s nízkým podílem snímků
+ndvi <- l8_sr_collection$select(bands_all)$median()$normalizedDifference(bands_all)$rename(band)$select(band)$updateMask(l8_sr_collection_px_count)$unmask(no_data_value)
+
+file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
+file_name_list <- append(file_name_list, c(file_name))
+raster_stack_list[[band]] <- export_gee_image(ndvi, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
 
 
 ################################################################
@@ -172,6 +178,7 @@ for (band in bands_all) {
   wc_1_band <- wc$select(band)
 
   file_name <- paste0(export_path, "/wc_", tag_name, "_", band)
+  file_name_list <- append(file_name_list, c(file_name))
   raster_stack_list[[band]] <- export_gee_image(wc_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
 
 }
@@ -183,21 +190,27 @@ for (band in bands_all) {
 # SRTM 'USGS/SRTMGL1_003'
 ################################################################
 
-srtm <- ee$Image(gdl$srtm$geeSnippet)$select("elevation")
-
 # elevation
-file_name <- paste0(export_path, "/srtm_", tag_name, "_", "elevation")
-raster_stack_list[["elevation"]] <- export_gee_image(srtm, bb_geometry_rectangle, scale, file_name, output_raster_ext, "elevation", default_extent, default_res)
+band <- "elevation"
+srtm <- ee$Image(gdl$srtm$geeSnippet)$select(band)
+
+file_name <- paste0(export_path, "/srtm_", tag_name, "_", band)
+file_name_list <- append(file_name_list, c(file_name))
+raster_stack_list[[band]] <- export_gee_image(srtm, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
 
 # slope
+band <- "slope"
 slope <- ee$Terrain$slope(srtm)
-file_name <- paste0(export_path, "/srtm_", tag_name, "_", "slope")
-raster_stack_list[["slope"]] <- export_gee_image(slope, bb_geometry_rectangle, scale, file_name, output_raster_ext, "slope", default_extent, default_res)
+file_name <- paste0(export_path, "/srtm_", tag_name, "_", band)
+file_name_list <- append(file_name_list, c(file_name))
+raster_stack_list[[band]] <- export_gee_image(slope, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
 
 # aspect (ve stupních)
+band <- "aspect"
 aspect <- ee$Terrain$aspect(srtm) # $divide(180)$multiply(pi)$sin() # převod na radiány
-file_name <- paste0(export_path, "/srtm_", tag_name, "_", "aspect")
-raster_stack_list[["aspect"]] <- export_gee_image(aspect, bb_geometry_rectangle, scale, file_name, output_raster_ext, "aspect", default_extent, default_res)
+file_name <- paste0(export_path, "/srtm_", tag_name, "_", band)
+file_name_list <- append(file_name_list, c(file_name))
+raster_stack_list[[band]] <- export_gee_image(aspect, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
 
 
 
@@ -207,7 +220,7 @@ raster_stack_list[["aspect"]] <- export_gee_image(aspect, bb_geometry_rectangle,
 
 # corine <- ee$Image(gdl$corine$geeSnippet)$select(c("landcover"))
 
-# export do meziproduktu v podobě tiffu s jedním bandem
+# # export do meziproduktu v podobě tiffu s jedním bandem
 # result_raster <- ee_as_raster(
 #   image = corine, #$reproject("EPSG:32633")
 #   region = bb_geometry_rectangle,
@@ -222,18 +235,18 @@ raster_stack_list[["aspect"]] <- export_gee_image(aspect, bb_geometry_rectangle,
 
 
 
-# pro zjištění vygenerovaného názvu tiff-u v /temp
+# # pro zjištění vygenerovaného názvu tiff-u v /temp
 # str(result_raster)
 
-# přístup přes: result_raster$B1 (RasterLayer)
+# # přístup přes: result_raster$B1 (RasterLayer)
 # result_raster$B1[2,3] # hodnota pixelu B1 bandu na 2. řádku a 3. sloupci
 # result_raster$B1[1:3,1:2] # hodnota pixelu B1 bandu na 1-3. řádku a 1-2. sloupci
 
 
-# NDVI z kolekce
+# # NDVI z kolekce
 # ndvi <- l8_sr_collection_reduce$normalizedDifference(c("B5", "B4"))
 
-# export jednoho bandu
+# # export jednoho bandu
 # l8_sr_collection_reduce_B2 <- l8_sr_collection_reduce$select("B2")
 
 
@@ -261,11 +274,47 @@ if (vis_map) {
 # uložení všech RasterLayer-ů do RasterStack
 raster_stack <- stack(raster_stack_list)
 
+
+# # names(raster_stack)
+# nlayers(raster_stack)
+
+# # výběr smysluplných bandů do VIFu pro předvýběr do SDM
+# raster_stack_selected <- dropLayer(raster_stack, c(1,31,32))
+
+# #  export RasterStack-u do fyzického multiband souboru na disk
+# file_name <- paste0(export_path, "/multiband_", tag_name, ".tif")
+# writeRaster(raster_stack_selected, file_name, format = "GTiff", overwrite = TRUE)
+
+
 end_time <- Sys.time()
+
+# časové rozmezí a celkový čas generování
 print(paste("start:", start_time))
 print(paste("konec:", end_time))
 print(end_time - start_time)
 
+
+# zápis a uložení protokolu
+df <- "%Y-%m-%d %H:%M:%S"
+text <- c(
+  toString(strptime(start_time, format = df)), 
+  toString(strptime(end_time, format = df)),
+  toString(end_time - start_time),
+  export_path, git_project_path,
+  deparse(bb),
+  deparse(years_range),
+  deparse(season_months_range),
+  scale,
+  output_raster_ext,
+  vis_map,
+  tag_name,
+  no_data_value <- -9999,
+  threshold_px_count <- 3,
+  deparse(names(raster_stack_list)),
+  deparse(file_name_list)
+)
+file_name <- paste0(export_path, "/protocol_", tag_name, ".txt")
+writeLines(text, file_name)
 
 # library(rgdal)
 # library(raster)
