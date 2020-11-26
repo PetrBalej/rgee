@@ -275,7 +275,7 @@ if (vis_map) {
 raster_stack <- stack(raster_stack_list)
 
 
-# # names(raster_stack)
+# names(raster_stack)
 # nlayers(raster_stack)
 
 # # výběr smysluplných bandů do VIFu pro předvýběr do SDM
@@ -308,8 +308,8 @@ text <- c(
   output_raster_ext,
   vis_map,
   tag_name,
-  no_data_value <- -9999,
-  threshold_px_count <- 3,
+  no_data_value,
+  threshold_px_count,
   deparse(names(raster_stack_list)),
   deparse(file_name_list)
 )
