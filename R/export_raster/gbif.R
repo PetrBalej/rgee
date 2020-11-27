@@ -19,7 +19,7 @@ gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
   str_evropa <- list(xmin = 8.5, xmax = 22.0, ymin = 46.0, ymax = 53.5)
 
   # výběr konkrétního území
-  bb <- sz_cechy
+  bb <- str_evropa
 
   ## časové rozsahy
 
@@ -129,7 +129,7 @@ gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
 
   return(csv_gbif_filter)
 }
-# res <- gbif(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7), paste0(getwd(), "/../gbif/csv"), "0119526-200613084148143.csv")
+# res <- gbif(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7), paste0(getwd(), "/../gbif/csv"), "0123613-200613084148143.csv")
 # print(as_tibble(res), n = 10)
 
 
