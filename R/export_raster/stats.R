@@ -1,5 +1,5 @@
 # kontrola (do)instalace všech dodatečně potřebných balíčků
-required_packages <- c("raster", "usdm", "stars", "rgdal")
+required_packages <- c("raster", "usdm", "stars", "rgdal", "spThin") # "dismo",
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -18,9 +18,9 @@ setwd(wd)
 export_path <- paste0(getwd(), "/../export/raster/")
 file_name <- paste0(export_path, "/test_2020-11-25-18-29-52.tif")
 # import uloženého rasteru z fyzického souboru
-raster_stack <- stack(file_name) 
-# odstranění evidentně nesmyslných bandů do VIFu pro předvýběr do SDM
-raster_stack <- dropLayer(raster_stack, c(1,31,32))
+raster_stack <- stack(file_name)
+# odstranění evidentně nesmyslných bandů do VIFu pro předvýběr do SDM (px_count nechci, slope a aspect k ničemu při velkých cell size)
+raster_stack <- dropLayer(raster_stack, c(1, 31, 32))
 
 
 
@@ -31,9 +31,91 @@ raster_stack <- dropLayer(raster_stack, c(1,31,32))
 vif(raster_stack)
 
 # identify collinear variables that should be excluded
-v1 <- vifcor(raster_stack, th=0.9) 
-v2 <- vifstep(raster_stack, th=10)
+# v1 <- vifcor(raster_stack, th = 0.9)
+v2 <- vifstep(raster_stack, th = 10)
 # v1@corMatrix # @variables, @excluded, @results
 
+
+# výběr indexů excluded layerů a jejich následné odstranění - dočasně, musím exportovat (v export_raster) rastery do .grd aby se zachovaly názvy vrstev!!!
+layers_excluded_indexes <- c()
+for (v in v2@excluded) {
+  ex <- strsplit(v, split = "\\.")[[1]]
+  layers_excluded_indexes <- c(layers_excluded_indexes, ex[length(ex)])
+}
+raster_stack_vifstep <- dropLayer(raster_stack, as.integer(layers_excluded_indexes))
+
+# export do asc - zatím rovnou do MaxEntu
+writeRaster(raster_stack_vifstep, paste0(export_path, "/vif_"), "ascii", bylayer = TRUE, overwrite = TRUE)
+
+
+# + coordinateCleaner a spThin na NDOP/GBIF data...
+
+species <- "Locustella luscinioides"
+species_col <- "Locustella_luscinioides"
+
+# NDOP
+res_ndop_ll <- res_ndop %>% filter(species == !!species)
+
+res_ndop_ll_spthin <-
+  thin(loc.data = res_ndop_ll,
+        lat.col = "latitude", long.col = "longitude",
+        spec.col = "species",
+        thin.par = 0.1, reps = 10,
+        locs.thinned.list.return = TRUE,
+        write.files = FALSE,
+        write.log.file = FALSE)
+
+res_ndop_ll_spthin <- as_tibble(res_ndop_ll_spthin[[1]]) %>% add_column(species = !!species_col, .before = 1)
+write_csv(res_ndop_ll_spthin, paste0(export_path, "res_ndop_ll_spthin", ".csv"))
+
+
+# GBIF
+res_gbif_ll <- res_gbif %>% filter(species == !!species)
+
+res_gbif_ll_spthin <-
+  thin(loc.data = res_gbif_ll,
+        lat.col = "latitude", long.col = "longitude",
+        spec.col = "species",
+        thin.par = 0.1, reps = 10,
+        locs.thinned.list.return = TRUE,
+        write.files = FALSE,
+        write.log.file = FALSE)
+
+res_gbif_ll_spthin <- as_tibble(res_gbif_ll_spthin[[1]]) %>% add_column("species" = !!species_col, .before = 1)
+write_csv(res_gbif_ll_spthin, paste0(export_path, "res_gbif_ll_spthin", ".csv"))
+
+
+
+
+# čistě spojení už thinovaných datasetů - asi ne, thinning znovu až nad spojeným datasetem?
+# ndop_gbif <- res_gbif_ll_spthin %>% add_row(res_ndop_ll_spthin)
+
+
+# GBIF+NDOP
+ndop_gbif <- res_ndop %>% add_row(res_gbif)
+
+ndop_gbif_ll <- ndop_gbif %>% filter(species == !!species)
+
+ndop_gbif_ll_spthin <-
+  thin(loc.data = ndop_gbif_ll,
+        lat.col = "latitude", long.col = "longitude",
+        spec.col = "species",
+        thin.par = 0.1, reps = 10,
+        locs.thinned.list.return = TRUE,
+        write.files = FALSE,
+        write.log.file = FALSE)
+
+ndop_gbif_ll_spthin <- as_tibble(ndop_gbif_ll_spthin[[1]]) %>% add_column("species" = !!species_col, .before = 1)
+write_csv(ndop_gbif_ll_spthin, paste0(export_path, "ndop_gbif_ll_spthin", ".csv"))
+
+
+# výběr indexů included layerů - dočasně, musím exportovat (v export_raster) rastery do .grd aby se zachovaly názvy vrstev!!!
+layers_included_indexes <- c()
+for (v in v2@results$Variables) {
+  ex <- strsplit(v, split = "\\.")[[1]]
+  layers_included_indexes <- c(layers_included_indexes, ex[length(ex)])
+}
+all_bands_c <- c("px_count", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B10", "NDVI", "bio01", "bio02", "bio03", "bio04", "bio05", "bio06", "bio07", "bio08", "bio09", "bio10", "bio11", "bio12", "bio13", "bio14", "bio15", "bio16", "bio17", "bio18", "bio19", "elevation", "slope", "aspect")
+print(all_bands_c[as.integer(layers_included_indexes)])
 
 
