@@ -1,5 +1,5 @@
 # kontrola (do)instalace všech dodatečně potřebných balíčků
-required_packages <- c("raster", "usdm", "stars", "rgdal", "spThin", "tidyverse", "dismo")
+required_packages <- c("raster", "usdm", "stars", "rgdal", "spThin", "tidyverse", "dismo", "rJava")
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -13,7 +13,8 @@ wd <- paste0(path.expand("~"), "/Downloads/rgee2/rgee")
 
 setwd(wd)
 
-
+res_ndop <- ndop(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7), paste0(getwd(), "/../ndop/csv"))
+res_gbif <- gbif(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7), paste0(getwd(), "/../gbif/csv"), "0123613-200613084148143.csv")
 
 export_path <- paste0(getwd(), "/../export/raster/")
 file_name <- paste0(export_path, "/2020-11-30-15-11-29/multiband_2020-11-30-15-11-29.grd")
@@ -123,7 +124,16 @@ print(all_bands_c[as.integer(layers_included_indexes)])
 # test if you can use maxent
 maxent()
 if (maxent()) {
+  # dismo maxent vyžaduje pouze souřadnice bez sloupce s názvem druhu
   res_gbif_ll_spthin_df <- as.data.frame(res_gbif_ll_spthin %>% select(Longitude, Latitude))
-  maxent(raster_stack_vifstep, res_gbif_ll_spthin_df, a = NULL, factors = NULL, removeDuplicates = TRUE, nbg = 1000, path = paste0(export_path, "/maxent"))
+  mx <- maxent(raster_stack_vifstep, res_gbif_ll_spthin_df, a = NULL, factors = NULL, removeDuplicates = TRUE, nbg = 1000, path = paste0(export_path, "/2020-11-30-15-11-29/maxent"))
+  mx_predict <- predict(mx, raster_stack_vifstep)
+
+  # Odlišný prostorový rozsah nálezů a modelované predikce distribuce!!! Proč?
+  # plot(mx_predict)
+  # points(res_gbif_ll_spthin_df)
+
+  # Dále:
+  # https://www.rdocumentation.org/packages/dismo/versions/1.3-3/topics/maxent
 }
 
