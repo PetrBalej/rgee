@@ -1,5 +1,5 @@
 # kontrola (do)instalace všech dodatečně potřebných balíčků
-required_packages <- c("raster", "usdm", "stars", "rgdal", "spThin") # "dismo",
+required_packages <- c("raster", "usdm", "stars", "rgdal", "spThin", "tidyverse", "dismo")
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -16,7 +16,8 @@ setwd(wd)
 
 
 export_path <- paste0(getwd(), "/../export/raster/")
-file_name <- paste0(export_path, "/test_2020-11-25-18-29-52.tif")
+file_name <- paste0(export_path, "/2020-11-30-15-11-29/multiband_2020-11-30-15-11-29.grd")
+
 # import uloženého rasteru z fyzického souboru
 raster_stack <- stack(file_name)
 # odstranění evidentně nesmyslných bandů do VIFu pro předvýběr do SDM (px_count nechci, slope a aspect k ničemu při velkých cell size)
@@ -118,4 +119,11 @@ for (v in v2@results$Variables) {
 all_bands_c <- c("px_count", "B1", "B2", "B3", "B4", "B5", "B6", "B7", "B10", "NDVI", "bio01", "bio02", "bio03", "bio04", "bio05", "bio06", "bio07", "bio08", "bio09", "bio10", "bio11", "bio12", "bio13", "bio14", "bio15", "bio16", "bio17", "bio18", "bio19", "elevation", "slope", "aspect")
 print(all_bands_c[as.integer(layers_included_indexes)])
 
+
+# test if you can use maxent
+maxent()
+if (maxent()) {
+  res_gbif_ll_spthin_df <- as.data.frame(res_gbif_ll_spthin %>% select(Longitude, Latitude))
+  maxent(raster_stack_vifstep, res_gbif_ll_spthin_df, a = NULL, factors = NULL, removeDuplicates = TRUE, nbg = 1000, path = paste0(export_path, "/maxent"))
+}
 
