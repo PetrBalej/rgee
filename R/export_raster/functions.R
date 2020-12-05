@@ -39,7 +39,7 @@ mask_L8_sr <- function(image) {
 }
 
 # export rasterů z GEE image
-export_gee_image <- function(image, region, scale, dsn = "default_file_name", format = NULL, bands = c(), set_extent = NULL, set_res = NULL) {
+export_gee_image <- function(image, region, scale, dsn = "default_file_name", format = NULL, bands = c(), set_extent = NULL, set_res = NULL, res_proj_epsg = 3035) {
 
   export_raster <- format != ""
 
@@ -72,8 +72,10 @@ export_gee_image <- function(image, region, scale, dsn = "default_file_name", fo
     }
   }
 
+  proj <- ee$Projection(paste0("EPSG:", res_proj_epsg))
+
   result_raster <- ee_as_raster(
-    image = image,
+    image = image$reproject(proj, NULL, scale),
     region = region,
     scale = scale,
     via = "getInfo",
@@ -83,6 +85,7 @@ export_gee_image <- function(image, region, scale, dsn = "default_file_name", fo
 
   # úprava extentu
   if (!is.null(set_extent)) {
+    # doplnit i parametry keepres=TRUE,  snap=FALSE ?
     rr_e <- setExtent(result_raster[[bands[1]]], set_extent)
   } else {
     rr_e <- result_raster[[bands[1]]]

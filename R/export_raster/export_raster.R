@@ -23,6 +23,11 @@ ee_Initialize(drive = FALSE, gcs = FALSE)
 # nastavení základních parametrů [start]  #
 # # # # # # # # # # # # # # # # # # # # # #
 
+## projekce výsledných rastrů, (většinou) není možné použít WGS84 (4326) - nesouhlasí pak rozlišení (odlišný počet rows/cols) pokud se používají různé zdroje (L8, WorldClim, SRTM, ...)
+# 3035: ETRS89-LAEA	- Lambertovo azimutální stejnoploché zobrazení
+# 32633: UTM zone 33N - použito Mercatorovo válcové konformní zobrazení (UTM zobrazení), základní poledník 15°
+res_proj_epsg <- 3035
+
 ## jednotná "značka" přidaná ke všem output rasterům z jednoho běhu skriptu (stejné nastavení parametrů) a 
 tag_name <- gsub('[^0-9-]', '-', Sys.time())
 
@@ -120,7 +125,7 @@ band <- "px_count"
 l8_sr_collection_px_count <- l8_sr_collection$select("B1")$count()$rename(band)$gte(threshold_px_count)
 file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
 file_name_list <- append(file_name_list, c(file_name))
-raster_stack_list[[band]] <- export_gee_image(l8_sr_collection_px_count, bb_geometry_rectangle, scale, file_name, output_raster_ext, band)
+raster_stack_list[[band]] <- export_gee_image(l8_sr_collection_px_count, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, NULL, NULL, res_proj_epsg)
 
 # výchozí extent a resolution převezmu z L8
 default_extent <- extent(raster_stack_list[["px_count"]])
@@ -143,7 +148,7 @@ for (band in bands_all) {
 
   file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
   file_name_list <- append(file_name_list, c(file_name))
-  raster_stack_list[[band]] <- export_gee_image(l8_sr_collection_reduce_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
+  raster_stack_list[[band]] <- export_gee_image(l8_sr_collection_reduce_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res, res_proj_epsg)
 
 }
 
@@ -161,7 +166,7 @@ ndvi <- l8_sr_collection$select(bands_all)$median()$normalizedDifference(bands_a
 
 file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
 file_name_list <- append(file_name_list, c(file_name))
-raster_stack_list[[band]] <- export_gee_image(ndvi, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
+raster_stack_list[[band]] <- export_gee_image(ndvi, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res, res_proj_epsg)
 
 
 ################################################################
@@ -179,7 +184,7 @@ for (band in bands_all) {
 
   file_name <- paste0(export_path, "/wc_", tag_name, "_", band)
   file_name_list <- append(file_name_list, c(file_name))
-  raster_stack_list[[band]] <- export_gee_image(wc_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
+  raster_stack_list[[band]] <- export_gee_image(wc_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res, res_proj_epsg)
 
 }
 
@@ -196,21 +201,21 @@ srtm <- ee$Image(gdl$srtm$geeSnippet)$select(band)
 
 file_name <- paste0(export_path, "/srtm_", tag_name, "_", band)
 file_name_list <- append(file_name_list, c(file_name))
-raster_stack_list[[band]] <- export_gee_image(srtm, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
+raster_stack_list[[band]] <- export_gee_image(srtm, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res, res_proj_epsg)
 
 # slope
 band <- "slope"
 slope <- ee$Terrain$slope(srtm)
 file_name <- paste0(export_path, "/srtm_", tag_name, "_", band)
 file_name_list <- append(file_name_list, c(file_name))
-raster_stack_list[[band]] <- export_gee_image(slope, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
+raster_stack_list[[band]] <- export_gee_image(slope, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res, res_proj_epsg)
 
 # aspect (ve stupních)
 band <- "aspect"
 aspect <- ee$Terrain$aspect(srtm) # $divide(180)$multiply(pi)$sin() # převod na radiány
 file_name <- paste0(export_path, "/srtm_", tag_name, "_", band)
 file_name_list <- append(file_name_list, c(file_name))
-raster_stack_list[[band]] <- export_gee_image(aspect, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res)
+raster_stack_list[[band]] <- export_gee_image(aspect, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res, res_proj_epsg)
 
 
 
@@ -297,7 +302,7 @@ print(end_time - start_time)
 # zápis a uložení protokolu
 df <- "%Y-%m-%d %H:%M:%S"
 text <- c(
-  toString(strptime(start_time, format = df)), 
+  toString(strptime(start_time, format = df)),
   toString(strptime(end_time, format = df)),
   toString(end_time - start_time),
   export_path, git_project_path,
