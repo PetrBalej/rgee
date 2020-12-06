@@ -48,6 +48,7 @@ str_evropa <- list(xmin = 8.5, xmax = 22.0, ymin = 46.0, ymax = 53.5)
 
 # výběr konkrétního území
 bb <- sz_cechy
+# bb <- paste0(git_project_path, "/shp/ne_50m_admin_0_countries/czechia/cz_4326.shp")
 
 
 ## časové rozsahy
@@ -96,16 +97,30 @@ source(paste0(git_project_path, "/R/export_raster/functions.R"))
 # načtení csv s datasety z GEE
 gdl <- gee_datasets_list(gee_datasets_path_csv)
 
-xmin <- bb$xmin
-xmax <- bb$xmax
-ymin <- bb$ymin
-ymax <- bb$ymax
+if (!is.character(bb)) {
+  xmin <- bb$xmin
+  xmax <- bb$xmax
+  ymin <- bb$ymin
+  ymax <- bb$ymax
 
-bb_geometry_rectangle <- ee$Geometry$Rectangle(
+  bb_geometry <- NULL
+  bb_geometry_rectangle <- ee$Geometry$Rectangle(
   coords = c(xmin, ymin, xmax, ymax),
   proj = "EPSG:4326",
   geodesic = FALSE
-)
+  )
+
+} else {
+
+  if (file.exists(bb)) {
+    bb_geometry_ee <- st_read(bb) %>% sf_as_ee()
+    bb_geometry <- bb_geometry_ee$geometry() #[[1]]$getInfo()
+    bb_geometry_rectangle <- bb_geometry_ee$geometry()$bounds()
+  } else {
+    stop(paste0("Shapefile ", bb, " not exist!"))
+  }
+
+}
 
 
 ################################################################

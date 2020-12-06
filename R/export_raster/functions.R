@@ -74,6 +74,20 @@ export_gee_image <- function(image, region, scale, dsn = "default_file_name", fo
 
   proj <- ee$Projection(paste0("EPSG:", res_proj_epsg))
 
+  # if (!is.null(clip)) {
+
+  #   # im_m <- image$reproject(proj, NULL, scale)$clip(clip)$neq(0)
+  #   # im <- image$reproject(proj, NULL, scale)$updateMask(im_m)$neq(0)$unmask(-9999)
+
+  #   #im_m <- image$reproject(proj, NULL, scale)$clip(clip)$eq(0.0L)
+  #   #im <- image$reproject(proj, NULL, scale)$clip(clip)$updateMask(im_m)
+  #   # im <- im$where(im$eq(as.numeric(0.0L)), -9999)
+
+  #   im <- image$reproject(proj, NULL, scale)$clip(clip)
+  # } else {
+  #   im <- image$reproject(proj, NULL, scale)
+  # }
+
   result_raster <- ee_as_raster(
     image = image$reproject(proj, NULL, scale),
     region = region,
