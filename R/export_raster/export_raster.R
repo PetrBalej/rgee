@@ -4,7 +4,14 @@ start_time <- Sys.time()
 library(rgee)
 
 # kontrola (do)instalace všech dodatečně potřebných balíčků
-required_packages <- c("sp", "rgdal", "mapview", "raster", "geojsonio", "stars", "httpuv")
+required_packages <-
+  c("sp",
+    "rgdal",
+    "mapview",
+    "raster",
+    "geojsonio",
+    "stars",
+    "httpuv")
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -28,7 +35,7 @@ ee_Initialize(drive = FALSE, gcs = FALSE)
 # 32633: UTM zone 33N - použito Mercatorovo válcové konformní zobrazení (UTM zobrazení), základní poledník 15°
 res_proj_epsg <- 3035
 
-## jednotná "značka" přidaná ke všem output rasterům z jednoho běhu skriptu (stejné nastavení parametrů) a 
+## jednotná "značka" přidaná ke všem output rasterům z jednoho běhu skriptu (stejné nastavení parametrů) a
 tag_name <- gsub('[^0-9-]', '-', Sys.time())
 
 # adresář pro exportované soubory (v rámci wd) + další tag_name
@@ -42,9 +49,32 @@ git_project_path <- getwd()
 ## výběr regionu
 
 # definice obálek (bounding box) různě velkých území pro testování
-sz_cechy <- list(xmin = 13.0, xmax = 13.5, ymin = 50.0, ymax = 50.5)
-cesko <- list(xmin = 12.0, xmax = 19.0, ymin = 48.5, ymax = 51.5)
-str_evropa <- list(xmin = 8.5, xmax = 22.0, ymin = 46.0, ymax = 53.5)
+sz_cechy <- list(
+  xmin = 13.0,
+  xmax = 13.5,
+  ymin = 50.0,
+  ymax = 50.5
+)
+cesko <- list(
+  xmin = 12.0,
+  xmax = 19.0,
+  ymin = 48.5,
+  ymax = 51.5
+)
+str_evropa <-
+  list(
+    xmin = 8.5,
+    xmax = 22.0,
+    ymin = 46.0,
+    ymax = 53.5
+  )
+str_evropa2 <-
+  list(
+    xmin = 8.6,
+    xmax = 21.9,
+    ymin = 46.4,
+    ymax = 53.1
+  )
 
 # výběr konkrétního území
 bb <- sz_cechy
@@ -72,7 +102,7 @@ output_raster_ext <- "" # asc, tif, grd, envi, img
 vis_map <- FALSE
 
 ## NoDataValue
-no_data_value <- -9999 # vede k -3.4e+38 
+no_data_value <- -9999 # vede k -3.4e+38
 
 ## minimum sat. snímků k použití pixelu pro analýzu, jinak no_data_value
 # nechávat raději 0 a až dodatečně použít příslušný vygenerovaný raster k domaskování? Jinak tím poznamenám všechny uložené rastery (dořešit)
@@ -89,7 +119,8 @@ file_name_list <- list()
 dir.create(export_path, showWarnings = FALSE)
 
 # parametry použitých datasetů z GEE - export z gee_datasets/gee-pouzite-datasety.xlsx
-gee_datasets_path_csv <- paste0(git_project_path, "/gee_datasets/gee-pouzite-datasety.csv")
+gee_datasets_path_csv <-
+  paste0(git_project_path, "/gee_datasets/gee-pouzite-datasety.csv")
 
 # načtení potřebných funkcí
 source(paste0(git_project_path, "/R/export_raster/functions.R"))
@@ -102,16 +133,15 @@ if (!is.character(bb)) {
   xmax <- bb$xmax
   ymin <- bb$ymin
   ymax <- bb$ymax
-
+  
   bb_geometry <- NULL
   bb_geometry_rectangle <- ee$Geometry$Rectangle(
-  coords = c(xmin, ymin, xmax, ymax),
-  proj = "EPSG:4326",
-  geodesic = FALSE
+    coords = c(xmin, ymin, xmax, ymax),
+    proj = "EPSG:4326",
+    geodesic = FALSE
   )
-
+  
 } else {
-
   if (file.exists(bb)) {
     bb_geometry_ee <- st_read(bb) %>% sf_as_ee()
     bb_geometry <- bb_geometry_ee$geometry() #[[1]]$getInfo()
@@ -119,7 +149,7 @@ if (!is.character(bb)) {
   } else {
     stop(paste0("Shapefile ", bb, " not exist!"))
   }
-
+  
 }
 
 
@@ -128,19 +158,29 @@ if (!is.character(bb)) {
 ################################################################
 
 # aplikace základních geogracických, časových a odmračňovacích/odstiňovacích filtrů
-l8_sr_collection <- ee$ImageCollection(gdl$landsat$geeSnippet)$
-  filterBounds(bb_geometry_rectangle)$
-  filterDate(years_range$from, years_range$to)$
-  filter(ee$Filter$calendarRange(season_months_range$from, season_months_range$to, "month"))$
-  map(mask_L8_sr)
+l8_sr_collection <- ee$ImageCollection(gdl$landsat$geeSnippet)$filterBounds(bb_geometry_rectangle)$filterDate(years_range$from, years_range$to)$filter(
+  ee$Filter$calendarRange(season_months_range$from, season_months_range$to, "month")
+)$map(mask_L8_sr)
 
 # příprava vrstvy s počtem snímků použitých na jeden pixel pro následné odmaskování (odstranění) pixelů s příliš nízkou hodnotou (threshold_px_count) snímků, které se na něm podílely
 # zde na B1, nemělo by záležet o který band jde (raději ověřit?), i odmračnění probíhá hromadně skrz všechny bandy, počet použitých snímků pixelů bude u všech bandů stejný
 band <- "px_count"
-l8_sr_collection_px_count <- l8_sr_collection$select("B1")$count()$rename(band)$gte(threshold_px_count)
+l8_sr_collection_px_count <-
+  l8_sr_collection$select("B1")$count()$rename(band)$gte(threshold_px_count)
 file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
 file_name_list <- append(file_name_list, c(file_name))
-raster_stack_list[[band]] <- export_gee_image(l8_sr_collection_px_count, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, NULL, NULL, res_proj_epsg)
+raster_stack_list[[band]] <-
+  export_gee_image(
+    l8_sr_collection_px_count,
+    bb_geometry_rectangle,
+    scale,
+    file_name,
+    output_raster_ext,
+    band,
+    NULL,
+    NULL,
+    res_proj_epsg
+  )
 
 # výchozí extent a resolution převezmu z L8
 default_extent <- extent(raster_stack_list[["px_count"]])
@@ -159,12 +199,24 @@ bands_all <- c("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B10")
 for (band in bands_all) {
   print(band)
   # medián pro výslednou hodnotu pixelu a aplikace vrstvy na odmaskování pixelů s nízkým podílem snímků
-  l8_sr_collection_reduce_1_band <- l8_sr_collection$select(band)$median()$updateMask(l8_sr_collection_px_count)$unmask(no_data_value) # -3.4e+38
-
+  l8_sr_collection_reduce_1_band <-
+    l8_sr_collection$select(band)$median()$updateMask(l8_sr_collection_px_count)$unmask(no_data_value) # -3.4e+38
+  
   file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
   file_name_list <- append(file_name_list, c(file_name))
-  raster_stack_list[[band]] <- export_gee_image(l8_sr_collection_reduce_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res, res_proj_epsg)
-
+  raster_stack_list[[band]] <-
+    export_gee_image(
+      l8_sr_collection_reduce_1_band,
+      bb_geometry_rectangle,
+      scale,
+      file_name,
+      output_raster_ext,
+      band,
+      default_extent,
+      default_res,
+      res_proj_epsg
+    )
+  
 }
 
 
@@ -177,11 +229,23 @@ bands_all <- c("B5", "B4")
 band <- "NDVI"
 
 # výpočet + odmaskování pixelů s nízkým podílem snímků
-ndvi <- l8_sr_collection$select(bands_all)$median()$normalizedDifference(bands_all)$rename(band)$select(band)$updateMask(l8_sr_collection_px_count)$unmask(no_data_value)
+ndvi <-
+  l8_sr_collection$select(bands_all)$median()$normalizedDifference(bands_all)$rename(band)$select(band)$updateMask(l8_sr_collection_px_count)$unmask(no_data_value)
 
 file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
 file_name_list <- append(file_name_list, c(file_name))
-raster_stack_list[[band]] <- export_gee_image(ndvi, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res, res_proj_epsg)
+raster_stack_list[[band]] <-
+  export_gee_image(
+    ndvi,
+    bb_geometry_rectangle,
+    scale,
+    file_name,
+    output_raster_ext,
+    band,
+    default_extent,
+    default_res,
+    res_proj_epsg
+  )
 
 
 ################################################################
@@ -196,11 +260,22 @@ bands_all <- wc$bandNames()$getInfo()
 for (band in bands_all) {
   print(band)
   wc_1_band <- wc$select(band)
-
+  
   file_name <- paste0(export_path, "/wc_", tag_name, "_", band)
   file_name_list <- append(file_name_list, c(file_name))
-  raster_stack_list[[band]] <- export_gee_image(wc_1_band, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res, res_proj_epsg)
-
+  raster_stack_list[[band]] <-
+    export_gee_image(
+      wc_1_band,
+      bb_geometry_rectangle,
+      scale,
+      file_name,
+      output_raster_ext,
+      band,
+      default_extent,
+      default_res,
+      res_proj_epsg
+    )
+  
 }
 
 
@@ -216,21 +291,55 @@ srtm <- ee$Image(gdl$srtm$geeSnippet)$select(band)
 
 file_name <- paste0(export_path, "/srtm_", tag_name, "_", band)
 file_name_list <- append(file_name_list, c(file_name))
-raster_stack_list[[band]] <- export_gee_image(srtm, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res, res_proj_epsg)
+raster_stack_list[[band]] <-
+  export_gee_image(
+    srtm,
+    bb_geometry_rectangle,
+    scale,
+    file_name,
+    output_raster_ext,
+    band,
+    default_extent,
+    default_res,
+    res_proj_epsg
+  )
 
 # slope
 band <- "slope"
 slope <- ee$Terrain$slope(srtm)
 file_name <- paste0(export_path, "/srtm_", tag_name, "_", band)
 file_name_list <- append(file_name_list, c(file_name))
-raster_stack_list[[band]] <- export_gee_image(slope, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res, res_proj_epsg)
+raster_stack_list[[band]] <-
+  export_gee_image(
+    slope,
+    bb_geometry_rectangle,
+    scale,
+    file_name,
+    output_raster_ext,
+    band,
+    default_extent,
+    default_res,
+    res_proj_epsg
+  )
 
 # aspect (ve stupních)
 band <- "aspect"
-aspect <- ee$Terrain$aspect(srtm) # $divide(180)$multiply(pi)$sin() # převod na radiány
+aspect <-
+  ee$Terrain$aspect(srtm) # $divide(180)$multiply(pi)$sin() # převod na radiány
 file_name <- paste0(export_path, "/srtm_", tag_name, "_", band)
 file_name_list <- append(file_name_list, c(file_name))
-raster_stack_list[[band]] <- export_gee_image(aspect, bb_geometry_rectangle, scale, file_name, output_raster_ext, band, default_extent, default_res, res_proj_epsg)
+raster_stack_list[[band]] <-
+  export_gee_image(
+    aspect,
+    bb_geometry_rectangle,
+    scale,
+    file_name,
+    output_raster_ext,
+    band,
+    default_extent,
+    default_res,
+    res_proj_epsg
+  )
 
 
 
@@ -273,20 +382,28 @@ raster_stack_list[[band]] <- export_gee_image(aspect, bb_geometry_rectangle, sca
 
 if (vis_map) {
   bands_vis <- c("B4", "B3", "B2")
-  l8_sr_collection_reduce <- l8_sr_collection$select(bands_vis)$median() #$reproject("EPSG:32633")
-
+  l8_sr_collection_reduce <-
+    l8_sr_collection$select(bands_vis)$median() #$reproject("EPSG:32633")
+  
   # vizualizace v mapovém okně
   visparams <- list(
-  bands = bands_vis,
-  min = 0,
-  max = 3000,
-  gamma = 1.4
+    bands = bands_vis,
+    min = 0,
+    max = 3000,
+    gamma = 1.4
   )
-
+  
   # Map$setCenter(13.0, 50.0, 10)
   Map$centerObject(bb_geometry_rectangle, zoom = 9)
-  l1 <- Map$addLayer(bb_geometry_rectangle, visParams = list(color = "FF0000"), opacity = 0.3, name = "vybraná obálka (bounding box)")
-  l2 <- Map$addLayer(l8_sr_collection_reduce, visparams, name = "LANDSAT/LC08/C01/T1_SR filtered median")
+  l1 <-
+    Map$addLayer(
+      bb_geometry_rectangle,
+      visParams = list(color = "FF0000"),
+      opacity = 0.3,
+      name = "vybraná obálka (bounding box)"
+    )
+  l2 <-
+    Map$addLayer(l8_sr_collection_reduce, visparams, name = "LANDSAT/LC08/C01/T1_SR filtered median")
   l2 + l1
 }
 
@@ -320,7 +437,8 @@ text <- c(
   toString(strptime(start_time, format = df)),
   toString(strptime(end_time, format = df)),
   toString(end_time - start_time),
-  export_path, git_project_path,
+  export_path,
+  git_project_path,
   deparse(bb),
   deparse(years_range),
   deparse(season_months_range),
