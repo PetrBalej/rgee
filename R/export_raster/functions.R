@@ -163,6 +163,6 @@ rasters_dir_stack <- function(path_dir, raster_extension) {
       ignore.case = TRUE,
       full.names = TRUE
     )
-  raster_stack <- lapply(rasters_list, stack)
+  raster_stack <- stack(lapply(rasters_list, raster))
   return(raster_stack)
 }
