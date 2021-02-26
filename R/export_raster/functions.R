@@ -153,3 +153,16 @@ comb_all <- function(vector) {
   }
   return(comb_list)
 }
+
+# načte do RasterStack-u všechny rastry ze zadaného adresáře a dané přípony
+rasters_dir_stack <- function(path_dir, raster_extension) {
+  rasters_list <-
+    list.files(
+      path = path_dir,
+      pattern = paste0("\\.", raster_extension, "$"),
+      ignore.case = TRUE,
+      full.names = TRUE
+    )
+  raster_stack <- lapply(rasters_list, stack)
+  return(raster_stack)
+}
