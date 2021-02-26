@@ -117,7 +117,7 @@ export_gee_image <-
       image = image$reproject(proj, NULL, scale),
       region = region,
       scale = scale,
-      via = "getInfo",
+      via = "getInfo", # "drive"
       dsn = NULL
       # maxPixels = 1e10
     )

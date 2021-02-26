@@ -11,13 +11,15 @@ required_packages <-
     "raster",
     "geojsonio",
     "stars",
-    "httpuv")
+    "httpuv") 
+    # "googledrive" # kontrola při použití v ee_Initialize?
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # načte všechny požadované knihovny jako dělá jednotlivě library()
 lapply(required_packages, require, character.only = TRUE)
 
-ee_Initialize(drive = FALSE, gcs = FALSE)
+ee_Initialize(drive = FALSE, gcs = FALSE) 
+# ee_Initialize(email="balej.petr@gmail.com", drive = TRUE)
 # ee_user_info()
 
 # při odpojení nebo zneplatnění původního přihlašovacího tokenu
