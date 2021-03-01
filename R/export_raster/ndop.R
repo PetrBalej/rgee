@@ -1,7 +1,7 @@
-ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7), import_path_ndop = "/../ndop/csv") {
+ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7), import_path_ndop = "/../ndop/csv", res_crs = 3035) {
 
   # kontrola (do)instalace všech dodatečně potřebných balíčků
-  required_packages <- c("tidyverse", "sf", "lubridate")
+  required_packages <- c("tidyverse", "sf", "lubridate", "magrittr")
   install.packages(setdiff(required_packages, rownames(installed.packages())))
 
   # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -82,13 +82,26 @@ ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
   st_intersects(czechia) %>% length > 0
   csv_ndop_filter <- csv_ndop_filter %>% mutate(wgs84_czechia)
 
+ if (is.null(res_crs)) {
   # vytvoření sloupců s WGS84 souřadnicemi - nebo raději jako sf geometrii typu POINT?
   wgs84_coords <- wgs84 %>%
   st_coordinates() %>%
   as_tibble() %>%
   rename(lat = Y, lon = X)
-
+  
   options(pillar.sigfig = 7) # jen pro případnou vizualizaci
+ }else{
+  # vytvoření sloupců s WGS84 souřadnicemi - nebo raději jako sf geometrii typu POINT?
+  wgs84_coords <- wgs84 %>%
+  st_as_sf(coords = c("X", "Y"), crs = 4326) %>%
+  st_transform(res_crs) %>%
+  st_coordinates() %>%
+  as_tibble() %>%
+  rename(lat = Y, lon = X)
+  wgs84_coords$lat %<>% as.integer
+  wgs84_coords$lon %<>% as.integer
+  }
+
 
   # přidání sloupců s WGS84 souřadnicemi, výběr záznamů z polygonu a potřebných sloupců
   csv_ndop_s_wgs84 <- csv_ndop_filter %>%
