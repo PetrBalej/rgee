@@ -1,3 +1,4 @@
+# vybere konkrétní druh z nálezovek NDOP a GBIF (ndop_occurrences+gbif_occurrences; bere předpřipravená data z ndop.R a gbif.R) a použite spThin o zadané délce (thin_par)
 prepare_occurrences <-
   function(select_species = "Locustella luscinioides",
            thin_par = 100,
