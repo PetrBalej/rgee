@@ -349,19 +349,24 @@ raster_stack_list[[band]] <-
 # corine 'COPERNICUS/CORINE/V20/100m/2018'
 ################################################################
 
-# corine <- ee$Image(gdl$corine$geeSnippet)$select(c("landcover"))
+band <- "landcover"
+corine <- ee$Image(gdl$corine$geeSnippet)$select(c(band))
 
-# # export do meziproduktu v podobě tiffu s jedním bandem
-# result_raster <- ee_as_raster(
-#   image = corine, #$reproject("EPSG:32633")
-#   region = bb_geometry_rectangle,
-#   scale = scale,
-#   via = "getInfo", # na Ubuntu nebylo nutné vůbec uvádět tento parametr, na Win10 si to jinak vynucovalo přihlášení a následné ukládání na Google disk
-#   # maxPixels = 1e10
-#   dsn = paste0(export_path, "/corine_", tag_name, ".tif") # Output filename. If missing, will create a temporary file.
-# )
+file_name <- paste0(export_path, "/clc_", tag_name, "_", band)
+file_name_list <- append(file_name_list, c(file_name))
 
-# writeRaster(result_raster[["elevation"]], paste0(export_path, "/srtm_", tag_name, ".asc"), 'ascii', overwrite = TRUE)
+raster_stack_list[[band]] <-
+  export_gee_image(
+    corine,
+    bb_geometry_rectangle,
+    scale,
+    file_name,
+    output_raster_ext,
+    band,
+    default_extent,
+    default_res,
+    res_proj_epsg
+  )
 
 
 
