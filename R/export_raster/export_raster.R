@@ -61,7 +61,7 @@ cesko <- list(
   xmin = 12.0,
   xmax = 19.0,
   ymin = 48.5,
-  ymax = 51.5
+  ymax = 51.2
 )
 str_evropa <-
   list(
