@@ -38,7 +38,7 @@ ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
   csv_ndop <- list.files(path = import_path_ndop, pattern = "*.csv", full.names = T) %>%
   map_df(~read_csv(., col_types = cols(.default = "c"))) %>%
   filter(X != "<i>Skrytá lokalizace</i>") %>%
-  filter(DAT_SADA != "iNaturalist - data ČR")) %>%
+  filter(DAT_SADA != "iNaturalist - data ČR") %>%
   type_convert(col_types = set_cols, locale = locale("cs", decimal_mark = ","))
 
   # vypíše špatně rozparsované řádky
