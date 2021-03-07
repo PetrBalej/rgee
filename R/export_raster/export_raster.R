@@ -11,8 +11,8 @@ required_packages <-
     "raster",
     "geojsonio",
     "stars",
-    "httpuv") 
-    # "googledrive" # kontrola při použití v ee_Initialize?
+    "httpuv")
+# "googledrive" # kontrola při použití v ee_Initialize?
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -22,6 +22,9 @@ lapply(required_packages, require, character.only = TRUE)
 use_google_drive <- TRUE
 
 ee_Initialize(email = "balej.petr@gmail.com", drive = use_google_drive)
+
+# přetypovat výsledné rastery za účelem optimalizace velikosti? (udělá INT16 i z NDVI po vynásobení 10000, v ostatních rasterech jsou desetinná čísla zbytečná)
+retype <- TRUE
 
 # ee_user_info()
 
@@ -163,9 +166,10 @@ if (!is.character(bb)) {
 ################################################################
 
 # aplikace základních geogracických, časových a odmračňovacích/odstiňovacích filtrů
-l8_sr_collection <- ee$ImageCollection(gdl$landsat$geeSnippet)$filterBounds(bb_geometry_rectangle)$filterDate(years_range$from, years_range$to)$filter(
-  ee$Filter$calendarRange(season_months_range$from, season_months_range$to, "month")
-)$map(mask_L8_sr)
+l8_sr_collection <-
+  ee$ImageCollection(gdl$landsat$geeSnippet)$filterBounds(bb_geometry_rectangle)$filterDate(years_range$from, years_range$to)$filter(
+    ee$Filter$calendarRange(season_months_range$from, season_months_range$to, "month")
+  )$map(mask_L8_sr)
 
 # příprava vrstvy s počtem snímků použitých na jeden pixel pro následné odmaskování (odstranění) pixelů s příliš nízkou hodnotou (threshold_px_count) snímků, které se na něm podílely
 # zde na B1, nemělo by záležet o který band jde (raději ověřit?), i odmračnění probíhá hromadně skrz všechny bandy, počet použitých snímků pixelů bude u všech bandů stejný
@@ -185,7 +189,8 @@ raster_stack_list[[band]] <-
     NULL,
     NULL,
     res_proj_epsg,
-    use_google_drive
+    use_google_drive,
+    retype
   )
 
 # výchozí extent a resolution převezmu z L8
@@ -221,7 +226,8 @@ for (band in bands_all) {
       default_extent,
       default_res,
       res_proj_epsg,
-      use_google_drive
+      use_google_drive,
+      retype
     )
   
 }
@@ -252,7 +258,8 @@ raster_stack_list[[band]] <-
     default_extent,
     default_res,
     res_proj_epsg,
-    use_google_drive
+    use_google_drive,
+    retype
   )
 
 
@@ -282,7 +289,8 @@ for (band in bands_all) {
       default_extent,
       default_res,
       res_proj_epsg,
-      use_google_drive
+      use_google_drive,
+      retype
     )
   
 }
@@ -311,7 +319,8 @@ raster_stack_list[[band]] <-
     default_extent,
     default_res,
     res_proj_epsg,
-    use_google_drive
+    use_google_drive,
+    retype
   )
 
 # slope
@@ -330,7 +339,8 @@ raster_stack_list[[band]] <-
     default_extent,
     default_res,
     res_proj_epsg,
-    use_google_drive
+    use_google_drive,
+    retype
   )
 
 # aspect (ve stupních)
@@ -350,7 +360,8 @@ raster_stack_list[[band]] <-
     default_extent,
     default_res,
     res_proj_epsg,
-    use_google_drive
+    use_google_drive,
+    retype
   )
 
 
@@ -376,7 +387,8 @@ raster_stack_list[[band]] <-
     default_extent,
     default_res,
     res_proj_epsg,
-    use_google_drive
+    use_google_drive,
+    retype
   )
 
 

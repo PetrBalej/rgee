@@ -54,8 +54,8 @@ export_gee_image <-
            set_extent = NULL,
            set_res = NULL,
            res_proj_epsg = 3035,
-           use_google_drive = TRUE
-           ) {
+           use_google_drive = TRUE,
+           retype = FALSE) {
     export_raster <- format != ""
     
     if (export_raster == TRUE) {
@@ -115,16 +115,28 @@ export_gee_image <-
     #   im <- image$reproject(proj, NULL, scale)
     # }
     
-    via <- "drive"
-    if(use_google_drive == FALSE){
+    via <- "drive" # "drive" "getInfo"
+    if (use_google_drive == FALSE) {
       via <- "getInfo"
     }
-
+    
+    image <- image$reproject(proj, NULL, scale)
+    
+    # přetypovat za účelem optimalizace velikosti?
+    if (retype == TRUE) {
+      # pokud jde o NDVI, nutná úprava před přetypováním na INT16
+      if (grepl("ndvi", tolower(dsn), fixed = TRUE) == TRUE) {
+        image <- image$multiply(10000)$toInt16()
+      } else{
+        image <- image$toInt16()
+      }
+    }
+    
     result_raster <- ee_as_raster(
-      image = image$reproject(proj, NULL, scale),
+      image = image,
       region = region,
       scale = scale,
-      via = via, # "drive" "getInfo"
+      via = via,
       dsn = dsn,
       timePrefix = FALSE
       # maxPixels = 1e10
