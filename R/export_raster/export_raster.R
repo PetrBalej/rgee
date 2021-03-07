@@ -18,8 +18,11 @@ install.packages(setdiff(required_packages, rownames(installed.packages())))
 # načte všechny požadované knihovny jako dělá jednotlivě library()
 lapply(required_packages, require, character.only = TRUE)
 
-ee_Initialize(drive = FALSE, gcs = FALSE) 
-# ee_Initialize(email="balej.petr@gmail.com", drive = TRUE)
+# použít Google Drive?
+use_google_drive <- TRUE
+
+ee_Initialize(email = "balej.petr@gmail.com", drive = use_google_drive)
+
 # ee_user_info()
 
 # při odpojení nebo zneplatnění původního přihlašovacího tokenu
@@ -181,7 +184,8 @@ raster_stack_list[[band]] <-
     band,
     NULL,
     NULL,
-    res_proj_epsg
+    res_proj_epsg,
+    use_google_drive
   )
 
 # výchozí extent a resolution převezmu z L8
@@ -216,7 +220,8 @@ for (band in bands_all) {
       band,
       default_extent,
       default_res,
-      res_proj_epsg
+      res_proj_epsg,
+      use_google_drive
     )
   
 }
@@ -246,7 +251,8 @@ raster_stack_list[[band]] <-
     band,
     default_extent,
     default_res,
-    res_proj_epsg
+    res_proj_epsg,
+    use_google_drive
   )
 
 
@@ -275,7 +281,8 @@ for (band in bands_all) {
       band,
       default_extent,
       default_res,
-      res_proj_epsg
+      res_proj_epsg,
+      use_google_drive
     )
   
 }
@@ -303,7 +310,8 @@ raster_stack_list[[band]] <-
     band,
     default_extent,
     default_res,
-    res_proj_epsg
+    res_proj_epsg,
+    use_google_drive
   )
 
 # slope
@@ -321,7 +329,8 @@ raster_stack_list[[band]] <-
     band,
     default_extent,
     default_res,
-    res_proj_epsg
+    res_proj_epsg,
+    use_google_drive
   )
 
 # aspect (ve stupních)
@@ -340,7 +349,8 @@ raster_stack_list[[band]] <-
     band,
     default_extent,
     default_res,
-    res_proj_epsg
+    res_proj_epsg,
+    use_google_drive
   )
 
 
@@ -365,7 +375,8 @@ raster_stack_list[[band]] <-
     band,
     default_extent,
     default_res,
-    res_proj_epsg
+    res_proj_epsg,
+    use_google_drive
   )
 
 

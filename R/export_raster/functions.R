@@ -53,7 +53,9 @@ export_gee_image <-
            bands = c(),
            set_extent = NULL,
            set_res = NULL,
-           res_proj_epsg = 3035) {
+           res_proj_epsg = 3035,
+           use_google_drive = TRUE
+           ) {
     export_raster <- format != ""
     
     if (export_raster == TRUE) {
@@ -113,12 +115,18 @@ export_gee_image <-
     #   im <- image$reproject(proj, NULL, scale)
     # }
     
+    via <- "drive"
+    if(use_google_drive == FALSE){
+      via <- "getInfo"
+    }
+
     result_raster <- ee_as_raster(
       image = image$reproject(proj, NULL, scale),
       region = region,
       scale = scale,
-      via = "getInfo", # "drive"
-      dsn = NULL
+      via = via, # "drive" "getInfo"
+      dsn = dsn,
+      timePrefix = FALSE
       # maxPixels = 1e10
     )
     
