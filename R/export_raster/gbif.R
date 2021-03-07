@@ -1,6 +1,6 @@
-gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7), path = "/../gbif/", csv_name = NULL, res_crs = 3035) {
+gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7), path = "/../gbif/", csv_name = NULL, res_crs = 3035, presicion = 100) {
   # kontrola (do)instalace všech dodatečně potřebných balíčků
-  required_packages <- c("tidyverse", "rgbif", "sf", "lubridate", "magrittr")
+  required_packages <- c("tidyverse", "rgbif", "sf", "lubridate", "magrittr", "dplyr")
   install.packages(setdiff(required_packages, rownames(installed.packages())))
 
   # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -121,8 +121,8 @@ gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
   # coordinateUncertaintyInMeters, coordinatePrecision - problematické, většinou neuvedeno vůbec...
   csv_gbif_filter <- csv_gbif %>%
   filter(
-    (coordinateUncertaintyInMeters <= 100 | is.na(coordinateUncertaintyInMeters)) &
-    (coordinatePrecision <= 100 | is.na(coordinatePrecision))
+    (coordinateUncertaintyInMeters <= presicion | is.na(coordinateUncertaintyInMeters)) &
+    (coordinatePrecision <= presicion | is.na(coordinatePrecision))
     ) %>%
   select(gbifID, species, decimalLatitude, decimalLongitude) 
 
@@ -137,7 +137,7 @@ gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
 
     csv_gbif_filter %<>%
     mutate(csv_gbif_filter_coords) %>%
-    select(gbifID, species, X, Y) %>%
+    dplyr::select(gbifID, species, X, Y) %>%
     rename(key = gbifID, latitude = Y, longitude = X)
 
     csv_gbif_filter$latitude %<>% as.integer

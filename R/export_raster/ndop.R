@@ -1,7 +1,7 @@
-ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7), import_path_ndop = "/../ndop/csv", res_crs = 3035) {
+ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7), import_path_ndop = "/../ndop/csv", res_crs = 3035, presicion = 100) {
 
   # kontrola (do)instalace všech dodatečně potřebných balíčků
-  required_packages <- c("tidyverse", "sf", "lubridate", "magrittr")
+  required_packages <- c("tidyverse", "sf", "lubridate", "magrittr", "dplyr")
   install.packages(setdiff(required_packages, rownames(installed.packages())))
 
   # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -62,7 +62,7 @@ ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
     between(month(DATUM_DO), season_months_range$from, season_months_range$to) &
     (VEROH == 1 | VALIDACE == "věrohodný záznam") &
     NEGATIV == 0 &
-    CXPRESNOST <= 100)
+    CXPRESNOST <= presicion)
 
   #
   # převod souřadnic z S-JTSK do WGS 84 (přidání nových sloupců: lat, lon) a filtrace polygonem (Česko)
@@ -70,7 +70,7 @@ ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
 
 
   # načtení shapefile polygonu Česka (časem i možnost předání parametrem jiný shapefile nebo rovnou geometrii polygonu?)
-  shpPath <- "shp/ne_50m_admin_0_countries/czechia/cz_4326.shp" # zjednodušený polygon Česka
+  shpPath <- "shp/ne_10m_admin_0_countries/czechia/cz_4326.shp" # zjednodušený polygon Česka
   czechia <- st_read(shpPath)
 
   # převod souřadnic S-JTSK do WGS84
@@ -108,7 +108,7 @@ ndop <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
   csv_ndop_s_wgs84 <- csv_ndop_filter %>%
   mutate(wgs84_coords) %>%
   filter(wgs84_czechia == TRUE) %>%
-  select(ID_NALEZ, DRUH, lat, lon) %>%
+  dplyr::select(ID_NALEZ, DRUH, lat, lon) %>%
   rename(key = ID_NALEZ, species = DRUH, latitude = lat, longitude = lon)
 
   # print(as_tibble(csv_ndop_s_wgs84), n = 10)
