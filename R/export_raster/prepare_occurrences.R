@@ -15,7 +15,7 @@ prepare_occurrences <-
     lapply(required_packages, require, character.only = TRUE)
     
     reps <-
-      1 # původně 10, TODO: zvýšit až budu dělat více opakování modelů a pak i počítat průměry z jednotlivých thinnovaných subsetů - nutné změnit logiku výpočtů!!!
+      10 # původně 10, TODO: zvýšit až budu dělat více opakování modelů a pak i počítat průměry z jednotlivých thinnovaných subsetů - nutné změnit logiku výpočtů!!!
     # + coordinateCleaner a spThin na NDOP/GBIF data...
     
     # kontrola jestli v ndop_occurrences gbif_occurrences něco je, pak (ne)spojovat
@@ -39,39 +39,48 @@ prepare_occurrences <-
           write.files = FALSE,
           write.log.file = FALSE
         )
-      if (is.null(res_crs)) {
-        res_ndop_ll_spthin <-
-          as_tibble(res_ndop_ll_spthin[[1]]) %>% add_column(species = !!species_col, .before = 1)
-      } else{
-        res_ndop_ll_spthin <-
-          as_tibble(res_ndop_ll_spthin[[1]]) %>% add_column(species = !!species_col, .before = 1)
-        
-        
-        res_ndop_ll_spthin_coords <- res_ndop_ll_spthin %>%
-          st_as_sf(coords = c("Longitude", "Latitude"),
-                   crs = 4326) %>%
-          st_transform(res_crs) %>%
-          st_coordinates() %>%
-          as_tibble()
-        
-        res_ndop_ll_spthin %<>%
-          mutate(res_ndop_ll_spthin_coords) %>%
-          dplyr::select(species, X, Y) %>%
-          rename(latitude = Y, longitude = X)
-        
-        res_ndop_ll_spthin$latitude %<>% as.integer
-        res_ndop_ll_spthin$longitude %<>% as.integer
-        
-      }
       
-      write_csv(res_ndop_ll_spthin,
-                paste0(
-                  export_path,
-                  (thin_par * 1000),
-                  "_ndop_",
-                  species_col,
-                  ".csv"
-                ))
+      for (i in 1:reps) {
+        print(i)
+        
+        if (is.null(res_crs)) {
+          res_ndop_ll_spthin[[i]] <-
+            as_tibble(res_ndop_ll_spthin[[i]]) %>% add_column(species = !!species_col, .before = 1)
+        } else{
+          res_ndop_ll_spthin[[i]] <-
+            as_tibble(res_ndop_ll_spthin[[i]]) %>% add_column(species = !!species_col, .before = 1)
+          
+          
+          res_ndop_ll_spthin_coords <- res_ndop_ll_spthin[[i]] %>%
+            st_as_sf(coords = c("Longitude", "Latitude"),
+                     crs = 4326) %>%
+            st_transform(res_crs) %>%
+            st_coordinates() %>%
+            as_tibble()
+          
+          res_ndop_ll_spthin[[i]] %<>%
+            mutate(res_ndop_ll_spthin_coords) %>%
+            dplyr::select(species, X, Y) %>%
+            rename(latitude = Y, longitude = X)
+          
+          res_ndop_ll_spthin[[i]]$latitude %<>% as.integer
+          res_ndop_ll_spthin[[i]]$longitude %<>% as.integer
+          
+        }
+        
+        write_csv(
+          res_ndop_ll_spthin[[i]],
+          paste0(
+            export_path,
+            (thin_par * 1000),
+            "_ndop_",
+            species_col,
+            "_",
+            i,
+            ".csv"
+          )
+        )
+      }
     } else{
       write_csv(data.frame(),
                 paste0(
@@ -103,40 +112,47 @@ prepare_occurrences <-
           write.log.file = FALSE
         )
       
-      
-      if (is.null(res_crs)) {
-        res_gbif_ll_spthin <-
-          as_tibble(res_gbif_ll_spthin[[1]]) %>% add_column("species" = !!species_col, .before = 1)
-      } else{
-        res_gbif_ll_spthin <-
-          as_tibble(res_gbif_ll_spthin[[1]]) %>% add_column("species" = !!species_col, .before = 1)
+      for (i in 1:reps) {
+        if (is.null(res_crs)) {
+          res_gbif_ll_spthin[[i]] <-
+            as_tibble(res_gbif_ll_spthin[[i]]) %>% add_column("species" = !!species_col,
+                                                              .before = 1)
+        } else{
+          res_gbif_ll_spthin[[i]] <-
+            as_tibble(res_gbif_ll_spthin[[i]]) %>% add_column("species" = !!species_col,
+                                                              .before = 1)
+          
+          
+          res_gbif_ll_spthin_coords <- res_gbif_ll_spthin[[i]] %>%
+            st_as_sf(coords = c("Longitude", "Latitude"),
+                     crs = 4326) %>%
+            st_transform(res_crs) %>%
+            st_coordinates() %>%
+            as_tibble()
+          
+          res_gbif_ll_spthin[[i]] %<>%
+            mutate(res_gbif_ll_spthin_coords) %>%
+            dplyr::select(species, X, Y) %>%
+            rename(latitude = Y, longitude = X)
+          
+          res_gbif_ll_spthin[[i]]$latitude %<>% as.integer
+          res_gbif_ll_spthin[[i]]$longitude %<>% as.integer
+          
+        }
         
-        
-        res_gbif_ll_spthin_coords <- res_gbif_ll_spthin %>%
-          st_as_sf(coords = c("Longitude", "Latitude"),
-                   crs = 4326) %>%
-          st_transform(res_crs) %>%
-          st_coordinates() %>%
-          as_tibble()
-        
-        res_gbif_ll_spthin %<>%
-          mutate(res_gbif_ll_spthin_coords) %>%
-          dplyr::select(species, X, Y) %>%
-          rename(latitude = Y, longitude = X)
-        
-        res_gbif_ll_spthin$latitude %<>% as.integer
-        res_gbif_ll_spthin$longitude %<>% as.integer
-        
+        write_csv(
+          res_gbif_ll_spthin[[i]],
+          paste0(
+            export_path,
+            (thin_par * 1000),
+            "_gbif_",
+            species_col,
+            "_",
+            i,
+            ".csv"
+          )
+        )
       }
-      
-      write_csv(res_gbif_ll_spthin,
-                paste0(
-                  export_path,
-                  (thin_par * 1000),
-                  "_gbif_",
-                  species_col,
-                  ".csv"
-                ))
     } else{
       write_csv(data.frame(),
                 paste0(
@@ -175,37 +191,46 @@ prepare_occurrences <-
           write.files = FALSE,
           write.log.file = FALSE
         )
-      
-      if (is.null(res_crs)) {
-        ndop_gbif_ll_spthin <-
-          as_tibble(ndop_gbif_ll_spthin[[1]]) %>% add_column("species" = !!species_col, .before = 1)
-      } else{
-        ndop_gbif_ll_spthin <-
-          as_tibble(ndop_gbif_ll_spthin[[1]]) %>% add_column("species" = !!species_col, .before = 1)
+      for (i in 1:reps) {
+        if (is.null(res_crs)) {
+          ndop_gbif_ll_spthin[[i]] <-
+            as_tibble(ndop_gbif_ll_spthin[[i]]) %>% add_column("species" = !!species_col,
+                                                               .before = 1)
+        } else{
+          ndop_gbif_ll_spthin[[i]] <-
+            as_tibble(ndop_gbif_ll_spthin[[i]]) %>% add_column("species" = !!species_col,
+                                                               .before = 1)
+          
+          ndop_gbif_ll_spthin_coords <- ndop_gbif_ll_spthin[[i]] %>%
+            st_as_sf(coords = c("Longitude", "Latitude"),
+                     crs = 4326) %>%
+            st_transform(res_crs) %>%
+            st_coordinates() %>%
+            as_tibble()
+          
+          ndop_gbif_ll_spthin[[i]] %<>%
+            mutate(ndop_gbif_ll_spthin_coords) %>%
+            dplyr::select(species, X, Y) %>%
+            rename(latitude = Y, longitude = X)
+          
+          ndop_gbif_ll_spthin[[i]]$latitude %<>% as.integer
+          ndop_gbif_ll_spthin[[i]]$longitude %<>% as.integer
+          
+        }
         
-        ndop_gbif_ll_spthin_coords <- ndop_gbif_ll_spthin %>%
-          st_as_sf(coords = c("Longitude", "Latitude"),
-                   crs = 4326) %>%
-          st_transform(res_crs) %>%
-          st_coordinates() %>%
-          as_tibble()
-        
-        ndop_gbif_ll_spthin %<>%
-          mutate(ndop_gbif_ll_spthin_coords) %>%
-          dplyr::select(species, X, Y) %>%
-          rename(latitude = Y, longitude = X)
-        
-        ndop_gbif_ll_spthin$latitude %<>% as.integer
-        ndop_gbif_ll_spthin$longitude %<>% as.integer
-        
+        write_csv(
+          ndop_gbif_ll_spthin[[i]],
+          paste0(
+            export_path,
+            (thin_par * 1000),
+            "_all_",
+            species_col,
+            "_",
+            i,
+            ".csv"
+          )
+        )
       }
-      
-      write_csv(ndop_gbif_ll_spthin,
-                paste0(export_path,
-                       (thin_par * 1000),
-                       "_all_",
-                       species_col,
-                       ".csv"))
     } else{
       write_csv(data.frame(),
                 paste0(
@@ -220,11 +245,11 @@ prepare_occurrences <-
     }
     
     
-    return(list(
-      res_ndop_ll_spthin,
-      res_gbif_ll_spthin,
-      ndop_gbif_ll_spthin
-    ))
+    # return(list(
+    #   res_ndop_ll_spthin,
+    #   res_gbif_ll_spthin,
+    #   ndop_gbif_ll_spthin
+    # ))
   }
 # res <- prepare_occurrences(select_species = "Locustella luscinioides", export_path = wd,  ndop_occurrences = NULL, gbif_occurrences = NULL)
 # print(as_tibble(res), n = 10)
