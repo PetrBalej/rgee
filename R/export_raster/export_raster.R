@@ -43,11 +43,15 @@ retype <- TRUE
 # 32633: UTM zone 33N - použito Mercatorovo válcové konformní zobrazení (UTM zobrazení), základní poledník 15°
 res_proj_epsg <- 3035
 
+## výsledná velikost pixelu v m
+scale <- 100
+
 ## jednotná "značka" přidaná ke všem output rasterům z jednoho běhu skriptu (stejné nastavení parametrů) a
-tag_name <- gsub('[^0-9-]', '-', Sys.time())
+tag_name <- scale # "" # gsub('[^0-9-]', '-', Sys.time())
 
 # adresář pro exportované soubory (v rámci wd) + další tag_name
-export_path <- paste0(getwd(), "/../export/raster/", tag_name)
+export_path <-
+  paste0(getwd(), "/../export/raster/schuzka_rastery/", scale)
 
 
 # GIT project directory (kompletní repozitář rgee z github.com: po rozbalení zipu v rgee-master/rgee-master)
@@ -92,14 +96,11 @@ bb <- sz_cechy
 ## časové rozsahy
 
 # rozsah snímků od/do
-years_range <- list(from = '2017-01-01', to = '2019-12-31')
+years_range <- list(from = '2016-01-01', to = '2020-12-31')
 
 # rozsah jedné sezóny v měsících (podvýběr z vybraného období years_range výše)
-season_months_range <- list(from = 4, to = 7)
+season_months_range <- list(from = 4, to = 6)
 
-
-## výsledná velikost pixelu v m
-scale <- 10000
 
 ## výstupní fotmát exportovaných rasterů
 # pokud zadám koncovku, budou rastry uloženy jako fyzické soubory na disk

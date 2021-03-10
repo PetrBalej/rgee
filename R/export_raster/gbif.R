@@ -1,4 +1,4 @@
-gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7), path = "/../gbif/", csv_name = NULL, res_crs = 3035, presicion = 100) {
+gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7), path = "/../gbif/", csv_name = NULL, res_crs = 3035, presicion = 100, loaded_csv = NULL) {
   # kontrola (do)instalace všech dodatečně potřebných balíčků
   required_packages <- c("tidyverse", "rgbif", "sf", "lubridate", "magrittr", "dplyr")
   install.packages(setdiff(required_packages, rownames(installed.packages())))
@@ -17,9 +17,15 @@ gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
   sz_cechy <- list(xmin = 13.0, xmax = 13.5, ymin = 50.0, ymax = 50.5)
   cesko <- list(xmin = 12.0, xmax = 19.0, ymin = 48.5, ymax = 51.5)
   str_evropa <- list(xmin = 8.5, xmax = 22.0, ymin = 46.0, ymax = 53.5)
-
+str_evropa2 <-
+  list(
+    xmin = 8.6,
+    xmax = 21.9,
+    ymin = 46.4,
+    ymax = 53.1
+  )
   # výběr konkrétního území
-  bb <- str_evropa
+  bb <- str_evropa2
 
   ## časové rozsahy
 
@@ -114,17 +120,28 @@ gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
     csv <- paste0(path, "/", csv_name)
   }
 
-  set_cols <- cols(gbifID = "n", coordinateUncertaintyInMeters = "d", coordinatePrecision = "d", day = "i", month = "i", year = "i")
+  set_cols <- cols(gbifID = "c", coordinateUncertaintyInMeters = "d", coordinatePrecision = "d", day = "i", month = "i", year = "i")
 
+
+if(is.null(loaded_csv)){
   csv_gbif <- read_tsv(csv, col_types = set_cols)
+}else{
+csv_gbif <- loaded_csv
+
+}
+  
+
+
 
   # coordinateUncertaintyInMeters, coordinatePrecision - problematické, většinou neuvedeno vůbec...
   csv_gbif_filter <- csv_gbif %>%
   filter(
-    (coordinateUncertaintyInMeters <= presicion | is.na(coordinateUncertaintyInMeters)) &
-    (coordinatePrecision <= presicion | is.na(coordinatePrecision))
+    (coordinateUncertaintyInMeters <= presicion | is.na(coordinateUncertaintyInMeters) | coordinateUncertaintyInMeters == "NA" | coordinateUncertaintyInMeters == NA | is.null(coordinateUncertaintyInMeters) | coordinateUncertaintyInMeters == " ") &
+    (coordinatePrecision <= presicion | is.na(coordinatePrecision) | coordinatePrecision == "NA" | coordinatePrecision == NA | is.null(coordinatePrecision) | coordinatePrecision == " ") &
+    between(month, season_months_range$from, season_months_range$to) &
+    between(year, year(years_range$from), year(years_range$to)) 
     ) %>%
-  select(gbifID, species, decimalLatitude, decimalLongitude) 
+  dplyr::select(gbifID, species, decimalLatitude, decimalLongitude) 
 
   if (is.null(res_crs)) {
     csv_gbif_filter %<>% rename(key = gbifID, latitude = decimalLatitude, longitude = decimalLongitude)

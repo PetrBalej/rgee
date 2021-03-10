@@ -1,9 +1,10 @@
-ndop <-
+ndop_divland <-
   function(years_range = list(from = '2017-01-01', to = '2019-12-31'),
            season_months_range = list(from = 4, to = 7),
            import_path_ndop = "/../ndop/csv",
            res_crs = 3035,
-           presicion = 100) {
+           presicion = 100,
+           loaded_csv = NULL) {
     # kontrola (do)instalace všech dodatečně potřebných balíčků
     required_packages <-
       c("tidyverse", "sf", "lubridate", "magrittr", "dplyr")
@@ -34,31 +35,45 @@ ndop <-
     # nastavení základních parametrů [konec]  #
     # # # # # # # # # # # # # # # # # # # # # #
     
-    
+    # ID_ND_NALEZ	DRUH	AUTOR	DATUM_OD	DATUM_DO	ID_ND_LOKALIZACE	LOKALITA	CXLOKAL_TYP	X	Y	NEGATIVNI	VEROH	GARANCE	VALIDACE	PRESNOST
+    # pozor na formáty datumů - "%d.%m.%Y" vs. %Y-%m-%d !!!
     set_cols <-
       cols(
-        PORADI = "i",
-        ID_LOKAL = "c",
-        STRUKT_POZN = "c",
-        DATUM_OD = col_date("%Y%m%d"),
-        DATUM_DO = col_date("%Y%m%d"),
+        ID_ND_NALEZ = "c",
+        DRUH = "c",
+        AUTOR = "c",
+        DATUM_OD = col_date("%Y-%m-%d"),
+        DATUM_DO = col_date("%Y-%m-%d"),
+        CXLOKAL_TYP = "c",
+        NEGATIVNI = "i",
         VEROH = "i",
-        ID_NALEZ = "n"
+        PRESNOST = "i"
       )
     
     # csv_ndop <- read_csv(paste0(import_path_ndop, "/Locustella_luscinioides_tab.csv"), col_types = set_cols, locale = locale("cs", decimal_mark = ","))
     
-    # načte všechny *.csv z import_path_ndop
-    csv_ndop <-
-      list.files(path = import_path_ndop,
-                 pattern = "*.csv",
-                 full.names = T) %>%
-      map_df( ~ read_csv(., col_types = cols(.default = "c"))) %>%
-      filter(X != "<i>Skrytá lokalizace</i>") %>%
-      filter(DAT_SADA != "iNaturalist - data ČR") %>%
-      # filter(AUTOR != "iNaturalist uživatel") %>%
-      type_convert(col_types = set_cols,
-                   locale = locale("cs", decimal_mark = ","))
+    
+    
+    if (is.null(loaded_csv)) {
+      # načte všechny *.csv z import_path_ndop
+      csv_ndop <-
+        list.files(path = import_path_ndop,
+                   pattern = "*.csv",
+                   full.names = T) %>%
+        map_df( ~ read_csv(., col_types = cols(.default = "c"))) %>%
+        #filter(X != "<i>Skrytá lokalizace</i>") %>%
+        #filter(DAT_SADA != "iNaturalist - data ČR") %>%
+        filter(AUTOR != "iNaturalist uživatel") %>%
+        type_convert(col_types = set_cols,
+                     locale = locale("cs", decimal_mark = ","))
+    } else{
+      csv_ndop <-
+        loaded_csv %>% filter(AUTOR != "iNaturalist uživatel") %>%
+        type_convert(col_types = set_cols,
+                     locale = locale("cs", decimal_mark = ","))
+      
+    }
+    
     
     # vypíše špatně rozparsované řádky
     # problems(csv_ndop)
@@ -76,7 +91,8 @@ ndop <-
     # základní dofiltrovaní nálezů z NDOPu
     csv_ndop_filter <- csv_ndop %>%
       filter(
-        DATUM_OD >= years_range$from & DATUM_OD <= years_range$to &
+        CXLOKAL_TYP == "B" &
+          DATUM_OD >= years_range$from & DATUM_OD <= years_range$to &
           DATUM_DO >= years_range$from & DATUM_DO <= years_range$to &
           between(
             month(DATUM_OD),
@@ -88,20 +104,19 @@ ndop <-
             season_months_range$from,
             season_months_range$to
           ) &
-          (VEROH == 1 | VALIDACE == "věrohodný záznam") &
-          NEGATIV == 0 &
-          CXPRESNOST <= presicion
+          (VEROH == 1 | VALIDACE == "validováno - věrohodný záznam") &
+          NEGATIVNI == 0 &
+          PRESNOST <= presicion
       )
     
     #
     # převod souřadnic z S-JTSK do WGS 84 (přidání nových sloupců: lat, lon) a filtrace polygonem (Česko)
     #
     
-    
+    ### Zrušeno, zpomaluje, zbytečné kontrolovat, pokud vím, že už je vše v ČR
     # načtení shapefile polygonu Česka (časem i možnost předání parametrem jiný shapefile nebo rovnou geometrii polygonu?)
-    shpPath <-
-      "shp/ne_10m_admin_0_countries/czechia/cz_4326.shp" # zjednodušený polygon Česka
-    czechia <- st_read(shpPath)
+    ### shpPath <- "shp/ne_50m_admin_0_countries/czechia/cz_4326.shp" # zjednodušený polygon Česka
+    ### czechia <- st_read(shpPath)
     
     # převod souřadnic S-JTSK do WGS84
     wgs84 <- csv_ndop_filter %>%
@@ -109,9 +124,9 @@ ndop <-
       st_transform(4326)
     
     # označení záznamů se souřadnicemi uvnitř polygonu Česka (T/F) a přidání jako samostatného sloupce
-    wgs84_czechia <- wgs84$geometry %>%
-      st_intersects(czechia) %>% length > 0
-    csv_ndop_filter <- csv_ndop_filter %>% mutate(wgs84_czechia)
+    ### wgs84_czechia <- wgs84$geometry %>%
+    ### st_intersects(czechia) %>% length > 0
+    ### csv_ndop_filter <- csv_ndop_filter %>% mutate(wgs84_czechia)
     
     if (is.null(res_crs)) {
       # vytvoření sloupců s WGS84 souřadnicemi - nebo raději jako sf geometrii typu POINT?
@@ -137,10 +152,10 @@ ndop <-
     # přidání sloupců s WGS84 souřadnicemi, výběr záznamů z polygonu a potřebných sloupců
     csv_ndop_s_wgs84 <- csv_ndop_filter %>%
       mutate(wgs84_coords) %>%
-      filter(wgs84_czechia == TRUE) %>%
-      dplyr::select(ID_NALEZ, DRUH, lat, lon) %>%
+      ### filter(wgs84_czechia == TRUE) %>%
+      dplyr::select(ID_ND_NALEZ, DRUH, lat, lon) %>%
       rename(
-        key = ID_NALEZ,
+        key = ID_ND_NALEZ,
         species = DRUH,
         latitude = lat,
         longitude = lon
