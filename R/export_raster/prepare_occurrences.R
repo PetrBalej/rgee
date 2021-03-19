@@ -41,7 +41,6 @@ prepare_occurrences <-
         )
       
       for (i in 1:reps) {
-        print(i)
         
         if (is.null(res_crs)) {
           res_ndop_ll_spthin[[i]] <-
