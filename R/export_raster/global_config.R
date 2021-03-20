@@ -2,7 +2,7 @@
 
 # domovský adresář (nebo jiný), z něhož se odvodí další cesty
 # wd <- path.expand("~")
-wd <- paste0(path.expand("~"), "/Downloads/rgee2/rgee")
+wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee" # samsung500ntfs # paste0(path.expand("~"), "/Downloads/rgee2/rgee")
 
 setwd(wd)
 
