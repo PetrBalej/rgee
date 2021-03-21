@@ -31,16 +31,18 @@ synonyms <- list(
     "Dryobates minor" = "Dendrocopos minor",
     "Acanthis cabaret" = "Acanthis flammea"
 )
-
+# Totéž nutno už při výběru z NDOP-u?
+# Nutno sjednotit některé poddruhy s druhy Acanthis cabaret do Acanthis flammea"
 xls %<>%
     filter(skupina == "ptáci") %>%
     filter("Nálezů" > 1000) %>%
-    select(`Druh/počet záznamů`) %>%
+    # select(`Druh/počet záznamů`) %>%
     rowwise() %>%
     mutate(species1 = str_split(`Druh/počet záznamů`, " - ")[[1]][1]) %>%
     filter(!grepl("sp.", species1)) %>%
     filter(!grepl("/", species1)) %>%
-    filter(species1 != "Columba livia f. domestica") %>%
+    filter(!grepl("f. domestica", species1)) %>%
+    # ponechá jen první dvě slova (odstraní poddruhové a další názvy)
     mutate(
         species1 = paste0(
             str_split(species1, " ")[[1]][1],
@@ -49,15 +51,26 @@ xls %<>%
         )
     ) %>%
     mutate(
+        species_short = tolower(
+            paste0(
+                substr(str_split(species1, " ")[[1]][1], 1, 3),
+                substr(str_split(species1, " ")[[1]][2], 1, 3)
+            )
+        )
+    ) %>%
+    mutate(
         species2 = ifelse(
             is.null(synonyms[[species1]]), NA, synonyms[[species1]]
         )
     ) %>%
-    distinct(species1)
+    mutate(species1_ = gsub(" ", "_", species1)) %>%
+    mutate(species2_ = gsub(" ", "_", species2))
 
-print(xls)
-ptaci_ndop_top_species <- xls %>% select(species1)
+ptaci_ndop_top_species <- xls %>%
+    distinct(species1, species2)
 
+print("vícenásobné taxony - vhodné sloučit?")
+print(xls %>% count(species1) %>% filter(n > 1))
 
 set_cols1 <-
     cols(
@@ -84,7 +97,8 @@ ptaci_gbif_distinct_species <- ptaci_gbif %>%
     select(species)
 # distinct(species)
 
-joined <- ptaci_ndop_top_species %>% full_join(ptaci_gbif_distinct_species, by = c("species1" = "species"))
-joined_anti <- ptaci_ndop_top_species %>% anti_join(ptaci_gbif_distinct_species, by = c("species1" = "species"))
 
-print(joined_anti, n = 100)
+join_anti <- ptaci_ndop_top_species %>% anti_join(ptaci_gbif_distinct_species, by = c("species1" = "species"))
+join <- ptaci_ndop_top_species %>% inner_join(ptaci_gbif_distinct_species, by = c("species1" = "species"))
+print(join_anti)
+print(join)
