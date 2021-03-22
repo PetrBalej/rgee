@@ -10,127 +10,26 @@ lapply(required_packages, require, character.only = TRUE)
 
 # domovský adresář (nebo jiný), z něhož se odvodí další cesty
 # wd <- path.expand("~")
-wd <- paste0(path.expand("~"), "/Downloads/rgee2/rgee")
+wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee" # samsung500ntfs # paste0(path.expand("~"), "/Downloads/rgee2/rgee")
 
 setwd(wd)
 export_path <-
-  paste0(getwd(), "/../export/schuzka2-total-gbif-ndop/")
+  paste0(getwd(), "/../export/schuzka2-total-gbif-ndop4/")
 
 source(paste0(getwd(), "/R/export_raster/functions.R"))
 source(paste0(getwd(), "/R/export_raster/gbif.R"))
 source(paste0(getwd(), "/R/export_raster/ndop_divland.R"))
 source(paste0(getwd(), "/R/export_raster/prepare_occurrences.R"))
+source(paste0(getwd(), "/R/export_raster/ndop_top.R"))
 
-# všechny z NDOP
-#species <- c("Parus major","Fringilla coelebs","Ardea cinerea","Buteo buteo","Emberiza citrinella","Phylloscopus collybita","Cygnus olor","Cyanistes caeruleus","Ciconia ciconia","Columba palumbus","Dendrocopos major","Sylvia atricapilla","Hirundo rustica","Fulica atra","Sturnus vulgaris","Chroicocephalus ridibundus","Erithacus rubecula","Turdus philomelos","Podiceps cristatus","Motacilla alba","Aythya fuligula","Falco tinnunculus","Lanius collurio","Garrulus glandarius","Circus aeruginosus","Phalacrocorax carbo","Alcedo atthis","Aythya ferina","Phoenicurus ochruros","Alauda arvensis","Anser anser","Pica pica","Mareca strepera","Apus apus","Corvus corax","Chloris chloris","Picus viridis","Carduelis carduelis","Passer montanus","Turdus pilaris","Periparus ater","Ardea alba","Dryocopus martius","Streptopelia decaocto","Delichon urbicum","Passer domesticus","Tachybaptus ruficollis","Turdus viscivorus","Phylloscopus trochilus","Crex crex","Mergus merganser","Coccothraustes coccothraustes","Cuculus canorus","Ciconia nigra","Phasianus colchicus","Regulus regulus","Accipiter nisus","Haliaeetus albicilla","Prunella modularis","Anas crecca","Gallinula chloropus","Spinus spinus","Motacilla cinerea","Pyrrhula pyrrhula","Charadrius dubius","Emberiza schoeniclus","Corvus corone","Phoenicurus phoenicurus","Regulus ignicapilla","Ficedula albicollis","Serinus serinus","Columba oenas","Corvus cornix","Luscinia megarhynchos","Bucephala clangula","Aegithalos caudatus","Saxicola rubetra","Anthus trivialis","Strix aluco","Certhia familiaris","Sylvia curruca","Gallinago gallinago","Acrocephalus arundinaceus","Oriolus oriolus","Lanius excubitor","Poecile palustris","Coloeus monedula","Milvus milvus","Columba livia f. domestica","Jynx torquilla","Muscicapa striata","Sylvia borin","Actitis hypoleucos","Loxia curvirostra","Streptopelia turtur","Spatula clypeata","Tringa ochropus","Larus cachinnans","Coturnix coturnix","Acrocephalus palustris","Netta rufina","Phylloscopus sibilatrix","Emberiza calandra","Sterna hirundo","Lophophanes cristatus") # "Loxia curvirostra", "Charadrius dubius", "Cinclus cinclus", "Locustella luscinioides" "Parus major" "Turdus merula"
 
+ndop_top <- ndop_top(paste0(getwd(), "/species/ndop/ndop-top-2021-03-21.xlsx"))
 # pouze průnik NDOP a GBIF (totožné druhy odlišných názvů se nenapárují, Anas platyrhynchos+Turdus merula nelze kvůli vysokému počtu nálezů spočítat spThin)
-species <-
-  c(
-    "Parus major",
-    "Fringilla coelebs",
-    "Ardea cinerea",
-    "Buteo buteo",
-    "Emberiza citrinella",
-    "Phylloscopus collybita",
-    "Cygnus olor",
-    "Cyanistes caeruleus",
-    "Ciconia ciconia",
-    "Columba palumbus",
-    "Dendrocopos major",
-    "Sylvia atricapilla",
-    "Hirundo rustica",
-    "Fulica atra",
-    "Sturnus vulgaris",
-    "Chroicocephalus ridibundus",
-    "Erithacus rubecula",
-    "Turdus philomelos",
-    "Podiceps cristatus",
-    "Motacilla alba",
-    "Aythya fuligula",
-    "Falco tinnunculus",
-    "Lanius collurio",
-    "Garrulus glandarius",
-    "Circus aeruginosus",
-    "Phalacrocorax carbo",
-    "Alcedo atthis",
-    "Aythya ferina",
-    "Phoenicurus ochruros",
-    "Alauda arvensis",
-    "Anser anser",
-    "Pica pica",
-    "Apus apus",
-    "Corvus corax",
-    "Chloris chloris",
-    "Picus viridis",
-    "Carduelis carduelis",
-    "Passer montanus",
-    "Turdus pilaris",
-    "Periparus ater",
-    "Ardea alba",
-    "Dryocopus martius",
-    "Streptopelia decaocto",
-    "Delichon urbicum",
-    "Passer domesticus",
-    "Tachybaptus ruficollis",
-    "Turdus viscivorus",
-    "Phylloscopus trochilus",
-    "Crex crex",
-    "Mergus merganser",
-    "Coccothraustes coccothraustes",
-    "Cuculus canorus",
-    "Ciconia nigra",
-    "Phasianus colchicus",
-    "Regulus regulus",
-    "Accipiter nisus",
-    "Haliaeetus albicilla",
-    "Prunella modularis",
-    "Anas crecca",
-    "Gallinula chloropus",
-    "Spinus spinus",
-    "Motacilla cinerea",
-    "Pyrrhula pyrrhula",
-    "Charadrius dubius",
-    "Emberiza schoeniclus",
-    "Corvus corone",
-    "Phoenicurus phoenicurus",
-    "Regulus ignicapilla",
-    "Ficedula albicollis",
-    "Serinus serinus",
-    "Columba oenas",
-    "Corvus cornix",
-    "Luscinia megarhynchos",
-    "Bucephala clangula",
-    "Aegithalos caudatus",
-    "Saxicola rubetra",
-    "Anthus trivialis",
-    "Strix aluco",
-    "Certhia familiaris",
-    "Sylvia curruca",
-    "Gallinago gallinago",
-    "Acrocephalus arundinaceus",
-    "Oriolus oriolus",
-    "Lanius excubitor",
-    "Poecile palustris",
-    "Coloeus monedula",
-    "Milvus milvus",
-    "Jynx torquilla",
-    "Sylvia borin",
-    "Actitis hypoleucos",
-    "Loxia curvirostra",
-    "Streptopelia turtur",
-    "Tringa ochropus",
-    "Larus cachinnans",
-    "Coturnix coturnix",
-    "Acrocephalus palustris",
-    "Netta rufina",
-    "Emberiza calandra",
-    "Sterna hirundo",
-    "Lophophanes cristatus"
-  ) # "Loxia curvirostra", "Charadrius dubius", "Cinclus cinclus", "Locustella luscinioides" "Parus major" "Turdus merula"
+# species <- pull(ndop_top %>% select(species1, species2))
+species <- ndop_top %>% select(species1, species2)
 
-species_u <- gsub(" ", "_", species)
-px_size <- c(1000) # 100, 200, 1000, 2000, 10000
+# species_u <- gsub(" ", "_", species)
+px_size <- c(100) # 100, 200, 1000, 2000, 10000
 
 
 # předem si načíst .csv nálezů do proměnných a předávat rovnou je!
@@ -174,12 +73,12 @@ ptaci_ndop <-
   )
 
 for (px_size_item in px_size) {
-  for (species_item in species) {
+  for (sindex in 1:nrow(species)) {
     gc()
-    
+
     res_ndop <-
       ndop_divland(
-        list(from = '2016-01-01', to = '2020-12-31'),
+        list(from = "2016-01-01", to = "2020-12-31"),
         list(from = 4, to = 6),
         paste0(getwd(), "/../new-species/ndop/ptaci_ndop_reduction"),
         NULL,
@@ -189,10 +88,10 @@ for (px_size_item in px_size) {
     # res_ndop <- ndop(list(from = '2016-01-01', to = '2020-12-31'), list(from = 4, to = 6), paste0(getwd(), "/../ndop/csv"), NULL, px_size)
     # print(as_tibble(res_ndop), n = 10)
     gc()
-    
+
     res_gbif <-
       gbif(
-        list(from = '2016-01-01', to = '2020-12-31'),
+        list(from = "2016-01-01", to = "2020-12-31"),
         list(from = 4, to = 6),
         paste0(getwd(), "/../new-species/gbif"),
         "0209125-200613084148143-redukce4.csv",
@@ -202,18 +101,23 @@ for (px_size_item in px_size) {
       )
     # res_gbif <- gbif(list(from = '2016-01-01', to = '2020-12-31'), list(from = 4, to = 6), paste0(getwd(), "/../gbif/csv"), "0123613-200613084148143.csv", NULL, px_size)
     # print(as_tibble(res_gbif), n = 10)
-    
+
     gc()
-    
+
+    s2 <- species[sindex, 2]
+
+    if (!is.na(species[sindex, 2])) {
+      s2 <- as.character(species[sindex, 2])
+    }
+
     occ_prepared <-
       prepare_occurrences(
-        species_item,
+        c(as.character(species[sindex, 1]), s2),
         (px_size_item / 1000),
         paste0(export_path, "species/"),
         res_ndop,
         res_gbif,
         3035
       )
-    
   }
 }
