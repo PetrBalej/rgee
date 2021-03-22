@@ -15,7 +15,11 @@ prepare_occurrences <-
     # načte všechny požadované knihovny jako dělá jednotlivě library()
     lapply(required_packages, require, character.only = TRUE)
 
-    reps <- reps # původně 10, TODO: zvýšit až budu dělat více opakování modelů a pak i počítat průměry z jednotlivých thinnovaných subsetů - nutné změnit logiku výpočtů!!!
+    if (is.na(thin_par)) {
+      reps <- 1
+    } else {
+      reps <- reps # původně 10, TODO: zvýšit až budu dělat více opakování modelů a pak i počítat průměry z jednotlivých thinnovaných subsetů - nutné změnit logiku výpočtů!!!
+    }
     # + coordinateCleaner a spThin na NDOP/GBIF data...
 
     # kontrola jestli v ndop_occurrences gbif_occurrences něco je, pak (ne)spojovat
@@ -28,19 +32,22 @@ prepare_occurrences <-
     res_ndop_ll <- ndop_occurrences %>%
       filter(species == !!species[1])
     if (nrow(res_ndop_ll) > 0) {
-      res_ndop_ll_spthin <-
-        thin(
-          loc.data = res_ndop_ll,
-          lat.col = "latitude",
-          long.col = "longitude",
-          spec.col = "species",
-          thin.par = thin_par,
-          reps = reps,
-          locs.thinned.list.return = TRUE,
-          write.files = FALSE,
-          write.log.file = FALSE
-        )
-
+      if (is.na(thin_par)) {
+        res_ndop_ll_spthin <- res_ndop_ll
+      } else {
+        res_ndop_ll_spthin <-
+          thin(
+            loc.data = res_ndop_ll,
+            lat.col = "latitude",
+            long.col = "longitude",
+            spec.col = "species",
+            thin.par = thin_par,
+            reps = reps,
+            locs.thinned.list.return = TRUE,
+            write.files = FALSE,
+            write.log.file = FALSE
+          )
+      }
       for (i in 1:reps) {
         if (is.null(res_crs)) {
           res_ndop_ll_spthin[[i]] <-
@@ -109,19 +116,22 @@ prepare_occurrences <-
     }
 
     if (nrow(res_gbif_ll) > 0) {
-      res_gbif_ll_spthin <-
-        thin(
-          loc.data = res_gbif_ll,
-          lat.col = "latitude",
-          long.col = "longitude",
-          spec.col = "species",
-          thin.par = thin_par,
-          reps = reps,
-          locs.thinned.list.return = TRUE,
-          write.files = FALSE,
-          write.log.file = FALSE
-        )
-
+      if (is.na(thin_par)) {
+        res_gbif_ll_spthin <- res_gbif_ll
+      } else {
+        res_gbif_ll_spthin <-
+          thin(
+            loc.data = res_gbif_ll,
+            lat.col = "latitude",
+            long.col = "longitude",
+            spec.col = "species",
+            thin.par = thin_par,
+            reps = reps,
+            locs.thinned.list.return = TRUE,
+            write.files = FALSE,
+            write.log.file = FALSE
+          )
+      }
       for (i in 1:reps) {
         if (is.null(res_crs)) {
           res_gbif_ll_spthin[[i]] <-
@@ -198,19 +208,22 @@ prepare_occurrences <-
 
       ndop_gbif_ll <-
         ndop_gbif # ndop_gbif %>% filter(species == !!species)
-
-      ndop_gbif_ll_spthin <-
-        thin(
-          loc.data = ndop_gbif_ll,
-          lat.col = "latitude",
-          long.col = "longitude",
-          spec.col = "species",
-          thin.par = thin_par,
-          reps = reps,
-          locs.thinned.list.return = TRUE,
-          write.files = FALSE,
-          write.log.file = FALSE
-        )
+      if (is.na(thin_par)) {
+        ndop_gbif_ll_spthin <- ndop_gbif_ll
+      } else {
+        ndop_gbif_ll_spthin <-
+          thin(
+            loc.data = ndop_gbif_ll,
+            lat.col = "latitude",
+            long.col = "longitude",
+            spec.col = "species",
+            thin.par = thin_par,
+            reps = reps,
+            locs.thinned.list.return = TRUE,
+            write.files = FALSE,
+            write.log.file = FALSE
+          )
+      }
       for (i in 1:reps) {
         if (is.null(res_crs)) {
           ndop_gbif_ll_spthin[[i]] <-
