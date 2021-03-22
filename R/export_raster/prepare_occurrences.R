@@ -16,8 +16,11 @@ prepare_occurrences <-
     lapply(required_packages, require, character.only = TRUE)
 
     if (is.na(thin_par)) {
+      thin_par <- 9.999
+      no_thin <- TRUE
       reps <- 1
     } else {
+      no_thin <- FALSE
       reps <- reps # původně 10, TODO: zvýšit až budu dělat více opakování modelů a pak i počítat průměry z jednotlivých thinnovaných subsetů - nutné změnit logiku výpočtů!!!
     }
     # + coordinateCleaner a spThin na NDOP/GBIF data...
@@ -32,7 +35,7 @@ prepare_occurrences <-
     res_ndop_ll <- ndop_occurrences %>%
       filter(species == !!species[1])
     if (nrow(res_ndop_ll) > 0) {
-      if (is.na(thin_par)) {
+      if (no_thin) {
         res_ndop_ll_spthin <- res_ndop_ll
       } else {
         res_ndop_ll_spthin <-
@@ -116,7 +119,7 @@ prepare_occurrences <-
     }
 
     if (nrow(res_gbif_ll) > 0) {
-      if (is.na(thin_par)) {
+      if (no_thin) {
         res_gbif_ll_spthin <- res_gbif_ll
       } else {
         res_gbif_ll_spthin <-
@@ -208,7 +211,7 @@ prepare_occurrences <-
 
       ndop_gbif_ll <-
         ndop_gbif # ndop_gbif %>% filter(species == !!species)
-      if (is.na(thin_par)) {
+      if (no_thin) {
         ndop_gbif_ll_spthin <- ndop_gbif_ll
       } else {
         ndop_gbif_ll_spthin <-
