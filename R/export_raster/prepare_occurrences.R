@@ -36,7 +36,8 @@ prepare_occurrences <-
       filter(species == !!species[1])
     if (nrow(res_ndop_ll) > 0) {
       if (no_thin) {
-        res_ndop_ll_spthin <- res_ndop_ll
+        res_ndop_ll_spthin <- list()
+        res_ndop_ll_spthin[[1]] <- res_ndop_ll
       } else {
         res_ndop_ll_spthin <-
           thin(
@@ -52,17 +53,18 @@ prepare_occurrences <-
           )
       }
       for (i in 1:reps) {
-        if (is.null(res_crs)) {
-          res_ndop_ll_spthin[[i]] <-
-            as_tibble(res_ndop_ll_spthin[[i]]) %>% add_column(species = !!species_col[1], .before = 1)
-        } else {
-          res_ndop_ll_spthin[[i]] <-
-            as_tibble(res_ndop_ll_spthin[[i]]) %>% add_column(species = !!species_col[1], .before = 1)
+        res_ndop_ll_spthin[[i]] <-
+          as_tibble(res_ndop_ll_spthin[[i]]) %>%
+          mutate(species = !!species_col[1])
 
+
+        if (is.null(res_crs)) {
+
+        } else {
 
           res_ndop_ll_spthin_coords <- res_ndop_ll_spthin[[i]] %>%
             st_as_sf(
-              coords = c("Longitude", "Latitude"),
+              coords = c("longitude", "latitude"), # LL?
               crs = 4326
             ) %>%
             st_transform(res_crs) %>%
@@ -90,7 +92,8 @@ prepare_occurrences <-
             "_",
             i,
             ".csv"
-          )
+          ),
+          append = TRUE
         )
       }
     } else {
@@ -103,7 +106,8 @@ prepare_occurrences <-
           "_ndop_",
           species_col[1],
           ".csv"
-        )
+        ),
+        append = TRUE
       )
       res_ndop_ll_spthin <- NULL
     }
@@ -120,7 +124,8 @@ prepare_occurrences <-
 
     if (nrow(res_gbif_ll) > 0) {
       if (no_thin) {
-        res_gbif_ll_spthin <- res_gbif_ll
+        res_gbif_ll_spthin <- list()
+        res_gbif_ll_spthin[[1]] <- res_gbif_ll
       } else {
         res_gbif_ll_spthin <-
           thin(
@@ -136,23 +141,16 @@ prepare_occurrences <-
           )
       }
       for (i in 1:reps) {
+        res_gbif_ll_spthin[[i]] <-
+          as_tibble(res_gbif_ll_spthin[[i]]) %>%
+          mutate(species = !!species_col[1])
+
         if (is.null(res_crs)) {
-          res_gbif_ll_spthin[[i]] <-
-            as_tibble(res_gbif_ll_spthin[[i]]) %>% add_column(
-              "species" = !!species_col[1],
-              .before = 1
-            )
+
         } else {
-          res_gbif_ll_spthin[[i]] <-
-            as_tibble(res_gbif_ll_spthin[[i]]) %>% add_column(
-              "species" = !!species_col[1],
-              .before = 1
-            )
-
-
           res_gbif_ll_spthin_coords <- res_gbif_ll_spthin[[i]] %>%
             st_as_sf(
-              coords = c("Longitude", "Latitude"),
+              coords = c("longitude", "latitude"), # LL?
               crs = 4326
             ) %>%
             st_transform(res_crs) %>%
@@ -180,7 +178,8 @@ prepare_occurrences <-
             "_",
             i,
             ".csv"
-          )
+          ),
+          append = TRUE
         )
       }
     } else {
@@ -193,7 +192,8 @@ prepare_occurrences <-
           "_gbif_",
           species_col[1],
           ".csv"
-        )
+        ),
+        append = TRUE
       )
       res_gbif_ll_spthin <- NULL
     }
@@ -212,7 +212,8 @@ prepare_occurrences <-
       ndop_gbif_ll <-
         ndop_gbif # ndop_gbif %>% filter(species == !!species)
       if (no_thin) {
-        ndop_gbif_ll_spthin <- ndop_gbif_ll
+        ndop_gbif_ll_spthin <- list()
+        ndop_gbif_ll_spthin[[1]] <- ndop_gbif_ll
       } else {
         ndop_gbif_ll_spthin <-
           thin(
@@ -228,22 +229,17 @@ prepare_occurrences <-
           )
       }
       for (i in 1:reps) {
-        if (is.null(res_crs)) {
-          ndop_gbif_ll_spthin[[i]] <-
-            as_tibble(ndop_gbif_ll_spthin[[i]]) %>% add_column(
-              "species" = !!species_col[1],
-              .before = 1
-            )
-        } else {
-          ndop_gbif_ll_spthin[[i]] <-
-            as_tibble(ndop_gbif_ll_spthin[[i]]) %>% add_column(
-              "species" = !!species_col[1],
-              .before = 1
-            )
+        ndop_gbif_ll_spthin[[i]] <-
+          as_tibble(ndop_gbif_ll_spthin[[i]]) %>%
+          mutate(species = !!species_col[1])
 
+
+        if (is.null(res_crs)) {
+
+        } else {
           ndop_gbif_ll_spthin_coords <- ndop_gbif_ll_spthin[[i]] %>%
             st_as_sf(
-              coords = c("Longitude", "Latitude"),
+              coords = c("longitude", "latitude"), # LL?
               crs = 4326
             ) %>%
             st_transform(res_crs) %>%
@@ -271,7 +267,8 @@ prepare_occurrences <-
             "_",
             i,
             ".csv"
-          )
+          ),
+          append = TRUE
         )
       }
     } else {
@@ -284,7 +281,8 @@ prepare_occurrences <-
           "_all_",
           species_col[1],
           ".csv"
-        )
+        ),
+        append = TRUE
       )
       ndop_gbif_ll_spthin <- NULL
     }

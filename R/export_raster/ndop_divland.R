@@ -66,6 +66,8 @@ ndop_divland <-
         # filter(X != "<i>Skrytá lokalizace</i>") %>%
         # filter(DAT_SADA != "iNaturalist - data ČR") %>%
         filter(AUTOR != "iNaturalist uživatel") %>%
+        drop_na(X) %>%
+        drop_na(Y) %>%
         type_convert(
           col_types = set_cols,
           locale = locale("cs", decimal_mark = ",")
@@ -74,6 +76,8 @@ ndop_divland <-
       csv_ndop <-
         loaded_csv %>%
         filter(AUTOR != "iNaturalist uživatel") %>%
+        drop_na(X) %>%
+        drop_na(Y) %>%
         type_convert(
           col_types = set_cols,
           locale = locale("cs", decimal_mark = ",")
@@ -150,8 +154,10 @@ ndop_divland <-
         st_coordinates() %>%
         as_tibble() %>%
         rename(lat = Y, lon = X)
-      wgs84_coords$lat %<>% as.integer
-      wgs84_coords$lon %<>% as.integer
+      wgs84_coords$lat %<>%
+        as.integer
+      wgs84_coords$lon %<>%
+        as.integer
     }
 
 
@@ -165,7 +171,9 @@ ndop_divland <-
         species = DRUH,
         latitude = lat,
         longitude = lon
-      )
+      ) %>%
+      drop_na(latitude) %>%
+      drop_na(longitude)
 
     # print(as_tibble(csv_ndop_s_wgs84), n = 10)
     return(csv_ndop_s_wgs84)

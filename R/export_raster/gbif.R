@@ -1,4 +1,4 @@
-gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), season_months_range = list(from = 4, to = 7), path = "/../gbif/", csv_name = NULL, res_crs = 3035, presicion = 100, loaded_csv = NULL) {
+gbif <- function(years_range = list(from = "2017-01-01", to = "2019-12-31"), season_months_range = list(from = 4, to = 7), path = "/../gbif/", csv_name = NULL, res_crs = 3035, presicion = 100, loaded_csv = NULL) {
   # kontrola (do)instalace všech dodatečně potřebných balíčků
   required_packages <- c("tidyverse", "rgbif", "sf", "lubridate", "magrittr", "dplyr")
   install.packages(setdiff(required_packages, rownames(installed.packages())))
@@ -17,13 +17,13 @@ gbif <- function(years_range = list(from = '2017-01-01', to = '2019-12-31'), sea
   sz_cechy <- list(xmin = 13.0, xmax = 13.5, ymin = 50.0, ymax = 50.5)
   cesko <- list(xmin = 12.0, xmax = 19.0, ymin = 48.5, ymax = 51.5)
   str_evropa <- list(xmin = 8.5, xmax = 22.0, ymin = 46.0, ymax = 53.5)
-str_evropa2 <-
-  list(
-    xmin = 8.6,
-    xmax = 21.9,
-    ymin = 46.4,
-    ymax = 53.1
-  )
+  str_evropa2 <-
+    list(
+      xmin = 8.6,
+      xmax = 21.9,
+      ymin = 46.4,
+      ymax = 53.1
+    )
   # výběr konkrétního území
   bb <- str_evropa2
 
@@ -57,7 +57,7 @@ str_evropa2 <-
 
 
 
-  # pouze do 500 záznamů 
+  # pouze do 500 záznamů
   # do cyklu províce druhů
 
   # scientificNames <- c("Charadrius dubius", "Cinclus cinclus", "Locustella luscinioides", "Loxia curvirostra")
@@ -89,22 +89,22 @@ str_evropa2 <-
     # "prefiltr" už při downloadu, mohl bych ale chtít uložit vše pro daný druh a datum filtrovat až dodatečně (postfiltr), pak bych nemusel pokaždé stahovat z GBIFu. Dodělat???
 
     rd <- occ_download(
-    # pred("taxonKey", 2493551),
-  pred_in("taxonKey", taxonKeys),
-    # pred("scientificName", "Locustella luscinioides"), # nefunguje
-    # pred("species", "Locustella luscinioides"), # nefunguje
-    # pred_gte("eventDate", years_range$from), # nefunguje, chybí přidat "T00:00:00"?
-    # pred_lte("eventDate", years_range$to), # nefunguje, chybí přidat "T00:00:00"?
-  pred_gte("year", year(years_range$from)),
-  pred_lte("year", year(years_range$to)),
-  pred_gte("month", season_months_range$from),
-  pred_lte("month", season_months_range$to),
-    # pred("geometry", boundingBox_wkt),
-  pred_within(boundingBox_wkt),
-  pred("hasCoordinate", TRUE),
-  pred("hasGeospatialIssue", FALSE),
-  format = "SIMPLE_CSV"
-  )
+      # pred("taxonKey", 2493551),
+      pred_in("taxonKey", taxonKeys),
+      # pred("scientificName", "Locustella luscinioides"), # nefunguje
+      # pred("species", "Locustella luscinioides"), # nefunguje
+      # pred_gte("eventDate", years_range$from), # nefunguje, chybí přidat "T00:00:00"?
+      # pred_lte("eventDate", years_range$to), # nefunguje, chybí přidat "T00:00:00"?
+      pred_gte("year", year(years_range$from)),
+      pred_lte("year", year(years_range$to)),
+      pred_gte("month", season_months_range$from),
+      pred_lte("month", season_months_range$to),
+      # pred("geometry", boundingBox_wkt),
+      pred_within(boundingBox_wkt),
+      pred("hasCoordinate", TRUE),
+      pred("hasGeospatialIssue", FALSE),
+      format = "SIMPLE_CSV"
+    )
 
     occ_download_wait(rd)
 
@@ -123,47 +123,52 @@ str_evropa2 <-
   set_cols <- cols(gbifID = "c", coordinateUncertaintyInMeters = "d", coordinatePrecision = "d", day = "i", month = "i", year = "i")
 
 
-if(is.null(loaded_csv)){
-  csv_gbif <- read_tsv(csv, col_types = set_cols)
-}else{
-csv_gbif <- loaded_csv
+  if (is.null(loaded_csv)) {
+    csv_gbif <- read_tsv(csv, col_types = set_cols)
+  } else {
+    csv_gbif <- loaded_csv
+  }
 
-}
-  
 
 
 
   # coordinateUncertaintyInMeters, coordinatePrecision - problematické, většinou neuvedeno vůbec...
   csv_gbif_filter <- csv_gbif %>%
-  filter(
-    (coordinateUncertaintyInMeters <= presicion | is.na(coordinateUncertaintyInMeters) | coordinateUncertaintyInMeters == "NA" | coordinateUncertaintyInMeters == NA | is.null(coordinateUncertaintyInMeters) | coordinateUncertaintyInMeters == " ") &
-    (coordinatePrecision <= presicion | is.na(coordinatePrecision) | coordinatePrecision == "NA" | coordinatePrecision == NA | is.null(coordinatePrecision) | coordinatePrecision == " ") &
-    between(month, season_months_range$from, season_months_range$to) &
-    between(year, year(years_range$from), year(years_range$to)) 
+    filter(
+      (coordinateUncertaintyInMeters <= presicion | is.na(coordinateUncertaintyInMeters) | coordinateUncertaintyInMeters == "NA" | coordinateUncertaintyInMeters == NA | is.null(coordinateUncertaintyInMeters) | coordinateUncertaintyInMeters == " ") &
+        (coordinatePrecision <= presicion | is.na(coordinatePrecision) | coordinatePrecision == "NA" | coordinatePrecision == NA | is.null(coordinatePrecision) | coordinatePrecision == " ") &
+        between(month, season_months_range$from, season_months_range$to) &
+        between(year, year(years_range$from), year(years_range$to))
     ) %>%
-  dplyr::select(gbifID, species, decimalLatitude, decimalLongitude) 
+    dplyr::select(gbifID, species, decimalLatitude, decimalLongitude) %>%
+    drop_na(decimalLatitude) %>%
+    drop_na(decimalLongitude)
+
 
   if (is.null(res_crs)) {
-    csv_gbif_filter %<>% rename(key = gbifID, latitude = decimalLatitude, longitude = decimalLongitude)
-  }else{
+    csv_gbif_filter %<>%
+      rename(key = gbifID, latitude = decimalLatitude, longitude = decimalLongitude)
+  } else {
     csv_gbif_filter_coords <- csv_gbif_filter %>%
-    st_as_sf(coords = c("decimalLongitude", "decimalLatitude"), crs = 4326) %>%
-    st_transform(res_crs) %>%
-    st_coordinates() %>%
-    as_tibble()
+      st_as_sf(coords = c("decimalLongitude", "decimalLatitude"), crs = 4326) %>%
+      st_transform(res_crs) %>%
+      st_coordinates() %>%
+      as_tibble()
 
     csv_gbif_filter %<>%
-    mutate(csv_gbif_filter_coords) %>%
-    dplyr::select(gbifID, species, X, Y) %>%
-    rename(key = gbifID, latitude = Y, longitude = X)
+      mutate(csv_gbif_filter_coords) %>%
+      dplyr::select(gbifID, species, X, Y) %>%
+      rename(key = gbifID, latitude = Y, longitude = X) %>%
+      drop_na(latitude) %>%
+      drop_na(longitude)
 
-    csv_gbif_filter$latitude %<>% as.integer
-    csv_gbif_filter$longitude %<>% as.integer
+    csv_gbif_filter$latitude %<>%
+      as.integer
+    csv_gbif_filter$longitude %<>%
+      as.integer
   }
 
   return(csv_gbif_filter)
 }
 # res <- gbif(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7), paste0(getwd(), "/../gbif/csv"), "0123613-200613084148143.csv")
 # print(as_tibble(res), n = 10)
-
-
