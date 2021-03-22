@@ -21,7 +21,7 @@ prepare_occurrences <-
     # kontrola jestli v ndop_occurrences gbif_occurrences něco je, pak (ne)spojovat
 
     species <- select_species
-    species_col <- sapply(species, gsub, pattern = " ", replacement = " ")
+    species_col <- sapply(species, gsub, pattern = " ", replacement = "_")
     gc()
 
     # NDOP
