@@ -3,6 +3,13 @@ start_time <- Sys.time()
 # předem nainstalováno...
 library(rgee)
 
+# nastavit working directory
+wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee" # samsung500ntfs # paste0(path.expand("~"), "/Downloads/rgee2/rgee")
+setwd(wd)
+
+# závisí na některých funkcích z:
+source(paste0(getwd(), "/R/export_raster/functions.R"))
+
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
   c("sp",
