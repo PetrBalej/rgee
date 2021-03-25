@@ -21,8 +21,26 @@ ndop_top <-
             "Mareca penelope" = "Anas penelope",
             "Calidris pugnax" = "Philomachus pugnax",
             "Dryobates minor" = "Dendrocopos minor",
-            "Acanthis cabaret" = "Acanthis flammea"
+            # nové oproti traits
+            "Acanthis cabaret" = "Acanthis flammea",
+            "Mareca strepera" = "Anas strepera",
+            "Clanga pomarina" = "Aquila pomarina",
+            "Tetrastes bonasia" = "Bonasa bonasia",
+            "Linaria cannabina" = "Carduelis cannabina",
+            "Acanthis flammea" = "Carduelis flammea",
+            "Dendrocoptes medius" = "Dendrocopos medius",
+            "Dryobates minor" = "Dendrocopos minor",
+            "Ardea alba" = "Egretta alba",
+            "Ichthyaetus melanocephalus" = "Larus melanocephalus",
+            "Poecile montanus" = "Parus montanus",
+            "Saxicola rubicola" = "Saxicola torquata",
+            "Lyrurus tetrix" = "Tetrao tetrix"
         )
+
+
+        # Spinus spinus = Carduelis spinus
+        # + Muscicapa striata # proč není v NDOP exportech???
+
         # Totéž nutno už při výběru z NDOP-u?
         # Nutno sjednotit některé poddruhy s druhy Acanthis cabaret do Acanthis flammea...
         xls %<>%
