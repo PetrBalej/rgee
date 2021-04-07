@@ -12,13 +12,15 @@ source(paste0(getwd(), "/R/export_raster/functions.R"))
 
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
-  c("sp",
+  c(
+    "sp",
     "rgdal",
     "mapview",
     "raster",
     "geojsonio",
     "stars",
-    "httpuv")
+    "httpuv"
+  )
 # "googledrive" # kontrola při použití v ee_Initialize?
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
@@ -51,7 +53,7 @@ retype <- TRUE
 res_proj_epsg <- 3035
 
 ## výsledná velikost pixelu v m
-scale <- 100
+scale <- 1000
 
 ## jednotná "značka" přidaná ke všem output rasterům z jednoho běhu skriptu (stejné nastavení parametrů) a
 tag_name <- scale # "" # gsub('[^0-9-]', '-', Sys.time())
@@ -103,11 +105,10 @@ bb <- sz_cechy
 ## časové rozsahy
 
 # rozsah snímků od/do
-years_range <- list(from = '2016-01-01', to = '2020-12-31')
+years_range <- list(from = "2016-01-01", to = "2020-12-31")
 
-# rozsah jedné sezóny v měsících (podvýběr z vybraného období years_range výše)
-season_months_range <- list(from = 4, to = 6)
-
+# rozsah jedné sezóny v měsících (podvýběr z vybraného období years_range výše), možno i více sezón
+season_months_range <- list(c(3, 5), c(6, 8), c(9, 11))
 
 ## výstupní fotmát exportovaných rasterů
 # pokud zadám koncovku, budou rastry uloženy jako fyzické soubory na disk
@@ -149,83 +150,118 @@ if (!is.character(bb)) {
   xmax <- bb$xmax
   ymin <- bb$ymin
   ymax <- bb$ymax
-  
+
   bb_geometry <- NULL
   bb_geometry_rectangle <- ee$Geometry$Rectangle(
     coords = c(xmin, ymin, xmax, ymax),
     proj = "EPSG:4326",
     geodesic = FALSE
   )
-  
 } else {
   if (file.exists(bb)) {
     bb_geometry_ee <- st_read(bb) %>% sf_as_ee()
-    bb_geometry <- bb_geometry_ee$geometry() #[[1]]$getInfo()
+    bb_geometry <- bb_geometry_ee$geometry() # [[1]]$getInfo()
     bb_geometry_rectangle <- bb_geometry_ee$geometry()$bounds()
   } else {
     stop(paste0("Shapefile ", bb, " not exist!"))
   }
-  
 }
 
 
-################################################################
-# L8 _SR 'LANDSAT/LC08/C01/T1_SR' - raw bandy
-################################################################
+for (season in season_months_range) {
 
-# aplikace základních geogracických, časových a odmračňovacích/odstiňovacích filtrů
-l8_sr_collection <-
-  ee$ImageCollection(gdl$landsat$geeSnippet)$filterBounds(bb_geometry_rectangle)$filterDate(years_range$from, years_range$to)$filter(
-    ee$Filter$calendarRange(season_months_range$from, season_months_range$to, "month")
-  )$map(mask_L8_sr)
+  ################################################################
+  # L8 _SR 'LANDSAT/LC08/C01/T1_SR' - raw bandy
+  ################################################################
 
-# příprava vrstvy s počtem snímků použitých na jeden pixel pro následné odmaskování (odstranění) pixelů s příliš nízkou hodnotou (threshold_px_count) snímků, které se na něm podílely
-# zde na B1, nemělo by záležet o který band jde (raději ověřit?), i odmračnění probíhá hromadně skrz všechny bandy, počet použitých snímků pixelů bude u všech bandů stejný
-band <- "px_count"
-l8_sr_collection_px_count <-
-  l8_sr_collection$select("B1")$count()$rename(band)$gte(threshold_px_count)
-file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
-file_name_list <- append(file_name_list, c(file_name))
-raster_stack_list[[band]] <-
-  export_gee_image(
-    l8_sr_collection_px_count,
-    bb_geometry_rectangle,
-    scale,
-    file_name,
-    output_raster_ext,
-    band,
-    NULL,
-    NULL,
-    res_proj_epsg,
-    use_google_drive,
-    retype
-  )
+  # aplikace základních geogracických, časových a odmračňovacích/odstiňovacích filtrů
+  l8_sr_collection <-
+    ee$ImageCollection(gdl$landsat$geeSnippet)$
+      filterBounds(bb_geometry_rectangle)$
+      filterDate(years_range$from, years_range$to)$
+      filter(
+      ee$Filter$calendarRange(season[1], season[2], "month")
+    )$map(mask_L8_sr)
 
-# výchozí extent a resolution převezmu z L8
-default_extent <- extent(raster_stack_list[["px_count"]])
-default_res <- res(raster_stack_list[["px_count"]])
-
-# medián pro výslednou hodnotu pixelu - export všech bandů
-
-# https://landsat.gsfc.nasa.gov/data/how-to-use-landsat-data/
-# B11 - nedoporučeno používat
-# B10 jen s atm. korekcemi z atmcorr.gsfc.nasa.gov - jsou součástí dopočtených GEE L8 _SR datasetů?!
-# u B10 by navíc bylo vhodné odfiltrovat pryč vodní toky a plochy, pokud se na nich něco nemůže vyskytovat (tváří se jako lesy a jiná chladná místa)
-
-bands_all <- c("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B10")
-# bands_all <- c("B1", "B2")
-
-for (band in bands_all) {
-  print(band)
-  # medián pro výslednou hodnotu pixelu a aplikace vrstvy na odmaskování pixelů s nízkým podílem snímků
-  l8_sr_collection_reduce_1_band <-
-    l8_sr_collection$select(band)$median()$updateMask(l8_sr_collection_px_count)$unmask(no_data_value) # -3.4e+38
-  
-  file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
+  # příprava vrstvy s počtem snímků použitých na jeden pixel pro následné odmaskování (odstranění) pixelů s příliš nízkou hodnotou (threshold_px_count) snímků, které se na něm podílely
+  # zde na B1, nemělo by záležet o který band jde (raději ověřit?), i odmračnění probíhá hromadně skrz všechny bandy, počet použitých snímků pixelů bude u všech bandů stejný
+  band <- "px_count"
+  l8_sr_collection_px_count <-
+    l8_sr_collection$select("B1")$count()$rename(band)$gte(threshold_px_count)
+  file_name <- paste0(export_path, "/l8_", season[1], "-", season[2], "_", tag_name, "_", band)
   file_name_list <- append(file_name_list, c(file_name))
   raster_stack_list[[band]] <-
     export_gee_image(
-      l8_sr_collection_reduce_1_band,
+      l8_sr_collection_px_count,
+      bb_geometry_rectangle,
+      scale,
+      file_name,
+      output_raster_ext,
+      band,
+      NULL,
+      NULL,
+      res_proj_epsg,
+      use_google_drive,
+      retype
+    )
+
+  # výchozí extent a resolution převezmu z L8
+  default_extent <- extent(raster_stack_list[["px_count"]])
+  default_res <- res(raster_stack_list[["px_count"]])
+
+  # medián pro výslednou hodnotu pixelu - export všech bandů
+
+  # https://landsat.gsfc.nasa.gov/data/how-to-use-landsat-data/
+  # B11 - nedoporučeno používat
+  # B10 jen s atm. korekcemi z atmcorr.gsfc.nasa.gov - jsou součástí dopočtených GEE L8 _SR datasetů?!
+  # u B10 by navíc bylo vhodné odfiltrovat pryč vodní toky a plochy, pokud se na nich něco nemůže vyskytovat (tváří se jako lesy a jiná chladná místa)
+
+  bands_all <- c("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B10")
+  # bands_all <- c("B1", "B2")
+
+  for (band in bands_all) {
+    print(band)
+    # medián pro výslednou hodnotu pixelu a aplikace vrstvy na odmaskování pixelů s nízkým podílem snímků
+    l8_sr_collection_reduce_1_band <-
+      l8_sr_collection$select(band)$median()$updateMask(l8_sr_collection_px_count)$unmask(no_data_value) # -3.4e+38
+
+    file_name <- paste0(export_path, "/l8_", season[1], "-", season[2], "_", tag_name, "_", band)
+    file_name_list <- append(file_name_list, c(file_name))
+    raster_stack_list[[band]] <-
+      export_gee_image(
+        l8_sr_collection_reduce_1_band,
+        bb_geometry_rectangle,
+        scale,
+        file_name,
+        output_raster_ext,
+        band,
+        default_extent,
+        default_res,
+        res_proj_epsg,
+        use_google_drive,
+        retype
+      )
+  }
+
+
+  ################################################################
+  # L8 _SR 'LANDSAT/LC08/C01/T1_SR' - NDVI
+  ################################################################
+
+  bands_all <- c("B5", "B4")
+
+  band <- "NDVI"
+  print(band)
+  # výpočet + odmaskování pixelů s nízkým podílem snímků
+  ndvi <-
+    l8_sr_collection$select(bands_all)$median()$normalizedDifference(bands_all)$
+      rename(band)$select(band)$updateMask(l8_sr_collection_px_count)$unmask(no_data_value)
+
+  file_name <- paste0(export_path, "/l8_", season[1], "-", season[2], "_", tag_name, "_", band)
+  file_name_list <- append(file_name_list, c(file_name))
+  raster_stack_list[[band]] <-
+    export_gee_image(
+      ndvi,
       bb_geometry_rectangle,
       scale,
       file_name,
@@ -237,40 +273,7 @@ for (band in bands_all) {
       use_google_drive,
       retype
     )
-  
 }
-
-
-################################################################
-# L8 _SR 'LANDSAT/LC08/C01/T1_SR' - NDVI
-################################################################
-
-bands_all <- c("B5", "B4")
-
-band <- "NDVI"
-
-# výpočet + odmaskování pixelů s nízkým podílem snímků
-ndvi <-
-  l8_sr_collection$select(bands_all)$median()$normalizedDifference(bands_all)$rename(band)$select(band)$updateMask(l8_sr_collection_px_count)$unmask(no_data_value)
-
-file_name <- paste0(export_path, "/l8_", tag_name, "_", band)
-file_name_list <- append(file_name_list, c(file_name))
-raster_stack_list[[band]] <-
-  export_gee_image(
-    ndvi,
-    bb_geometry_rectangle,
-    scale,
-    file_name,
-    output_raster_ext,
-    band,
-    default_extent,
-    default_res,
-    res_proj_epsg,
-    use_google_drive,
-    retype
-  )
-
-
 ################################################################
 # Worldclim/Bioclim 'WORLDCLIM/V1/BIO'
 ################################################################
@@ -283,7 +286,7 @@ bands_all <- wc$bandNames()$getInfo()
 for (band in bands_all) {
   print(band)
   wc_1_band <- wc$select(band)
-  
+
   file_name <- paste0(export_path, "/wc_", tag_name, "_", band)
   file_name_list <- append(file_name_list, c(file_name))
   raster_stack_list[[band]] <-
@@ -300,7 +303,6 @@ for (band in bands_all) {
       use_google_drive,
       retype
     )
-  
 }
 
 
@@ -312,6 +314,7 @@ for (band in bands_all) {
 
 # elevation
 band <- "elevation"
+print(band)
 srtm <- ee$Image(gdl$srtm$geeSnippet)$select(band)
 
 file_name <- paste0(export_path, "/srtm_", tag_name, "_", band)
@@ -333,6 +336,7 @@ raster_stack_list[[band]] <-
 
 # slope
 band <- "slope"
+print(band)
 slope <- ee$Terrain$slope(srtm)
 file_name <- paste0(export_path, "/srtm_", tag_name, "_", band)
 file_name_list <- append(file_name_list, c(file_name))
@@ -353,6 +357,7 @@ raster_stack_list[[band]] <-
 
 # aspect (ve stupních)
 band <- "aspect"
+print(band)
 aspect <-
   ee$Terrain$aspect(srtm) # $divide(180)$multiply(pi)$sin() # převod na radiány
 file_name <- paste0(export_path, "/srtm_", tag_name, "_", band)
@@ -379,6 +384,7 @@ raster_stack_list[[band]] <-
 ################################################################
 
 band <- "landcover"
+print(band)
 corine <- ee$Image(gdl$corine$geeSnippet)$select(c(band))
 
 file_name <- paste0(export_path, "/clc_", tag_name, "_", band)
@@ -421,8 +427,8 @@ raster_stack_list[[band]] <-
 if (vis_map) {
   bands_vis <- c("B4", "B3", "B2")
   l8_sr_collection_reduce <-
-    l8_sr_collection$select(bands_vis)$median() #$reproject("EPSG:32633")
-  
+    l8_sr_collection$select(bands_vis)$median() # $reproject("EPSG:32633")
+
   # vizualizace v mapovém okně
   visparams <- list(
     bands = bands_vis,
@@ -430,7 +436,7 @@ if (vis_map) {
     max = 3000,
     gamma = 1.4
   )
-  
+
   # Map$setCenter(13.0, 50.0, 10)
   Map$centerObject(bb_geometry_rectangle, zoom = 9)
   l1 <-
