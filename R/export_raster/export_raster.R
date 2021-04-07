@@ -273,7 +273,192 @@ for (season in season_months_range) {
       use_google_drive,
       retype
     )
+
+
+
+  ################################################################
+  # L8 _SR 'LANDSAT/LC08/C01/T1_SR' - NDWI/NDMI
+  # https://www.linkedin.com/pulse/ndvi-ndbi-ndwi-calculation-using-landsat-7-8-tek-bahadur-kshetri
+  ################################################################
+
+  bands_all <- c("B5", "B6")
+
+  band <- "NDWI"
+  print(band)
+  # výpočet + odmaskování pixelů s nízkým podílem snímků
+  ndwi <-
+    l8_sr_collection$select(bands_all)$median()$normalizedDifference(bands_all)$
+      rename(band)$select(band)$updateMask(l8_sr_collection_px_count)$unmask(no_data_value)
+
+  file_name <- paste0(export_path, "/l8_", season[1], "-", season[2], "_", tag_name, "_", band)
+  file_name_list <- append(file_name_list, c(file_name))
+  raster_stack_list[[band]] <-
+    export_gee_image(
+      ndwi,
+      bb_geometry_rectangle,
+      scale,
+      file_name,
+      output_raster_ext,
+      band,
+      default_extent,
+      default_res,
+      res_proj_epsg,
+      use_google_drive,
+      retype
+    )
+
+
+
+  ################################################################
+  # L8 _SR 'LANDSAT/LC08/C01/T1_SR' - MNDWI
+  # https://www.linkedin.com/pulse/ndvi-ndbi-ndwi-calculation-using-landsat-7-8-tek-bahadur-kshetri
+  ################################################################
+
+  bands_all <- c("B3", "B6")
+
+  band <- "MNDWI"
+  print(band)
+  # výpočet + odmaskování pixelů s nízkým podílem snímků
+  mndwi <-
+    l8_sr_collection$select(bands_all)$median()$normalizedDifference(bands_all)$
+      rename(band)$select(band)$updateMask(l8_sr_collection_px_count)$unmask(no_data_value)
+
+  file_name <- paste0(export_path, "/l8_", season[1], "-", season[2], "_", tag_name, "_", band)
+  file_name_list <- append(file_name_list, c(file_name))
+  raster_stack_list[[band]] <-
+    export_gee_image(
+      mndwi,
+      bb_geometry_rectangle,
+      scale,
+      file_name,
+      output_raster_ext,
+      band,
+      default_extent,
+      default_res,
+      res_proj_epsg,
+      use_google_drive,
+      retype
+    )
+
+
+  ################################################################
+  # L8 _SR 'LANDSAT/LC08/C01/T1_SR' - EVI
+  # https://www.usgs.gov/core-science-systems/nli/landsat/landsat-enhanced-vegetation-index?qt-science_support_page_related_con=0
+  # In Landsat 8, EVI = 2.5 * ((Band 5 – Band 4) / (Band 5 + 6 * Band 4 – 7.5 * Band 2 + 1)).
+  ################################################################
+
+  bands_all <- c("B5", "B4", "B2")
+  band <- "EVI"
+  print(band)
+
+  # výpočet + odmaskování pixelů s nízkým podílem snímků
+  evi_prep <- l8_sr_collection$select(bands_all)$median()
+  evi <- evi_prep$expression(
+    "2.5 * ((B5 - B4) / (B5 + 6 * B4 - 7.5 * B2 + 1))",
+    list(
+      B5 = evi_prep$select("B5"),
+      B4 = evi_prep$select("B4"),
+      B2 = evi_prep$select("B2")
+    )
+  )$rename(band)$select(band)$updateMask(l8_sr_collection_px_count)$unmask(no_data_value)
+
+  file_name <- paste0(export_path, "/l8_", season[1], "-", season[2], "_", tag_name, "_", band)
+  file_name_list <- append(file_name_list, c(file_name))
+  raster_stack_list[[band]] <-
+    export_gee_image(
+      evi,
+      bb_geometry_rectangle,
+      scale,
+      file_name,
+      output_raster_ext,
+      band,
+      default_extent,
+      default_res,
+      res_proj_epsg,
+      use_google_drive,
+      retype
+    )
+
+
+
+  ################################################################
+  # L8 _SR 'LANDSAT/LC08/C01/T1_SR' - SAVI
+  # https://www.usgs.gov/core-science-systems/nli/landsat/landsat-soil-adjusted-vegetation-index
+  # In Landsat 8, SAVI = ((Band 5 – Band 4) / (Band 5 + Band 4 + 0.5)) * (1.5).
+  ################################################################
+
+  bands_all <- c("B5", "B4")
+  band <- "SAVI"
+  print(band)
+
+  # výpočet + odmaskování pixelů s nízkým podílem snímků
+  savi_prep <- l8_sr_collection$select(bands_all)$median()
+  savi <- savi_prep$expression(
+    "((B5 - B4) / (B5 + B4 + 0.5)) * (1.5)",
+    list(
+      B5 = savi_prep$select("B5"),
+      B4 = savi_prep$select("B4")
+    )
+  )$rename(band)$select(band)$updateMask(l8_sr_collection_px_count)$unmask(no_data_value)
+
+  file_name <- paste0(export_path, "/l8_", season[1], "-", season[2], "_", tag_name, "_", band)
+  file_name_list <- append(file_name_list, c(file_name))
+  raster_stack_list[[band]] <-
+    export_gee_image(
+      savi,
+      bb_geometry_rectangle,
+      scale,
+      file_name,
+      output_raster_ext,
+      band,
+      default_extent,
+      default_res,
+      res_proj_epsg,
+      use_google_drive,
+      retype
+    )
+
+
+  ################################################################
+  # L8 _SR 'LANDSAT/LC08/C01/T1_SR' - MSAVI
+  # https://www.usgs.gov/core-science-systems/nli/landsat/landsat-modified-soil-adjusted-vegetation-index
+  # In Landsat 8, MSAVI = (2 * Band 5 + 1 – sqrt ((2 * Band 5 + 1)2 – 8 * (Band 5 – Band 4))) / 2.
+  ################################################################
+
+  bands_all <- c("B5", "B4")
+  band <- "MSAVI"
+  print(band)
+
+  # výpočet + odmaskování pixelů s nízkým podílem snímků
+  msavi_prep <- l8_sr_collection$select(bands_all)$median()
+  msavi <- msavi_prep$expression(
+    "(2 * B5 + 1 - sqrt(pow((2 * B5 + 1), 2) - 8 * (B5 - B4))) / 2",
+    list(
+      B5 = msavi_prep$select("B5"),
+      B4 = msavi_prep$select("B4")
+    )
+  )$rename(band)$select(band)$updateMask(l8_sr_collection_px_count)$unmask(no_data_value)
+
+  file_name <- paste0(export_path, "/l8_", season[1], "-", season[2], "_", tag_name, "_", band)
+  file_name_list <- append(file_name_list, c(file_name))
+  raster_stack_list[[band]] <-
+    export_gee_image(
+      msavi,
+      bb_geometry_rectangle,
+      scale,
+      file_name,
+      output_raster_ext,
+      band,
+      default_extent,
+      default_res,
+      res_proj_epsg,
+      use_google_drive,
+      retype
+    )
 }
+
+
+
 ################################################################
 # Worldclim/Bioclim 'WORLDCLIM/V1/BIO'
 ################################################################

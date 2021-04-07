@@ -135,8 +135,10 @@ export_gee_image <-
 
     # přetypovat za účelem optimalizace velikosti?
     if (retype == TRUE) {
-      # pokud jde o NDVI, nutná úprava před přetypováním na INT16
-      if (grepl("ndvi", tolower(dsn), fixed = TRUE) == TRUE) {
+      # pokud jde o NDVI, *NDWI, *SAVI nebo EVI nutná úprava před přetypováním na INT16
+      if (grepl("nd.i", tolower(dsn), fixed = FALSE) == TRUE |
+        grepl("evi", tolower(dsn), fixed = TRUE) == TRUE |
+        grepl("savi", tolower(dsn), fixed = TRUE) == TRUE) {
         image <- image$multiply(10000)$toInt16()
       } else {
         image <- image$toInt16()
@@ -195,4 +197,117 @@ rasters_dir_stack <- function(path_dir, raster_extension) {
     )
   raster_stack <- stack(lapply(rasters_list, raster))
   return(raster_stack)
+}
+
+
+# https://gist.github.com/johnbaums/3ff4c9aa01032ce21a84672c477a6dfb
+maxtss2 <- function(x, t = "Test") {
+
+  # t = "Test" / "Training"
+  # x: a directory containing the cross-validated Maxent output
+  ## Notes:
+  ## tss  = sens + spec - 1
+  ## sens = 1 - omission
+  ## spec = 1 - FPA
+  ## tss  = 1 - omission + 1 - fpa - 1
+  ##      = 1 - (omission + fpa)
+
+  # rekurzivně prohledat i podadresáře???  - když si budu dělat vlastní cykly s testy recursive = TRUE
+
+  scol <- paste0(t, ".omission")
+  ff <- list.files(x, "omission\\.csv$", full.names = TRUE)
+  max_tss <- sapply(ff, function(f) {
+    d <- read.csv(f)
+    # d$Training.omission
+    i <- which.min(d$scol + d$Fractional.area)
+    type <- gsub("Corresponding\\.|\\.value", "", colnames(d)[3])
+    if (!tolower(type) %in% c("logistic", "cloglog")) {
+      stop('Expected name of third column to contain either "logistic" or "Cloglog".')
+    }
+
+    # d$Training.omission
+    c(max_tss = 1 - min(d$tscol + d$Fractional.area), thr = d[, 3][i])
+  })
+  out <- t(max_tss)
+  rownames(out) <- basename(rownames(out))
+  list(
+    max_tss = out, max_tss_mean = mean(out[, "max_tss"]),
+    max_tss_sd = sd(out[, "max_tss"])
+  )
+}
+
+
+
+
+# https://gist.github.com/johnbaums/3ff4c9aa01032ce21a84672c477a6dfb
+maxtss2test <- function(x, species) {
+
+  # t = "Test" / "Training"
+  # x: a directory containing the cross-validated Maxent output
+  ## Notes:
+  ## tss  = sens + spec - 1
+  ## sens = 1 - omission
+  ## spec = 1 - FPA
+  ## tss  = 1 - omission + 1 - fpa - 1
+  ##      = 1 - (omission + fpa)
+
+  # rekurzivně prohledat i podadresáře???  - když si budu dělat vlastní cykly s testy recursive = TRUE
+
+
+  ff <- list.files(x, paste0(species, "_omission\\.csv$"), full.names = TRUE, recursive = TRUE)
+  max_tss <- sapply(ff, function(f) {
+    d <- read.csv(f)
+    # d$Training.omission
+    i <- which.min(d$Test.omission + d$Fractional.area)
+    type <- gsub("Corresponding\\.|\\.value", "", colnames(d)[3])
+    if (!tolower(type) %in% c("logistic", "cloglog")) {
+      stop('Expected name of third column to contain either "logistic" or "Cloglog".')
+    }
+
+    # d$Training.omission
+    c(max_tss = 1 - min(d$Test.omission + d$Fractional.area), thr = d[, 3][i])
+  })
+  out <- t(max_tss)
+  rownames(out) <- basename(rownames(out))
+  return(list(
+    max_tss = out, max_tss_mean = mean(out[, "max_tss"]),
+    max_tss_sd = sd(out[, "max_tss"])
+  ))
+}
+
+
+# https://gist.github.com/johnbaums/3ff4c9aa01032ce21a84672c477a6dfb
+maxtss2train <- function(x, species) {
+
+  # t = "Test" / "Training"
+  # x: a directory containing the cross-validated Maxent output
+  ## Notes:
+  ## tss  = sens + spec - 1
+  ## sens = 1 - omission
+  ## spec = 1 - FPA
+  ## tss  = 1 - omission + 1 - fpa - 1
+  ##      = 1 - (omission + fpa)
+
+  # rekurzivně prohledat i podadresáře???  - když si budu dělat vlastní cykly s testy recursive = TRUE
+
+
+  ff <- list.files(x, paste0(species, "_omission\\.csv$"), full.names = TRUE, recursive = TRUE)
+  max_tss <- sapply(ff, function(f) {
+    d <- read.csv(f)
+    # d$Training.omission
+    i <- which.min(d$Training.omission + d$Fractional.area)
+    type <- gsub("Corresponding\\.|\\.value", "", colnames(d)[3])
+    if (!tolower(type) %in% c("logistic", "cloglog")) {
+      stop('Expected name of third column to contain either "logistic" or "Cloglog".')
+    }
+
+    # d$Training.omission
+    c(max_tss = 1 - min(d$Training.omission + d$Fractional.area), thr = d[, 3][i])
+  })
+  out <- t(max_tss)
+  rownames(out) <- basename(rownames(out))
+  return(list(
+    max_tss = out, max_tss_mean = mean(out[, "max_tss"]),
+    max_tss_sd = sd(out[, "max_tss"])
+  ))
 }
