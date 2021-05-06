@@ -23,7 +23,7 @@ synonyms <- list(
 
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
-  c("tidyverse", "magrittr", "dplyr", "ggplot2", "rstatix", "ggpubr")
+  c("tidyverse", "magrittr", "dplyr", "ggplot2", "rstatix", "ggpubr", "gridExtra")
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -93,12 +93,17 @@ for (p in pairs) {
     filter(auc_all >= auc_limit) %>%
     filter(auc_ndop >= auc_limit)
 
+
+  c_orig <- as_tibble(dfAUCorig %>% group_by(pixel_size) %>% count(pixel_size))
+  c_filter <- as_tibble(dfAUCfiltr %>% group_by(pixel_size) %>% count(pixel_size))
+  reduction <- as_tibble(c_orig %>% mutate(n_filter = c_filter$n) %>% mutate(perc = (n_filter * 100 / n)))
+
   dfAUC <- dfAUCfiltr %>% gather(p[1], p[2], key = "Question", value = "dAUC")
 
   cnt.all <- count(dfAUCorig)
   cnt.filtr <- count(dfAUCfiltr)
   cnt.perc <- (cnt.filtr * 100) / cnt.all
-  caption <- paste0("AUC > ", auc_limit, ": ", cnt.all, "/", cnt.filtr, " (", round(cnt.perc), "%)")
+  caption <- paste0("AUC > ", auc_limit)
 
 
   # dfAUC <- dfAUCorig %>%
@@ -171,6 +176,9 @@ for (p in pairs) {
 
 
   pdf(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/pdf_outputs/", appendix, ".pdf"))
+
+  grid.arrange(top = caption, tableGrob(reduction))
+  # grid.table(reduction)
 
 
   frequency <- c("recnum", "occ_count_ndop", "presence_ndop")
