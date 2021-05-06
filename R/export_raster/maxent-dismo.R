@@ -415,6 +415,9 @@ for (px_size_item in px_size) {
         # ukládat si do proměnné výsledky mxt_ a pred_ ?
 
 
+        # Může pomoct ???
+        # options(java.parameters = c("-Xss2560k", "-Xmx2g")) # -mx7000m
+
 
         ###
         ### gbif
@@ -638,3 +641,108 @@ for (px_size_item in px_size) {
         # S6.Maxent_Envi.Overlap <- env.overlap(model.train, S6.model.train, env_stck, tolerance= 0.01)
     }
 }
+
+# saveRDS(enms, file = "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/enms_1000.rds")
+
+# detailní výsledky - fitovaný model(y) (první ze 3 modelů)
+# enms[["10000"]][["Bubo_bubo"]][[1]][[1]]@models[[1]]@results
+# detailní výsledky - průměrný raster predikcí
+# enms[["10000"]][["Bubo_bubo"]][[1]][[2]]
+# detailní výsledky - evaluate
+# enms[["10000"]][["Bubo_bubo"]][[1]][[3]]
+
+
+
+
+# # #
+# Dodatečné získání infa o přispění jednotlivých prediktorů
+# # #
+
+# 0)
+# # získá názvy proměnných
+no_model <- 3
+model_res <- enms[["10000"]][["Bubo_bubo"]][[1]][[1]]@models[[no_model]]@results
+nms <- names(model_res[, 1])
+# odf <- data.frame(keyName=nms, value=model_res, row.names=NULL)
+odf <- data.frame(model_res)
+names(odf) <- nms
+write_csv(transpose(odf), "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/delete_10000_buboBubo_jeden_modelll.csv", append = TRUE)
+
+# newdf <- rbind(df, de)
+
+
+px_size <- 1000
+# jen hlavička
+model_res <- enms[[as.character(px_size)]][["Bubo_bubo"]][[2]][[1]]@models[[no_model]]@results
+nms <- names(model_res[, 1])
+odf <- transpose(data.frame(nms))
+odf$species <- "species"
+odf$ppixel_size <- "px_size"
+write_csv(odf, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_ndop_", px_size, ".csv"), append = TRUE)
+
+
+species <- names(enms[[as.character(px_size)]])
+for (sp in species) {
+    model_res <- enms[[as.character(px_size)]][[as.character(sp)]][[2]][[1]]@models[[1]]@results
+    odf <- transpose(data.frame(model_res))
+    odf$species <- sp
+    odf$ppixel_size <- px_size
+    write_csv(odf, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_ndop_", px_size, ".csv"), append = TRUE)
+}
+
+
+#
+
+# 1)
+title <- paste0("Permutation importance - NDOP Czechia ", px_size) # Preds contribution /  Permutation importance
+# png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/",title, ".png"))
+
+p_1000 <- read_csv(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_ndop_", px_size, ".csv"))
+p_1000_prep <- p_1000 %>%
+    filter(Test.AUC >= 0.7) %>%
+    select(species, ends_with(".permutation.importance")) # .permutation.importance   .contribution
+names(p_1000_prep) <- gsub(x = names(p_1000_prep), pattern = "\\.permutation\\.importance", replacement = "")
+
+p_1000_prep$species <- as.factor(p_1000_prep$species)
+
+d <- as.matrix(p_1000_prep %>% select(-species))
+boxplot(d, use.cols = TRUE, las = 2, cex.axis = 0.5, main = title, ylim = c(0, 90))
+
+# dev.off()
+
+
+
+# 2)
+#-----------------------
+library(rstatix)
+
+p_1000_ndop <- read_csv(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_ndop_", 1000, ".csv")) %>% mutate(db = "NDOP")
+p_1000_gbif <- read_csv(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_", 1000, ".csv")) %>% mutate(db = "GBIF")
+
+p_1000 <- bind_rows(p_1000_ndop, p_1000_gbif)
+
+p_1000_ndop <- p_1000 %>%
+    group_by(db) %>%
+    select(species, ends_with(".permutation.importance")) %>% # .permutation.importance   .contribution
+    get_summary_stats(type = "common") %>%
+    filter(db == "NDOP")
+p_1000_gbif <- p_1000 %>%
+    group_by(db) %>%
+    select(species, ends_with(".permutation.importance")) %>%
+    get_summary_stats(type = "common") %>%
+    filter(db == "GBIF")
+
+p_1000_r <- list()
+p_1000_r["ndop_wc"] <- sum(p_1000_ndop %>% filter(str_detect(variable, "^wc")) %>% select(mean))
+p_1000_r["ndop_l8"] <- sum(p_1000_ndop %>% filter(str_detect(variable, "^l8")) %>% select(mean))
+
+p_1000_r["gbif_wc"] <- sum(p_1000_gbif %>% filter(str_detect(variable, "^wc")) %>% select(mean))
+p_1000_r["gbif_l8"] <- sum(p_1000_gbif %>% filter(str_detect(variable, "^l8")) %>% select(mean))
+
+
+
+# p_1000_s <- list()
+# p_1000_s["ndop_wc"] <- sum(transpose(p_1000 %>% group_by(db) %>% select(species, ends_with(".contribution")) %>% filter(db == "NDOP") %>% select(starts_with("wc")) %>% summarise(across(where(is.numeric), sum)) %>% select(-db)))
+# p_1000_s["ndop_l8"] <- sum(transpose(p_1000 %>% group_by(db) %>% select(species, ends_with(".contribution")) %>% filter(db == "NDOP") %>% select(starts_with("l8")) %>% summarise(across(where(is.numeric), sum)) %>% select(-db)))
+# p_1000_s["gbif_wc"] <- sum(transpose(p_1000 %>% group_by(db) %>% select(species, ends_with(".contribution")) %>% filter(db == "GBIF") %>% select(starts_with("wc")) %>% summarise(across(where(is.numeric), sum)) %>% select(-db)))
+# p_1000_s["gbif_l8"] <- sum(transpose(p_1000 %>% group_by(db) %>% select(species, ends_with(".contribution")) %>% filter(db == "GBIF") %>% select(starts_with("l8")) %>% summarise(across(where(is.numeric), sum)) %>% select(-db)))
