@@ -228,7 +228,8 @@ for (p in pairs) {
 
   #----------------------------------------------------------------------------------------------------------------
   # "Dependence of dAUC on protection level and grain"
-  pic_box <- ggplot(df, aes(x = Protection, y = as.numeric(dAUC), fill = Protection)) +
+
+  pic_box <- ggplot(df, aes(x = factor(Protection, level = c("C", "H", "E", "N")), y = as.numeric(dAUC), fill = Protection)) +
     geom_boxplot() +
     facet_grid(Question ~ pixel_size) +
     labs(title = titprot, subtitle = titQ1Q2, x = labelprot, y = labely)
@@ -249,7 +250,7 @@ for (p in pairs) {
 
   #----------------------------------------------------------------------------------------------------------------
   # to samé se dá udělat pro typ migrace, ale to asi nemá smysl ukazovat, protože není důvod, proč by na tom mělo něco záležet
-  pic_box <- ggplot(df, aes(x = Migration, y = as.numeric(dAUC), fill = Migration)) +
+  pic_box <- ggplot(df, aes(x = factor(Migration, level = c("R", "P", "S", "L")), y = as.numeric(dAUC), fill = Migration)) +
     geom_boxplot() +
     facet_grid(Question ~ pixel_size) +
     labs(title = titmigr, subtitle = titQ1Q2, x = labelmigr, y = labely)
