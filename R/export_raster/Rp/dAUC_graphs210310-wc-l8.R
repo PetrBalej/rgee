@@ -33,13 +33,7 @@ wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee"
 setwd(wd)
 
 pairs <- list(
-  c("SchoenerD_1", "SchoenerD_2"),
-  c("auc_gbif", "auc_all"), c("auc_gbif", "auc_ndop"),
-  c("TSS_gbif", "TSS_all"), c("TSS_gbif", "TSS_ndop"),
-  c("Jaccard_gbif", "Jaccard_all"), c("Jaccard_gbif", "Jaccard_ndop"),
-  c("Sorensen_gbif", "Sorensen_all"), c("Sorensen_gbif", "Sorensen_ndop"),
-  c("WarrenI_1", "WarrenI_2"),
-  c("HellingerDist_1", "HellingerDist_2")
+  c("gbif_l8", "ndop_l8")
 )
 
 for (p in pairs) {
@@ -53,8 +47,8 @@ for (p in pairs) {
   print(p_2[[1]][2])
 
 
-  title <- paste0(p_1[[1]][1], " (", p_1[[1]][2], "+", p_2[[1]][2], ")")
-  appendix <- paste0(p_1[[1]][1], " (", p_1[[1]][2], "+", p_2[[1]][2], ")")
+  title <- paste0(p_1[[1]][1], "+", p_2[[1]][1], " (", p_1[[1]][2], "+", p_2[[1]][2], ")")
+  appendix <- paste0(p_1[[1]][1], "-", p_2[[1]][1], "(", p_1[[1]][2], "+", p_2[[1]][2], ")")
 
   # title <- paste0(p[1], "/", p[2])
   # appendix <- paste0(p[1], "-", p[2])
@@ -65,45 +59,58 @@ for (p in pairs) {
   # dfAUCorig <- read.csv2("AUCall100.csv", header = TRUE)
 
   # dfAUCorig <- read_csv(paste0(wd, "/../export/schuzka2-total-gbif-ndop6/topX-final.csv"))
-  dfAUCorig_10000 <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/gOverlap_10000.csv")
+  # dfAUCorig_10000 <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/gOverlap_10000.csv")
   dfAUCorig_1000 <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/gOverlap_1000.csv")
 
-  dfAUCorig <- dfAUCorig_10000 %>% add_row(dfAUCorig_1000)
+  dfAUCorig <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_1000_10000.csv")
 
+
+
+  f_gbif <- dfAUCorig %>% filter(db == "GBIF")
+  f_ndop <- dfAUCorig %>% filter(db == "NDOP")
+
+
+  f_join <- f_gbif %>% left_join(f_ndop, by = c("species" = "species", "px_size" = "px_size"), suffix = c("", "_nj"))
+
+  df_join <- f_join %>% left_join(dfAUCorig_1000, by = c("species" = "species1_"))
 
   # dfAUCorig_count <- as.integer(count(dfAUCorig) / 4)
   dfAUCorig_count <- as.integer(count(dfAUCorig) / 4) * 4
 
 
-  auc_limit <- 0.7
-  # select important columns, rename columns with AUC differences to Q1 and Q2 (first and second research question)
-  # creates a "long" table from a "wide" one
-  # dfAUC <- select(dfAUCorig, (c("species_", "species", "spec", "recnum", "grain", "Q1" = "dAUC1_2", "Q2" = "dAUC1_3"))) %>%
-  dfAUCfiltr <- dfAUCorig %>%
-    # dopočet pořadí START
-    # arrange(recnum, pixel_size) %>%
-    # mutate(recnum_n = rep(dfAUCorig_count:1, each = 4)) %>%
-    # mutate(recnum_n = rep(dfAUCorig_count:1, each = 1)) %>%
-    # dopočet pořadí END
-    # filter(Training.samples > 50) %>%
-    # filter(Test.samples > 30) %>%
-    # select(species1_, species1, species1_short, recnum, recnum_n, pixel_size, Q1, Q2, species2, Training.samples, Training.samples.all, Training.AUC, Training.AUC.all) ### %>%
-    ### gather("Q1", "Q2", key = "Question", value = "dAUC")
-    filter(auc_gbif >= auc_limit) %>%
-    filter(auc_all >= auc_limit) %>%
-    filter(auc_ndop >= auc_limit)
+  # auc_limit <- 0.7
+  # # select important columns, rename columns with AUC differences to Q1 and Q2 (first and second research question)
+  # # creates a "long" table from a "wide" one
+  # # dfAUC <- select(dfAUCorig, (c("species_", "species", "spec", "recnum", "grain", "Q1" = "dAUC1_2", "Q2" = "dAUC1_3"))) %>%
+  # dfAUCfiltr <- dfAUCorig %>%
+  #   # dopočet pořadí START
+  #   # arrange(recnum, pixel_size) %>%
+  #   # mutate(recnum_n = rep(dfAUCorig_count:1, each = 4)) %>%
+  #   # mutate(recnum_n = rep(dfAUCorig_count:1, each = 1)) %>%
+  #   # dopočet pořadí END
+  #   # filter(Training.samples > 50) %>%
+  #   # filter(Test.samples > 30) %>%
+  #   # select(species1_, species1, species1_short, recnum, recnum_n, pixel_size, Q1, Q2, species2, Training.samples, Training.samples.all, Training.AUC, Training.AUC.all) ### %>%
+  #   ### gather("Q1", "Q2", key = "Question", value = "dAUC")
+  #   filter(auc_gbif >= auc_limit) %>%
+  #   filter(auc_all >= auc_limit) %>%
+  #   filter(auc_ndop >= auc_limit)
 
 
-  c_orig <- as_tibble(dfAUCorig %>% group_by(pixel_size) %>% count(pixel_size))
-  c_filter <- as_tibble(dfAUCfiltr %>% group_by(pixel_size) %>% count(pixel_size))
-  reduction <- as_tibble(c_orig %>% mutate(n_filter = c_filter$n) %>% mutate(perc = (n_filter * 100 / n)))
+  # c_orig <- as_tibble(dfAUCorig %>% group_by(pixel_size) %>% count(pixel_size))
+  # c_filter <- as_tibble(dfAUCfiltr %>% group_by(pixel_size) %>% count(pixel_size))
+  # reduction <- as_tibble(c_orig %>% mutate(n_filter = c_filter$n) %>% mutate(perc = (n_filter * 100 / n)))
 
-  dfAUC <- dfAUCfiltr %>% gather(p[1], p[2], key = "Question", value = "dAUC")
+  dfAUC <- df_join %>%
+    mutate(species = str_replace(species, "_", " ")) %>%
+    mutate(gbif_l8 = l8) %>%
+    mutate(ndop_l8 = l8_nj) %>%
+    gather(p[1], p[2], key = "Question", value = "dAUC")
 
-  cnt.all <- count(dfAUCorig)
-  cnt.filtr <- count(dfAUCfiltr)
-  cnt.perc <- (cnt.filtr * 100) / cnt.all
-  caption <- paste0("AUC > ", auc_limit)
+  # cnt.all <- count(dfAUCorig)
+  # cnt.filtr <- count(dfAUCfiltr)
+  # cnt.perc <- (cnt.filtr * 100) / cnt.all
+  caption <- "" # paste0("AUC > ", auc_limit)
 
 
   # dfAUC <- dfAUCorig %>%
@@ -131,7 +138,6 @@ for (p in pairs) {
   df2 <- df1n %>% left_join(dftraits, by = c("species2" = "species"))
 
   df <- df1 %>% add_row(df2)
-
   glimpse(df) # check data
 
   # anti1 <- dfAUC %>% anti_join(dftraits, by = c("species1" = "species")) %>% distinct(species1)
@@ -185,9 +191,9 @@ for (p in pairs) {
   labelmigr <- "Migration type: L: long-distance, P: partial, R: resident, S: short-distance"
 
 
-  pdf(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/pdf_outputs/", appendix, ".pdf"))
+  pdf(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/", appendix, ".pdf"))
 
-  grid.arrange(top = caption, tableGrob(reduction))
+  # grid.arrange(top = caption, tableGrob(reduction))
   # grid.table(reduction)
 
 
@@ -198,7 +204,7 @@ for (p in pairs) {
     pic_lm <- ggplot(df, aes(x = eval(parse(text = f)), y = as.numeric(dAUC))) +
       geom_point() +
       geom_smooth(method = loess) +
-      facet_grid(Question ~ pixel_size) +
+      facet_grid(Question ~ px_size) +
       labs(title = titfreqpixel_size, subtitle = titQ1Q2, x = paste0(labelfreq, " (normalized by \'", f, "\')"), y = labely, caption = caption)
     print(pic_lm)
     # .... spíš žádná závislost není, což je fajn; u Q2 možná rozdíl v AUC trochu klesá s vyšším počtem záznamů o druhu,
@@ -216,7 +222,7 @@ for (p in pairs) {
   # "Dependence of dAUC on habitat and grain"
   pic_box <- ggplot(df, aes(x = Habitat, y = as.numeric(dAUC), fill = Habitat)) +
     geom_boxplot() +
-    facet_grid(Question ~ pixel_size) +
+    facet_grid(Question ~ px_size) +
     labs(title = tithab, subtitle = titQ1Q2, x = labelhab, y = labely)
   print(pic_box)
   # .... rozdíly v habitatech u Q1 budou: nejhorší jsou globální modely oproti national validaci pro farmland a lesní ptáky
@@ -230,7 +236,7 @@ for (p in pairs) {
   # "Dependence of dAUC on protection level and grain"
   pic_box <- ggplot(df, aes(x = Protection, y = as.numeric(dAUC), fill = Protection)) +
     geom_boxplot() +
-    facet_grid(Question ~ pixel_size) +
+    facet_grid(Question ~ px_size) +
     labs(title = titprot, subtitle = titQ1Q2, x = labelprot, y = labely)
   print(pic_box)
   # .... žádný jasný trend, že modely pro chráněné a nechráněné byly lepší či horší?
@@ -240,7 +246,7 @@ for (p in pairs) {
   # "Dependence of dAUC on European distribution and grain"
   pic_box <- ggplot(df, aes(x = Distribution, y = as.numeric(dAUC), fill = Distribution)) +
     geom_boxplot() +
-    facet_grid(Question ~ pixel_size) +
+    facet_grid(Question ~ px_size) +
     labs(title = titdist, subtitle = titQ1Q2, x = labeldist, y = labely)
   print(pic_box)
   # ... tady pokud nějaké rozdíly, tak spíš ve větším grain?
@@ -251,7 +257,7 @@ for (p in pairs) {
   # to samé se dá udělat pro typ migrace, ale to asi nemá smysl ukazovat, protože není důvod, proč by na tom mělo něco záležet
   pic_box <- ggplot(df, aes(x = Migration, y = as.numeric(dAUC), fill = Migration)) +
     geom_boxplot() +
-    facet_grid(Question ~ pixel_size) +
+    facet_grid(Question ~ px_size) +
     labs(title = titmigr, subtitle = titQ1Q2, x = labelmigr, y = labely)
   print(pic_box)
 
