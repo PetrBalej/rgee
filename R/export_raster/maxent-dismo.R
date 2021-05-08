@@ -1,6 +1,7 @@
+options(java.parameters = c("-Xmx20g"))
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
-    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "blockCV", "ggplot2", "dismo", "ENMTools", "data.table")
+    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "blockCV", "ggplot2", "dismo", "ENMTools", "data.table", "rmaxent")
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -14,7 +15,7 @@ wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2" # samsung500ntfs # paste0(path.exp
 
 setwd(wd)
 export_path <-
-    paste0(getwd(), "/tmp2/")
+    paste0(getwd(), "/tmp3/")
 
 source(paste0(getwd(), "/rgee/R/export_raster/functions.R"))
 # source(paste0(getwd(), "/rgee/R/export_raster/gbif.R"))
@@ -176,7 +177,7 @@ niche.overlap.geog <- function(raster1, raster2, na.rm = TRUE, suffix = "1") {
 
 
 blocks <- st_read(paste0(wd, "/rgee/shp/blocks.shp"))
-
+blocks_erased_cz <- st_read(paste0(wd, "/rgee/shp/blocks_erased_cz.shp"))
 
 czechia <- st_read(paste0(wd, "/rgee/shp/ne_10m_admin_0_countries/czechia/cz_3035.shp"))
 
@@ -186,7 +187,7 @@ ndop_top <- ndop_top(paste0(getwd(), "/rgee/species/ndop/ndop-top-2021-03-21.xls
 # species <- pull(ndop_top %>% select(species1, species2))
 species <- ndop_top %>%
     select(species1_, species2_, species1, species2, species1_short, species2_short, Nálezů) %>%
-    filter(Nálezů < 70000)
+    filter(Nálezů < 10000) # 70000)
 
 # raster_stack <-
 #   rasters_dir_stack(
@@ -196,7 +197,7 @@ species <- ndop_top %>%
 #     "tif"
 #   )
 
-filename_csv <- "gOverlap_XXX.csv"
+filename_csv <- "gOverlap_3v_10000X.csv"
 write_csv(
     data.frame(
         SchoenerD_1 = "SchoenerD_1",
@@ -228,6 +229,12 @@ write_csv(
         RMSE_2 = "RMSE_2",
         SpearmanCorrelation_2 = "SpearmanCorrelation_2",
 
+        SchoenerD_3 = "SchoenerD_3",
+        WarrenI_3 = "WarrenI_3",
+        HellingerDist_3 = "HellingerDist_3",
+        RMSE_3 = "RMSE_3",
+        SpearmanCorrelation_3 = "SpearmanCorrelation_3",
+
         TPR_gbif = "TPR_gbif", TNR_gbif = "TNR_gbif", FPR_gbif = "TNR_gbif", FNR_gbif = "FNR_gbif",
         Sensitivity_gbif = "Sensitivity_gbif", Specificity_gbif = "Specificity_gbif",
         TSS_gbif = "TSS_gbif", Jaccard_gbif = "Jaccard_gbif", Sorensen_gbif = "Sorensen_gbif",
@@ -252,7 +259,7 @@ write_csv(
 # plot(enms$`10000`$Anthus_campestris[[2]]$p)
 
 px_size <- c(10000) # 100, 200, 1000, 2000, 5000, 10000
-replicates <- 3
+replicates <- 1
 
 enms <- list()
 
@@ -282,6 +289,7 @@ for (px_size_item in px_size) {
 
     # sjednocení CRS
     blocks_3035 <- blocks %>% st_transform(crs(raster_stack))
+    blocks_erased_cz_3035 <- blocks_erased_cz %>% st_transform(crs(raster_stack))
     czechia_3035 <- czechia %>% st_transform(crs(raster_stack))
 
     # ořez původního raster_sttack na ČR pro lokální SDM
@@ -315,9 +323,12 @@ for (px_size_item in px_size) {
     plot_gbif_csv_100 <- plot_gbif_csv %>% filter(species %in% ptaci_gbif_distinct$species)
 
 
+
     for (sindex in 1:nrow(species)) { # sp in ptaci_gbif_distinct$species
+        # foreach(sindex = 1:nrow(species), .combine=combine, .packages=c('dismo', "rJava")) %dopar% {
         # species1_, species2_, species1, species2, species1_short, species2_short, Nálezů
         sp <- species[sindex, 3]
+        print("********************************************************** ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
         print(sp)
         cc_gbif <- plot_gbif_csv_100 %>% filter(species == as.character(sp))
         cc_ndop <- plot_ndop_csv_100 %>% filter(species == as.character(sp))
@@ -327,7 +338,7 @@ for (px_size_item in px_size) {
         sp_ndop_count <- ptaci_ndop_distinct %>%
             filter(species == as.character(sp)) %>%
             select(count)
-        print("**********************************************************")
+        # DDDprint("**********************************************************")
 
         if (count(cc_ndop) == 0 | count(cc_gbif) == 0) {
             print(paste0(species[sindex, 3], " - XXX - ", count(cc_ndop), "/", count(cc_gbif)))
@@ -390,9 +401,25 @@ for (px_size_item in px_size) {
         # pseudoabsence raději sám
         # při použití masky musím zohlednit celkový počet pixelů rasteru? asi se mi nepodaří vygenerovat 10t absencí do 10km rasteru? nebo ano?
         # pabs_gbif_3035 <- st_as_sf(pseudo.absence(as_Spatial(cci_gbif_3035), n = 1000, window = "extent", Mask = raster_stack@layers[[1]])$sample)
-        pabs_gbif_3035 <- st_as_sf(pseudo.absence(as_Spatial(cci_gbif_3035), n = 10000, window = "extent")$sample)
-        pabs_ndop_3035 <- st_as_sf(pseudo.absence(as_Spatial(cci_ndop_3035), n = 10000, window = "extent")$sample)
-        pabs_all_3035 <- st_as_sf(pseudo.absence(as_Spatial(cci_all_3035), n = 10000, window = "extent")$sample)
+        pabs_gbif_3035_p <- st_as_sf(pseudo.absence(as_Spatial(cci_gbif_3035), n = 10000, window = "extent")$sample) %>%
+            st_set_crs(crs(raster_stack)) %>%
+            st_transform(crs(raster_stack))
+        pabs_ndop_3035_p <- st_as_sf(pseudo.absence(as_Spatial(cci_ndop_3035), n = 1000, window = "extent")$sample) %>%
+            st_set_crs(crs(raster_stack)) %>%
+            st_transform(crs(raster_stack))
+        pabs_all_3035_p <- st_as_sf(pseudo.absence(as_Spatial(cci_all_3035), n = 10000, window = "extent")$sample) %>%
+            st_set_crs(crs(raster_stack)) %>%
+            st_transform(crs(raster_stack))
+        # kontrola/výřez průniků vygěnerovaných pseodoabsencí
+        pabs_gbif_3035 <- st_intersection(pabs_gbif_3035_p, blocks_3035) %>%
+            st_set_crs(crs(raster_stack)) %>%
+            st_transform(crs(raster_stack))
+        pabs_ndop_3035 <- st_intersection(pabs_ndop_3035_p, czechia_3035) %>%
+            st_set_crs(crs(raster_stack)) %>%
+            st_transform(crs(raster_stack))
+        pabs_all_3035 <- st_intersection(pabs_all_3035_p, blocks_3035) %>%
+            st_set_crs(crs(raster_stack)) %>%
+            st_transform(crs(raster_stack))
         # st_write(pabs_gbif_3035, paste0(export_path, "pabs_gbif_3035-1000.shp"))
         # st_write(as_Spatial(cci_gbif_3035), paste0(export_path, "cci_gbif_3035.shp"))
 
@@ -415,13 +442,79 @@ for (px_size_item in px_size) {
         # ukládat si do proměnné výsledky mxt_ a pred_ ?
 
 
-        # Může pomoct ???
+        # Může pomoct ??? - nutné před voláním dismo
         # options(java.parameters = c("-Xss2560k", "-Xmx2g")) # -mx7000m
+        # options(java.parameters = c("-Xmx10g")) # -mx7000m
 
 
         ###
         ### gbif
         ###
+        print("GBIF")
+        pp <- as.data.frame(as_Spatial(cci_gbif_3035))[c("coords.x1", "coords.x2")]
+
+        colnames(pp)[1] <- "Longitude"
+        colnames(pp)[2] <- "Latitude"
+        enm_species <- enmtools.species(range = raster_stack[[1]], species.name = as.character(sp), presence.points = pp)
+
+
+        # bias_1 <- sp.kde(x = as_Spatial(cci_gbif_3035), bw = 10000,
+        #                        newdata = raster_stack[[1]], standardize = TRUE,
+        #  					  scale.factor = 10000  )
+        bias <- raster("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/i/bias_tg_Chlidonias-hybrida_1_gbif.tif")
+
+        # bias_2 <- sp.kde(x = as_Spatial(cci_gbif_3035), bw = 100000,
+        #                newdata = raster_stack[[1]], standardize = TRUE,
+        # 			  scale.factor = 10000  )
+        bias2 <- raster("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/i/bias_tg_Chlidonias-hybrida_2_gbif.tif") # 100000 10000 - totožné pro všešchny rozlišení rasterů?
+
+
+        bias_1 <- sp.kde(
+            x = as_Spatial(cci_gbif_3035), bw = 10000,
+            newdata = raster_stack[[1]], standardize = TRUE,
+            scale.factor = 10000
+        )
+
+        check.bg(species = enm_species, env = raster_stack, nback = 10000, bias = bias)
+
+        check.species(enm_species)
+
+        enm_mxt_gbif1 <- enmtools.maxent(
+            enm_species,
+            raster_stack,
+            test.prop = 0.2
+        )
+
+
+        enm_mxt_gbif2 <- enmtools.maxent(
+            enm_species,
+            raster_stack,
+            test.prop = 0.2,
+            bias = bias
+        )
+
+
+        enm_mxt_gbif3 <- enmtools.maxent(
+            enm_species,
+            raster_stack,
+            test.prop = 0.2,
+            bias = bias2
+        )
+
+        enm_mxt_gbif4 <- enmtools.maxent(
+            enm_species,
+            raster_stack,
+            test.prop = 0.2,
+            bias = bias_1
+        )
+        # interactive.plot( enm_mxt_gbif3)
+
+        # v <- visualize.enm(enm_mxt_gbif, raster_stack, layers = c=("wc_1000_bio09"))
+        # v$suit.plot
+        # v$background.plot
+
+        stop()
+
         mxt_gbif <- maxent(x = raster_stack, p = as_Spatial(cci_gbif_3035), a = as_Spatial(pabs_gbif_3035), factors = NULL, removeDuplicates = TRUE, nbg = 10000, args = c(paste0("replicates=", replicates), "perspeciesresults=FALSE", "appendtoresultsfile=TRUE", "threads=4"))
         pred_gbif <- predict(mxt_gbif, raster_stack) # pří více replicates udělat mean(pr)
         pred_gbif_mean <- mean(pred_gbif)
@@ -435,36 +528,40 @@ for (px_size_item in px_size) {
         perf_gbif <- list()
         for (repl in 1:replicates) {
 
+
+            # Při více replikacích přístup přes # mxt_gbif@models[[1]]
+            # @models[[1]]
+
             # nemělo by se p= dělat nad foldama zvlášť?
-            ev_gbif[[repl]] <- dismo::evaluate(p = as_Spatial(cci_gbif_3035), a = as_Spatial(pabs_gbif_3035), model = mxt_gbif@models[[repl]], x = raster_stack)
-            presence_gbif[[repl]] <- count(mxt_gbif@models[[repl]]@presence)[[1]]
-            print("ev ----------------------------------------------------------------------------------------------------")
-            print(ev_gbif[[repl]])
+            ev_gbif[[repl]] <- dismo::evaluate(p = as_Spatial(cci_gbif_3035), a = as_Spatial(pabs_gbif_3035), model = mxt_gbif, x = raster_stack)
+            presence_gbif[[repl]] <- count(mxt_gbif@presence)[[1]]
+            # DDDprint("ev ----------------------------------------------------------------------------------------------------")
+            # DDDprint(ev_gbif[[repl]])
             # th[[repl]]  <- threshold(ev[[repl]])
-            # print(th)
+            # #DDDprint(th)
 
             perf_gbif[[repl]] <- performanceC(ev_gbif[[repl]])
         }
         auc_gbif <- mean(sapply(ev_gbif, function(x) {
             x@auc
         }))
-        print(auc_gbif)
+        # DDDprint(auc_gbif)
 
         presence_gbif <- mean(unlist(presence_gbif))
-        print(presence_gbif)
+        # DDDprint(presence_gbif)
 
         perf_gbif <- colMeans(x = rbindlist(perf_gbif))
         # colnames(perf ) <- paste(colnames(perf ), 1, sep = "_")
-        print(perf_gbif)
+        # DDDprint(perf_gbif)
 
         perf2_gbif <- transpose(as.data.frame(perf_gbif))
         colnames(perf2_gbif) <- paste(names(perf_gbif), "gbif", sep = "_")
-        print(perf2_gbif)
+        # DDDprint(perf2_gbif)
         # sapply( ev, function(x){ threshold(x)['spec_sens'] } )
 
 
-        #         print(count(mxt_gbif@presence)) # uložit
-        # print(count(mxt_gbif@models[[1]]@presence)) # uložit
+        #         #DDDprint(count(mxt_gbif@presence)) # uložit
+        # #DDDprint(count(mxt_gbif@models[[1]]@presence)) # uložit
 
         # threshold at maximum kappa
         # ev@t[which.max(ev@kappa)]
@@ -494,6 +591,7 @@ for (px_size_item in px_size) {
         ###
         ### ndop
         ###
+        print("NDOP")
         # writeRaster(raster_stack_mask, paste0(export_path, "raster_stack_crop.tif"), format = "GTiff", overwrite = TRUE)
         mxt_ndop <- maxent(x = raster_stack_mask_czechia, p = as_Spatial(cci_ndop_3035), a = as_Spatial(pabs_ndop_3035), factors = NULL, removeDuplicates = TRUE, nbg = 10000, args = c(paste0("replicates=", replicates), "perspeciesresults=FALSE", "appendtoresultsfile=TRUE", "threads=4"))
         pred_ndop <- predict(mxt_ndop, raster_stack_mask_czechia) # pří více replicates udělat mean(pr)
@@ -507,30 +605,30 @@ for (px_size_item in px_size) {
         for (repl in 1:replicates) {
 
             # nemělo by se p= dělat nad foldama zvlášť?
-            ev_ndop[[repl]] <- dismo::evaluate(p = as_Spatial(cci_ndop_3035), a = as_Spatial(pabs_ndop_3035), model = mxt_ndop@models[[repl]], x = raster_stack)
-            presence_ndop[[repl]] <- count(mxt_ndop@models[[repl]]@presence)[[1]]
-            print("ev ----------------------------------------------------------------------------------------------------")
-            print(ev_ndop[[repl]])
+            ev_ndop[[repl]] <- dismo::evaluate(p = as_Spatial(cci_ndop_3035), a = as_Spatial(pabs_ndop_3035), model = mxt_ndop, x = raster_stack)
+            presence_ndop[[repl]] <- count(mxt_ndop@presence)[[1]]
+            # DDDprint("ev ----------------------------------------------------------------------------------------------------")
+            # DDDprint(ev_ndop[[repl]])
             # th[[repl]]  <- threshold(ev[[repl]])
-            # print(th)
+            # #DDDprint(th)
 
             perf_ndop[[repl]] <- performanceC(ev_ndop[[repl]])
         }
         auc_ndop <- mean(sapply(ev_ndop, function(x) {
             x@auc
         }))
-        print(auc_ndop)
+        # DDDprint(auc_ndop)
 
         presence_ndop <- mean(unlist(presence_ndop))
-        print(presence_ndop)
+        # DDDprint(presence_ndop)
 
         perf_ndop <- colMeans(x = rbindlist(perf_ndop))
         # colnames(perf ) <- paste(colnames(perf ), 1, sep = "_")
-        print(perf_ndop)
+        # DDDprint(perf_ndop)
 
         perf2_ndop <- transpose(as.data.frame(perf_ndop))
         colnames(perf2_ndop) <- paste(names(perf_ndop), "ndop", sep = "_")
-        print(perf2_ndop)
+        # DDDprint(perf2_ndop)
 
 
 
@@ -540,7 +638,7 @@ for (px_size_item in px_size) {
 
 
         no1 <- niche.overlap.geog(pred_gbif_mean_mask_czechia, pred_ndop_mean, "1")
-        print(no1)
+        # DDDprint(no1)
         ###
         # + i AUC hodnoty a rozdíly!
         # + i model GBIF+NDOP!!!
@@ -550,6 +648,7 @@ for (px_size_item in px_size) {
         ###
         ### all (ndpop+gbif)
         ###
+        print("ALL")
         mxt_all <- maxent(x = raster_stack, p = as_Spatial(cci_all_3035), a = as_Spatial(pabs_all_3035), factors = NULL, removeDuplicates = TRUE, nbg = 10000, args = c(paste0("replicates=", replicates), "perspeciesresults=FALSE", "appendtoresultsfile=TRUE", "threads=4"))
         pred_all <- predict(mxt_all, raster_stack) # pří více replicates udělat mean(pr)
         pred_all_mean <- mean(pred_all)
@@ -563,30 +662,30 @@ for (px_size_item in px_size) {
         for (repl in 1:replicates) {
 
             # nemělo by se p= dělat nad foldama zvlášť?
-            ev_all[[repl]] <- dismo::evaluate(p = as_Spatial(cci_all_3035), a = as_Spatial(pabs_all_3035), model = mxt_all@models[[repl]], x = raster_stack)
-            presence_all[[repl]] <- count(mxt_all@models[[repl]]@presence)[[1]]
-            print("ev ----------------------------------------------------------------------------------------------------")
-            print(ev_all[[repl]])
+            ev_all[[repl]] <- dismo::evaluate(p = as_Spatial(cci_all_3035), a = as_Spatial(pabs_all_3035), model = mxt_all, x = raster_stack)
+            presence_all[[repl]] <- count(mxt_all@presence)[[1]]
+            # DDDprint("ev ----------------------------------------------------------------------------------------------------")
+            # DDDprint(ev_all[[repl]])
             # th[[repl]]  <- threshold(ev[[repl]])
-            # print(th)
+            # #DDDprint(th)
 
             perf_all[[repl]] <- performanceC(ev_all[[repl]])
         }
         auc_all <- mean(sapply(ev_all, function(x) {
             x@auc
         }))
-        print(auc_all)
+        # DDDprint(auc_all)
 
         presence_all <- mean(unlist(presence_all))
-        print(presence_all)
+        # DDDprint(presence_all)
 
         perf_all <- colMeans(x = rbindlist(perf_all))
         # colnames(perf ) <- paste(colnames(perf ), 1, sep = "_")
-        print(perf_all)
+        # DDDprint(perf_all)
 
         perf2_all <- transpose(as.data.frame(perf_all))
         colnames(perf2_all) <- paste(names(perf_all), "all", sep = "_")
-        print(perf2_all)
+        # DDDprint(perf2_all)
 
 
 
@@ -594,7 +693,26 @@ for (px_size_item in px_size) {
 
 
         no2 <- niche.overlap.geog(pred_all_mean, pred_gbif_mean, "2")
-        print(no2)
+        # DDDprint(no2)
+
+
+
+
+        # ořez výsledné predikce
+        pred_gbif_mean_crop_cz <- crop(pred_gbif_mean, extent(blocks_erased_cz_3035))
+        pred_gbif_mean_mask_crop_cz <- mask(pred_gbif_mean_crop_cz, blocks_erased_cz_3035)
+
+        pred_all_mean_crop_cz <- crop(pred_all_mean, extent(blocks_erased_cz_3035))
+        pred_gbif_all_mask_crop_cz <- mask(pred_all_mean_crop_cz, blocks_erased_cz_3035)
+        png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/i/", sp, "_gbif_bias.png"))
+        plot(pred_gbif_mean_mask_crop_cz)
+        dev.off()
+        png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/i/", sp, "_all_bias.png"))
+        plot(pred_gbif_all_mask_crop_cz)
+        dev.off()
+        no3 <- niche.overlap.geog(pred_gbif_mean_mask_crop_cz, pred_gbif_all_mask_crop_cz, "3")
+        # DDDprint(no3)
+
 
 
 
@@ -627,10 +745,10 @@ for (px_size_item in px_size) {
         no1$auc_all <- auc_all
 
 
-        write_csv(bind_cols(no1[1, ], no2[1, ], perf2_gbif[1, ], perf2_ndop[1, ], perf2_all[1, ]), paste0(export_path, filename_csv), append = TRUE)
+        write_csv(bind_cols(no1[1, ], no2[1, ], no3[1, ], perf2_gbif[1, ], perf2_ndop[1, ], perf2_all[1, ]), paste0(export_path, filename_csv), append = TRUE)
 
         # chybí jestě evaluate...
-        enms[[as.character(px_size_item)]][[as.character(no1$species1_)]] <- list(list(m = mxt_gbif, p = pred_gbif_mean, e = ev_gbif), list(m = mxt_ndop, p = pred_ndop_mean, e = ev_ndop), list(m = mxt_all, p = pred_all_mean, e = ev_all))
+        enms[[as.character(px_size_item)]][[as.character(no1$species1_)]] <- list(list(m = mxt_gbif, p = pred_gbif, e = ev_gbif), list(m = mxt_ndop, p = pred_ndop, e = ev_ndop), list(m = mxt_all, p = pred_all, e = ev_all))
 
         # go2 <- raster.overlap(pred_gbif_mean_mask_czechia, pred_ndop_mean)
 
@@ -641,6 +759,12 @@ for (px_size_item in px_size) {
         # S6.Maxent_Envi.Overlap <- env.overlap(model.train, S6.model.train, env_stck, tolerance= 0.01)
     }
 }
+
+# Error in .local(x, p, ...) :
+#   more than half of the absence points have NA predictor values
+
+# str(enms[["10000"]][["Picus_viridis"]][[1]][["m"]])
+
 
 # saveRDS(enms, file = "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/enms_1000.rds")
 
@@ -654,95 +778,112 @@ for (px_size_item in px_size) {
 
 
 
-# # #
-# Dodatečné získání infa o přispění jednotlivých prediktorů
-# # #
+# # # #
+# # Dodatečné získání infa o přispění jednotlivých prediktorů
+# # # #
 
-# 0)
-# # získá názvy proměnných
-no_model <- 3
-model_res <- enms[["10000"]][["Bubo_bubo"]][[1]][[1]]@models[[no_model]]@results
-nms <- names(model_res[, 1])
-# odf <- data.frame(keyName=nms, value=model_res, row.names=NULL)
-odf <- data.frame(model_res)
-names(odf) <- nms
-write_csv(transpose(odf), "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/delete_10000_buboBubo_jeden_modelll.csv", append = TRUE)
+# # 0)
+# # # získá názvy proměnných
+# no_model <- 3
+# model_res <- enms[["10000"]][["Bubo_bubo"]][[1]][[1]]@models[[no_model]]@results
+# nms <- names(model_res[, 1])
+# # odf <- data.frame(keyName=nms, value=model_res, row.names=NULL)
+# odf <- data.frame(model_res)
+# names(odf) <- nms
+# write_csv(transpose(odf), "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/delete_10000_buboBubo_jeden_modelll.csv", append = TRUE)
 
-# newdf <- rbind(df, de)
-
-
-px_size <- 1000
-# jen hlavička
-model_res <- enms[[as.character(px_size)]][["Bubo_bubo"]][[2]][[1]]@models[[no_model]]@results
-nms <- names(model_res[, 1])
-odf <- transpose(data.frame(nms))
-odf$species <- "species"
-odf$ppixel_size <- "px_size"
-write_csv(odf, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_ndop_", px_size, ".csv"), append = TRUE)
+# # newdf <- rbind(df, de)
 
 
-species <- names(enms[[as.character(px_size)]])
-for (sp in species) {
-    model_res <- enms[[as.character(px_size)]][[as.character(sp)]][[2]][[1]]@models[[1]]@results
-    odf <- transpose(data.frame(model_res))
-    odf$species <- sp
-    odf$ppixel_size <- px_size
-    write_csv(odf, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_ndop_", px_size, ".csv"), append = TRUE)
-}
+# px_size <- 1000
+# # jen hlavička
+# model_res <- enms[[as.character(px_size)]][["Bubo_bubo"]][[2]][[1]]@models[[no_model]]@results
+# nms <- names(model_res[, 1])
+# odf <- transpose(data.frame(nms))
+# odf$species <- "species"
+# odf$pixel_size <- "px_size"
+# write_csv(odf, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_ndop_", px_size, ".csv"), append = TRUE)
 
 
-#
-
-# 1)
-title <- paste0("Permutation importance - NDOP Czechia ", px_size) # Preds contribution /  Permutation importance
-# png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/",title, ".png"))
-
-p_1000 <- read_csv(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_ndop_", px_size, ".csv"))
-p_1000_prep <- p_1000 %>%
-    filter(Test.AUC >= 0.7) %>%
-    select(species, ends_with(".permutation.importance")) # .permutation.importance   .contribution
-names(p_1000_prep) <- gsub(x = names(p_1000_prep), pattern = "\\.permutation\\.importance", replacement = "")
-
-p_1000_prep$species <- as.factor(p_1000_prep$species)
-
-d <- as.matrix(p_1000_prep %>% select(-species))
-boxplot(d, use.cols = TRUE, las = 2, cex.axis = 0.5, main = title, ylim = c(0, 90))
-
-# dev.off()
+# species <- names(enms[[as.character(px_size)]])
+# for (sp in species) {
+#     model_res <- enms[[as.character(px_size)]][[as.character(sp)]][[2]][[1]]@models[[1]]@results
+#     odf <- transpose(data.frame(model_res))
+#     odf$species <- sp
+#     odf$pixel_size <- px_size
+#     write_csv(odf, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_ndop_", px_size, ".csv"), append = TRUE)
+# }
 
 
+# #
 
-# 2)
-#-----------------------
-library(rstatix)
+# # 1)
+# title <- paste0("Permutation importance - NDOP Czechia ", px_size) # Preds contribution /  Permutation importance
+# # png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/",title, ".png"))
 
-p_1000_ndop <- read_csv(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_ndop_", 1000, ".csv")) %>% mutate(db = "NDOP")
-p_1000_gbif <- read_csv(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_", 1000, ".csv")) %>% mutate(db = "GBIF")
+# p_1000 <- read_csv(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_ndop_", px_size, ".csv"))
+# p_1000_prep <- p_1000 %>%
+#     filter(Test.AUC >= 0.7) %>%
+#     select(species, ends_with(".permutation.importance")) # .permutation.importance   .contribution
+# names(p_1000_prep) <- gsub(x = names(p_1000_prep), pattern = "\\.permutation\\.importance", replacement = "")
 
-p_1000 <- bind_rows(p_1000_ndop, p_1000_gbif)
+# p_1000_prep$species <- as.factor(p_1000_prep$species)
 
-p_1000_ndop <- p_1000 %>%
-    group_by(db) %>%
-    select(species, ends_with(".permutation.importance")) %>% # .permutation.importance   .contribution
-    get_summary_stats(type = "common") %>%
-    filter(db == "NDOP")
-p_1000_gbif <- p_1000 %>%
-    group_by(db) %>%
-    select(species, ends_with(".permutation.importance")) %>%
-    get_summary_stats(type = "common") %>%
-    filter(db == "GBIF")
+# d <- as.matrix(p_1000_prep %>% select(-species))
+# boxplot(d, use.cols = TRUE, las = 2, cex.axis = 0.5, main = title, ylim = c(0, 90))
 
-p_1000_r <- list()
-p_1000_r["ndop_wc"] <- sum(p_1000_ndop %>% filter(str_detect(variable, "^wc")) %>% select(mean))
-p_1000_r["ndop_l8"] <- sum(p_1000_ndop %>% filter(str_detect(variable, "^l8")) %>% select(mean))
-
-p_1000_r["gbif_wc"] <- sum(p_1000_gbif %>% filter(str_detect(variable, "^wc")) %>% select(mean))
-p_1000_r["gbif_l8"] <- sum(p_1000_gbif %>% filter(str_detect(variable, "^l8")) %>% select(mean))
+# # dev.off()
 
 
 
-# p_1000_s <- list()
-# p_1000_s["ndop_wc"] <- sum(transpose(p_1000 %>% group_by(db) %>% select(species, ends_with(".contribution")) %>% filter(db == "NDOP") %>% select(starts_with("wc")) %>% summarise(across(where(is.numeric), sum)) %>% select(-db)))
-# p_1000_s["ndop_l8"] <- sum(transpose(p_1000 %>% group_by(db) %>% select(species, ends_with(".contribution")) %>% filter(db == "NDOP") %>% select(starts_with("l8")) %>% summarise(across(where(is.numeric), sum)) %>% select(-db)))
-# p_1000_s["gbif_wc"] <- sum(transpose(p_1000 %>% group_by(db) %>% select(species, ends_with(".contribution")) %>% filter(db == "GBIF") %>% select(starts_with("wc")) %>% summarise(across(where(is.numeric), sum)) %>% select(-db)))
-# p_1000_s["gbif_l8"] <- sum(transpose(p_1000 %>% group_by(db) %>% select(species, ends_with(".contribution")) %>% filter(db == "GBIF") %>% select(starts_with("l8")) %>% summarise(across(where(is.numeric), sum)) %>% select(-db)))
+# # 2)
+# #-----------------------
+# library(rstatix)
+
+# p_1000_ndop <- read_csv(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_ndop_", 1000, ".csv")) %>% mutate(db = "NDOP")
+# p_1000_gbif <- read_csv(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_", 1000, ".csv")) %>% mutate(db = "GBIF")
+
+# p_1000 <- bind_rows(p_1000_ndop, p_1000_gbif)
+
+# p_1000_ndop <- p_1000 %>%
+#     group_by(db) %>%
+#     select(species, ends_with(".permutation.importance")) %>% # .permutation.importance   .contribution
+#     get_summary_stats(type = "common") %>%
+#     filter(db == "NDOP")
+# p_1000_gbif <- p_1000 %>%
+#     group_by(db) %>%
+#     select(species, ends_with(".permutation.importance")) %>%
+#     get_summary_stats(type = "common") %>%
+#     filter(db == "GBIF")
+
+# p_1000_r <- list()
+# p_1000_r["ndop_wc"] <- sum(p_1000_ndop %>% filter(str_detect(variable, "^wc")) %>% select(mean))
+# p_1000_r["ndop_l8"] <- sum(p_1000_ndop %>% filter(str_detect(variable, "^l8")) %>% select(mean))
+
+# p_1000_r["gbif_wc"] <- sum(p_1000_gbif %>% filter(str_detect(variable, "^wc")) %>% select(mean))
+# p_1000_r["gbif_l8"] <- sum(p_1000_gbif %>% filter(str_detect(variable, "^l8")) %>% select(mean))
+
+
+
+# # p_1000_s <- list()
+# # p_1000_s["ndop_wc"] <- sum(transpose(p_1000 %>% group_by(db) %>% select(species, ends_with(".contribution")) %>% filter(db == "NDOP") %>% select(starts_with("wc")) %>% summarise(across(where(is.numeric), sum)) %>% select(-db)))
+# # p_1000_s["ndop_l8"] <- sum(transpose(p_1000 %>% group_by(db) %>% select(species, ends_with(".contribution")) %>% filter(db == "NDOP") %>% select(starts_with("l8")) %>% summarise(across(where(is.numeric), sum)) %>% select(-db)))
+# # p_1000_s["gbif_wc"] <- sum(transpose(p_1000 %>% group_by(db) %>% select(species, ends_with(".contribution")) %>% filter(db == "GBIF") %>% select(starts_with("wc")) %>% summarise(across(where(is.numeric), sum)) %>% select(-db)))
+# # p_1000_s["gbif_l8"] <- sum(transpose(p_1000 %>% group_by(db) %>% select(species, ends_with(".contribution")) %>% filter(db == "GBIF") %>% select(starts_with("l8")) %>% summarise(across(where(is.numeric), sum)) %>% select(-db)))
+
+
+# # 3) dopočet součtů hodnot wc a l8 a jejich poměru
+# p_1000_ndop <- p_1000 %>%
+#     filter(db == "NDOP") %>%
+#     select(db, px_size, species, ends_with(".permutation.importance")) %>%
+#     mutate(wc = rowSums(select(., starts_with("wc")))) %>%
+#     mutate(l8 = rowSums(select(., starts_with("l8"))))
+# p_1000_gbif <- p_1000 %>%
+#     filter(db == "GBIF") %>%
+#     select(db, px_size, species, ends_with(".permutation.importance")) %>%
+#     mutate(wc = rowSums(select(., starts_with("wc")))) %>%
+#     mutate(l8 = rowSums(select(., starts_with("l8"))))
+# p_1000_a <- bind_rows(p_1000_gbif, p_1000_ndop) %>% mutate(wc_l8 = wc / l8)
+
+# # transpose(data.frame(names(p_1000_a))) # hlavička - názvy sloupců
+# write_csv(p_1000_a, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/predictors_1000_10000.csv"), append = TRUE)
