@@ -401,25 +401,28 @@ for (px_size_item in px_size) {
         # pseudoabsence raději sám
         # při použití masky musím zohlednit celkový počet pixelů rasteru? asi se mi nepodaří vygenerovat 10t absencí do 10km rasteru? nebo ano?
         # pabs_gbif_3035 <- st_as_sf(pseudo.absence(as_Spatial(cci_gbif_3035), n = 1000, window = "extent", Mask = raster_stack@layers[[1]])$sample)
-        pabs_gbif_3035_p <- st_as_sf(pseudo.absence(as_Spatial(cci_gbif_3035), n = 10000, window = "extent")$sample) %>%
-            st_set_crs(crs(raster_stack)) %>%
-            st_transform(crs(raster_stack))
-        pabs_ndop_3035_p <- st_as_sf(pseudo.absence(as_Spatial(cci_ndop_3035), n = 1000, window = "extent")$sample) %>%
-            st_set_crs(crs(raster_stack)) %>%
-            st_transform(crs(raster_stack))
-        pabs_all_3035_p <- st_as_sf(pseudo.absence(as_Spatial(cci_all_3035), n = 10000, window = "extent")$sample) %>%
-            st_set_crs(crs(raster_stack)) %>%
-            st_transform(crs(raster_stack))
-        # kontrola/výřez průniků vygěnerovaných pseodoabsencí
-        pabs_gbif_3035 <- st_intersection(pabs_gbif_3035_p, blocks_3035) %>%
-            st_set_crs(crs(raster_stack)) %>%
-            st_transform(crs(raster_stack))
-        pabs_ndop_3035 <- st_intersection(pabs_ndop_3035_p, czechia_3035) %>%
-            st_set_crs(crs(raster_stack)) %>%
-            st_transform(crs(raster_stack))
-        pabs_all_3035 <- st_intersection(pabs_all_3035_p, blocks_3035) %>%
-            st_set_crs(crs(raster_stack)) %>%
-            st_transform(crs(raster_stack))
+
+        # !!! nemůžu ani takto apriori generovat pseudoabsence na značně biasovaném datasetu, neboť mi je umístí i do málo prosamplovaných míst, ikdyž tam reálně může být vysoký predikovaný výskyt
+        # potřeboval bych je generovat až dodatečně na základě znalosti výsledku modelu po použití bias rasteru
+        # pabs_gbif_3035_p <- st_as_sf(pseudo.absence(as_Spatial(cci_gbif_3035), n = 10000, window = "extent")$sample) %>%
+        #     st_set_crs(crs(raster_stack)) %>%
+        #     st_transform(crs(raster_stack))
+        # pabs_ndop_3035_p <- st_as_sf(pseudo.absence(as_Spatial(cci_ndop_3035), n = 1000, window = "extent")$sample) %>%
+        #     st_set_crs(crs(raster_stack)) %>%
+        #     st_transform(crs(raster_stack))
+        # pabs_all_3035_p <- st_as_sf(pseudo.absence(as_Spatial(cci_all_3035), n = 10000, window = "extent")$sample) %>%
+        #     st_set_crs(crs(raster_stack)) %>%
+        #     st_transform(crs(raster_stack))
+        # # kontrola/výřez průniků vygěnerovaných pseodoabsencí
+        # pabs_gbif_3035 <- st_intersection(pabs_gbif_3035_p, blocks_3035) %>%
+        #     st_set_crs(crs(raster_stack)) %>%
+        #     st_transform(crs(raster_stack))
+        # pabs_ndop_3035 <- st_intersection(pabs_ndop_3035_p, czechia_3035) %>%
+        #     st_set_crs(crs(raster_stack)) %>%
+        #     st_transform(crs(raster_stack))
+        # pabs_all_3035 <- st_intersection(pabs_all_3035_p, blocks_3035) %>%
+        #     st_set_crs(crs(raster_stack)) %>%
+        #     st_transform(crs(raster_stack))
         # st_write(pabs_gbif_3035, paste0(export_path, "pabs_gbif_3035-1000.shp"))
         # st_write(as_Spatial(cci_gbif_3035), paste0(export_path, "cci_gbif_3035.shp"))
 
@@ -466,47 +469,77 @@ for (px_size_item in px_size) {
         # bias_2 <- sp.kde(x = as_Spatial(cci_gbif_3035), bw = 100000,
         #                newdata = raster_stack[[1]], standardize = TRUE,
         # 			  scale.factor = 10000  )
+        # writeRaster(bias_1, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/i/bias_tg_",sp, "_2_gbif.tif"), format = "GTiff", overwrite = TRUE)
         bias2 <- raster("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/i/bias_tg_Chlidonias-hybrida_2_gbif.tif") # 100000 10000 - totožné pro všešchny rozlišení rasterů?
 
 
-        bias_1 <- sp.kde(
-            x = as_Spatial(cci_gbif_3035), bw = 10000,
-            newdata = raster_stack[[1]], standardize = TRUE,
-            scale.factor = 10000
-        )
+        # bias_1 <- sp.kde(
+        #     x = as_Spatial(cci_gbif_3035), bw = 10000,
+        #     newdata = raster_stack[[1]], standardize = TRUE,
+        #     scale.factor = 10000
+        # )
 
         check.bg(species = enm_species, env = raster_stack, nback = 10000, bias = bias)
 
         check.species(enm_species)
 
-        enm_mxt_gbif1 <- enmtools.maxent(
-            enm_species,
-            raster_stack,
-            test.prop = 0.2
-        )
+        repl <- 2
+
+        # enm_mxt_gbif1 <- replicate(repl,
+        #     enmtools.maxent(
+        #         enm_species,
+        #         raster_stack,
+        #         test.prop = 0.2,
+        #         verbose = TRUE
+        #     ),
+        #     simplify = FALSE
+        # )
 
 
-        enm_mxt_gbif2 <- enmtools.maxent(
+        # names(enm_mxt_gbif1) <- paste0("rep", 1:repl)
+
+        # enm_mxt_gbif1.r <- stack(sapply(enm_mxt_gbif1, function(x) x$suitability))
+
+
+        # enm_mxt_gbif1.r.m <- calc(enm_mxt_gbif1.r, fun = mean)
+        # writeRaster(enm_mxt_gbif1.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/mean_suitability_", sp, "_", repl, "_1_gbif.tif"), format = "GTiff", overwrite = TRUE)
+
+
+
+        enm_mxt_gbif3 <- replicate(repl, enmtools.maxent(
             enm_species,
             raster_stack,
             test.prop = 0.2,
-            bias = bias
-        )
-
-
-        enm_mxt_gbif3 <- enmtools.maxent(
-            enm_species,
-            raster_stack,
-            test.prop = 0.2,
+            verbose = TRUE,
             bias = bias2
+        ),
+        simplify = FALSE
         )
 
-        enm_mxt_gbif4 <- enmtools.maxent(
-            enm_species,
-            raster_stack,
-            test.prop = 0.2,
-            bias = bias_1
-        )
+        # names(enm_mxt_gbif3) <- paste0("rep", 1:repl)
+        enm_mxt_gbif3.r <- stack(sapply(enm_mxt_gbif3, function(x) x$suitability))
+        enm_mxt_gbif3.r.m <- calc(enm_mxt_gbif3.r, fun = mean)
+        writeRaster(enm_mxt_gbif3.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/mean_suitability_", sp, "_", repl, "_3_gbif.tif"), format = "GTiff", overwrite = TRUE)
+
+        # možnost vypsat si VIP jednotlivých proměnných - vypisuje se po PÁRECH (výsledky+grafika) pr každé opakování!!!
+        # - [[1]] obsahuje statistiky (tibble: Variable, Importance, StDev), [[2]] pak grafický výstup (ggplot) zobrajující přispění
+        # str(enm_mxt_gbif3.vip[[1]], max.level = 2) # možnost vypsat si VIP jednotlivých proměnných
+        enm_mxt_gbif3.vip <- sapply(enm_mxt_gbif3, enmtools.vip)
+
+
+        # # # # # # # # # # # # # # # #
+        # simuluje occurence points!!! - je použít k novému otestování: třeba pomocí blockCV (nebo novým modelem?) takto to dělal Gabbas??? - pak uvádím úplně nové statistiky modelované již z těchto PPM bodů?!
+        # # # # # # # # # # # # # # # #
+        # po párech X a Y souřadnice
+        # str(enm_mxt_gbif3.sim[,1], max.level = 1) / první sada x,y souřadnic: enm_mxt_gbif3.sim[,1]$x enm_mxt_gbif3.sim[,1]$y
+        # str(enm_mxt_gbif3.sim[,2], max.level = 1)
+        enm_mxt_gbif3.sim <- sapply(enm_mxt_gbif3, sim.points, n.points = 10000)
+        # as.data.frame(enm_mxt_gbif3.sim[,2])
+
+
+        # str(enm_mxt_gbif3, max.level = 1)
+        # str(enm_mxt_gbif3[[1]]$test.evaluation)
+
         # interactive.plot( enm_mxt_gbif3)
 
         # v <- visualize.enm(enm_mxt_gbif, raster_stack, layers = c=("wc_1000_bio09"))
