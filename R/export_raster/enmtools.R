@@ -48,11 +48,13 @@ export_path <-
 # asi nebudu zapisovat do csv, rovnou z proměnných?  (potenciálně špatně přenositelné a vyhodnotitelné někým jiným...)
 # filename_csv <- "gOverlap_3v_10000X.csv"
 # limit_max_occurences_ndop_top <- 10000 # 70000; nepoužívané
+
+rcrs <- "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 limit_min_occurences <- 100
 limit_max_occurences <- 70000
-px_size <- c(10000, 5000, 1000, 500, 100) # 100, 500, 1000, 5000, 10000
-replicates <- 1
-generate_bias_raster <- TRUE
+px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
+replicates <- 3
+generate_bias_raster <- FALSE
 bias_bw <- 100000 # menší pro 1000 a 100m?
 
 # shapefiles
@@ -186,6 +188,7 @@ for (px_size_item in px_size) {
     # raster_stack <- stack(lapply(vif5sapply, raster::raster))
     # # propíše všude jednotně NA - nutné, asi dříve problém s predikcemi nad většími oblastmi s NA nad Alpami?
     # raster_stack <- raster::mask(raster_stack, sum(raster_stack))
+
     raster_stack <- stack(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/export/seasons-prep-11/central-europe-", px_size_item, ".grd"))
     rcrs <- crs(raster_stack)
     raster_stack <- setMinMax(raster_stack)
@@ -201,257 +204,58 @@ for (px_size_item in px_size) {
 
 
     rlist <- list()
-    # m <- matrix(1 / 25, nrow = 5, ncol = 5)
-
-    # m <-   matrix(c(0.3,0.8,0.3, 0.8,0.8,0.8, 0.3,0.8,0.3), nrow = 3, ncol = 3)
-
-    # m <-   matrix(c(0.3,0.8,0.3, 0.8,0.8,0.8, 0.3,0.8,0.3), nrow = 3, ncol = 3)
-
-    # m <- matrix(1 / 99, nrow = 9, ncol = 9)
-
-    # m <- matrix(
-    #     c(
-    #         0, 0.5, 0.8, 0.5, 0,
-    #         0.5, 0.8, 1, 0.8, 0.5,
-    #         0.8, 1, 1, 1, 0.8,
-    #         0.5, 0.8, 1, 0.8, 0.5,
-    #         0, 0.5, 0.8, 0.5, 0
-    #     ),
-    #     nrow = 3, ncol = 3
-    # )
-    m <- matrix(1 / 9, nrow = 3, ncol = 9)
-
-    # m <- matrix(2, nrow = 3, ncol = 3)
-
-
-    # pro 1km
-    # m <- matrix(
-    #     c(
-    #         0, 0.2, 0.5, 0.2, 0,
-    #         0.2, 0.7, 0.8, 0.7, 0.2,
-    #         0.5, 0.8, 0.8, 0.8, 0.5,
-    #         0.2, 0.7, 0.8, 0.7, 0.2,
-    #         0, 0.2, 0.5, 0.2, 0
-    #     ),
-    #     nrow = 5, ncol = 5
-    # )
-
-    # m <- matrix(
-    #     c(
-    #         1, 1, 1, 1, 1,
-    #         1, 0.8, 0.5, 0.8, 1,
-    #         1, 0.5, 0, 0.5, 1,
-    #         1, 0.8, 0.5, 0.8, 1,
-    #         1, 1, 1, 1, 1
-    #     ),
-    #     nrow = 5, ncol = 5
-    # )
-
 
     if (generate_bias_raster == TRUE) {
         ext <- extent(raster_stack[[1]])
         ow <- owin(xrange = c(ext@xmin, ext@xmax), yrange = c(ext@ymin, ext@ymax))
 
-
-
         print("GBIF")
         gbif_ppp <- ppp(st_coordinates(cci_gbif_3035)[, 1], st_coordinates(cci_gbif_3035)[, 2], window = ow)
         # ppp <- rescale(ppp, 10, "km")
-        bias_gbif <- resample(raster(density(gbif_ppp, sigma = 10000)), raster_stack[[1]], method = "bilinear")
+        bias_gbif <- resample(raster(density(gbif_ppp, sigma = px_size_item)), raster_stack[[1]], method = "bilinear")
 
         r.min <- minValue(bias_gbif)
         r.max <- maxValue(bias_gbif)
         bias_gbif <- ((bias_gbif - r.min) / (r.max - r.min))
         crs(bias_gbif) <- rcrs
-        writeRaster(bias_gbif, paste0(export_path, "bias_gbif-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
+        writeRaster(bias_gbif, paste0(export_path, "Xbias_gbif-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
 
         print("ALL")
         all_ppp <- ppp(st_coordinates(cci_all_3035)[, 1], st_coordinates(cci_all_3035)[, 2], window = ow)
         # ppp <- rescale(ppp, 10, "km")
-        bias_all <- resample(raster(density(all_ppp, sigma = 10000)), raster_stack[[1]], method = "bilinear")
+        bias_all <- resample(raster(density(all_ppp, sigma = px_size_item)), raster_stack[[1]], method = "bilinear")
         r.min <- minValue(bias_all)
         r.max <- maxValue(bias_all)
         bias_all <- ((bias_all - r.min) / (r.max - r.min))
         crs(bias_all) <- rcrs
-        writeRaster(bias_all, paste0(export_path, "bias_all-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
-
+        writeRaster(bias_all, paste0(export_path, "Xbias_all-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
 
         print("NDOP")
         ext <- extent(raster_stack_mask_czechia[[1]])
         ow <- owin(xrange = c(ext@xmin, ext@xmax), yrange = c(ext@ymin, ext@ymax))
         ndop_ppp <- ppp(st_coordinates(cci_ndop_3035)[, 1], st_coordinates(cci_ndop_3035)[, 2], window = ow)
         # ppp <- rescale(ppp, 10, "km")
-        bias_ndop <- resample(raster(density(ndop_ppp, sigma = 10000)), raster_stack_mask_czechia[[1]], method = "bilinear")
+        bias_ndop <- resample(raster(density(ndop_ppp, sigma = px_size_item)), raster_stack_mask_czechia[[1]], method = "bilinear")
         r.min <- minValue(bias_ndop)
         r.max <- maxValue(bias_ndop)
         bias_ndop <- ((bias_ndop - r.min) / (r.max - r.min))
         crs(bias_ndop) <- rcrs
-        writeRaster(bias_ndop, paste0(export_path, "bias_ndop-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
-
-
-
-
-
-        # print("GBIF")
-
-        # cci_gbif_3035_bias <- rasterize(as_Spatial(cci_gbif_3035), raster_stack[[1]], fun = "count", background = 0)
-
-        # cci_gbif_3035_bias <- focal(cci_gbif_3035_bias[[1]], w = m, fun = median)
-        # r.min <- minValue(cci_gbif_3035_bias)
-        # r.max <- maxValue(cci_gbif_3035_bias)
-        # bias_gbif <- ((cci_gbif_3035_bias - r.min) / (r.max - r.min))
-
-
-        # print("NDOP")
-        # cci_ndop_3035_bias <- rasterize(as_Spatial(cci_ndop_3035), raster_stack_mask_czechia[[1]], fun = "count", background = 0)
-
-        # cci_ndop_3035_bias <- focal(cci_ndop_3035_bias[[1]], w = m, fun = median)
-
-        # cci_ndop_3035_bias_mask_czechia <- mask(cci_ndop_3035_bias, czechia_3035)
-
-
-        # r.min <- minValue(cci_ndop_3035_bias)
-        # r.max <- maxValue(cci_ndop_3035_bias)
-
-        # cci_ndop_3035_bias.scale <- ((cci_ndop_3035_bias - r.min) / (r.max - r.min))
-        # bias_ndop <- mask(cci_ndop_3035_bias.scale, czechia_3035)
-
-
-        # print("ALL")
-        # cci_all_3035_bias <- rasterize(as_Spatial(cci_all_3035), raster_stack[[1]], fun = "count", background = 0)
-        # cci_all_3035_bias <- focal(cci_all_3035_bias[[1]], w = m, fun = median)
-        # r.min <- minValue(cci_all_3035_bias)
-        # r.max <- maxValue(cci_all_3035_bias)
-
-        # bias_all <- ((cci_all_3035_bias - r.min) / (r.max - r.min))
+        writeRaster(bias_ndop, paste0(export_path, "Xbias_ndop-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
 
         rlist <- list(bias_gbif, bias_ndop, bias_all)
+    } else {
+        bias_gbif <- raster(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/Xbias_gbif-density-", px_size_item, ".tif"))
+        bias_ndop <- raster(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/Xbias_ndop-density-", px_size_item, ".tif"))
+        bias_all <- raster(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/Xbias_all-density-", px_size_item, ".tif"))
     }
-    next
-    # writeRaster(bias_all, paste0(export_path, "bias_all-delete-100-kolo3.tif"), format = "GTiff", overwrite = TRUE)
-    # taky pomalé?
-    # https://rdrr.io/cran/raster/man/focal.html
-
-
-
-
-    # st_write(cci_gbif_3035$geometry, paste0(export_path, "cci_gbif_3035.shp"))
-    # st_write(cci_all_3035$geometry, paste0(export_path, "cci_all_3035.shp"))
-    # st_write(cci_ndop_3035$geometry, paste0(export_path, "cci_ndop_3035.shp"))
-
-
-
-    # if (generate_bias_raster == TRUE) {
-
-    #     #
-    #     #
-    #     # Nebo si bias rastery udělat předem v QGISu...
-    #     #
-    #     #
-
-
-
-    #     print("generate_bias_raster")
-    #     gc()
-    #     cci_gbif_3035_bias <- list()
-    #     cci_ndop_3035_bias <- list()
-    #     cci_all_3035_bias <- list()
-    #     # for (bw in c(100000, 80000, 50000, 10000)) {
-    #     #     print(bw)
-
-    #     # pro 100m tam už asi bias nebude reálně zachytitelný - všude bude jen pár jednotek záznamů...
-    #     # - jedině subsamplovat 1000m? Nebo zgroupovat okolní hodnoty - přidat jao druhý krok (stačila by standard deviation?)
-    #     print("GBIF")
-    #     # cci_gbif_3035_bias <- rasterize(as_Spatial(cci_gbif_3035), raster_stack[[1]], fun = "count", background = 0)
-    #     # writeRaster(cci_gbif_3035_bias[[1]], paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/rs/", px_size_item, "_rasterize_gbif.tif"), format = "GTiff", overwrite = TRUE)
-    #     # r.min <- minValue(cci_gbif_3035_bias)
-    #     # r.max <- maxValue(cci_gbif_3035_bias)
-
-    #     gbif_xy <- as.data.frame(st_coordinates(cci_gbif_3035))
-    #     gbif_xy.dens <- kde2d(gbif_xy$X, gbif_xy$Y, n = c(nrow(raster_stack[[1]]), ncol(raster_stack[[1]])))
-    #     gbif_xy.dens.ras <- raster(gbif_xy.dens)
-    #     plot(gbif_xy.dens.ras)
-
-
-    #     cci_gbif_3035_bias.scale <- ((cci_gbif_3035_bias - r.min) / (r.max - r.min))
-    #     writeRaster(cci_gbif_3035_bias.scale[[1]], paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/rs/", px_size_item, "_rasterizeS_gbif.tif"), format = "GTiff", overwrite = TRUE)
-    #     gc()
-
-    #     print("NDOP")
-    #     cci_ndop_3035_bias <- rasterize(as_Spatial(cci_ndop_3035), raster_stack_mask_czechia[[1]], fun = "count", background = 0)
-    #     cci_ndop_3035_bias_mask_czechia <- mask(cci_ndop_3035_bias, czechia_3035)
-    #     writeRaster(cci_ndop_3035_bias_mask_czechia[[1]], paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/rs/", px_size_item, "_rasterize_ndop.tif"), format = "GTiff", overwrite = TRUE)
-    #     r.min <- minValue(cci_ndop_3035_bias)
-    #     r.max <- maxValue(cci_ndop_3035_bias)
-
-    #     cci_ndop_3035_bias.scale <- ((cci_ndop_3035_bias - r.min) / (r.max - r.min))
-    #     cci_ndop_3035_bias_mask_czechia.scale <- mask(cci_ndop_3035_bias.scale, czechia_3035)
-
-    #     writeRaster(cci_ndop_3035_bias_mask_czechia.scale[[1]], paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/rs/", px_size_item, "_rasterizeS_ndop.tif"), format = "GTiff", overwrite = TRUE)
-    #     gc()
-
-    #     print("ALL")
-    #     cci_all_3035_bias <- rasterize(as_Spatial(cci_all_3035), raster_stack[[1]], fun = "count", background = 0)
-    #     writeRaster(cci_all_3035_bias[[1]], paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/rs/", px_size_item, "_rasterize_all.tif"), format = "GTiff", overwrite = TRUE)
-    #     r.min <- minValue(cci_all_3035_bias)
-    #     r.max <- maxValue(cci_all_3035_bias)
-
-    #     cci_all_3035_bias.scale <- ((cci_all_3035_bias - r.min) / (r.max - r.min))
-    #     writeRaster(cci_all_3035_bias.scale[[1]], paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/rs/", px_size_item, "_rasterizeS_all.tif"), format = "GTiff", overwrite = TRUE)
-    #     gc()
-    #     # gc()
-    #     # # GBIF
-    #     # print("GBIF")
-    #     # cci_gbif_3035_bias[[bw]] <- sp.kde(
-    #     #     x = as_Spatial(cci_gbif_3035), bw = bw,
-    #     #     newdata = raster_stack[[1]], standardize = TRUE,
-    #     #     scale.factor = 10000
-    #     # )
-    #     # writeRaster(cci_gbif_3035_bias[[bw]], paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/rs/", px_size_item, "_", bw, "_gbif.tif"), format = "GTiff", overwrite = TRUE)
-
-    #     # gc()
-    #     # # NDOP
-    #     # print("NDOP")
-    #     # cci_ndop_3035_bias[[bw]] <- sp.kde(
-    #     #     x = as_Spatial(cci_ndop_3035), bw = bw,
-    #     #     newdata = raster_stack_mask_czechia[[1]], standardize = TRUE,
-    #     #     scale.factor = 10000
-    #     # )
-    #     # writeRaster(cci_ndop_3035_bias[[bw]], paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/rs/", px_size_item, "_", bw, "_ndop.tif"), format = "GTiff", overwrite = TRUE)
-
-    #     # gc()
-    #     # # ALL
-    #     # print("ALL")
-    #     # cci_all_3035_bias[[bw]] <- sp.kde(
-    #     #     x = as_Spatial(cci_all_3035), bw = bw,
-    #     #     newdata = raster_stack[[1]], standardize = TRUE,
-    #     #     scale.factor = 10000
-    #     # )
-    #     # writeRaster(cci_all_3035_bias[[bw]], paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/rs/", px_size_item, "_", bw, "_all.tif"), format = "GTiff", overwrite = TRUE)
-    #     # }
-    # }
-    # stop()
-    # bias_gbif <- raster(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/rs/", px_size_item, "_rasterizeS_gbif.tif"))
-    # bias_ndop <- raster(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/rs/", px_size_item, "_rasterizeS_ndop.tif"))
-    # bias_all <- raster(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/rs/", px_size_item, "_rasterizeS_all.tif"))
-
-
-    # # # bias_gbif <- raster(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/qgis/", px_size_item, "/rkd_", px_size_item, "_10000.tif"))
-    # # # bias_all <- raster(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/qgis/", px_size_item, "/rkd2_", px_size_item, "_10000.tif"))
-    # # # bias_ndop <- raster(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/bias_files/qgis/", px_size_item, "/rkd3_", px_size_item, "_10000.tif"))
 
     # # # bias_gbif[is.na(bias_gbif[])] <- 0
     # # # bias_all[is.na(bias_all[])] <- 0
     # # # bias_ndop[is.na(bias_ndop[])] <- 0
 
-    # # # bias_gbif_crop <- crop(bias_gbif, extent(raster_stack))
-    # # # bias_all_crop <- crop(bias_all, extent(raster_stack))
-    # # # bias_ndop_crop <- crop(bias_ndop, extent(raster_stack_mask_czechia[[1]]))
-    # # # bias_ndop_crop_mask <- mask(bias_ndop_crop, czechia_3035)
-    # # # bias_ndop_crop_mask <- setExtent(bias_ndop_crop_mask, extent(raster_stack_mask_czechia[[1]]), keepres = TRUE)
-    # # # origin(bias_ndop_crop_mask) <- 0
+    # obrácení pořadí druhů, od nejméně početných pro urychlení prvních výsledků
+    species <- rev(ptaci_ndop_distinct$species) # přepisuju původní seznam z ndop_top
 
-    species <- ptaci_ndop_distinct$species # přepisuju původní seznam z ndop_top
     for (sp in species) { # sp in ptaci_gbif_distinct$species
         # foreach(sindex = 1:nrow(species), .combine=combine, .packages=c('dismo', "rJava")) %dopar% {
         # species1_, species2_, species1, species2, species1_short, species2_short, Nálezů
@@ -519,16 +323,13 @@ for (px_size_item in px_size) {
         enm_mxt_gbif.r <- stack(sapply(enm_mxt_gbif, function(x) x$suitability))
         enm_mxt_gbif.r.m <- calc(enm_mxt_gbif.r, fun = mean)
         # writeRaster(enm_mxt_gbif.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/mean_suitability_", sp, "_", px_size_item, "_", replicates, "_gbif.tif"), format = "GTiff", overwrite = TRUE)
-        png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/predikce/", sp, "_", px_size_item, "_", replicates, "_gbif.png"))
+        png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/predikce/_", sp, "_", px_size_item, "_", replicates, "_gbif.png"))
         plot(enm_mxt_gbif.r.m, main = paste0(sp, ", GBIF, AUC=", round(enm_mxt_gbif.auc, digits = 3)))
         par(bg = NA)
         plot(czechia_3035$geometry, add = TRUE)
         par()
         points(enm_mxt_gbif.s$presence.points)
         dev.off()
-
-
-
 
         # možnost vypsat si VIP jednotlivých proměnných - vypisuje se po PÁRECH (výsledky+grafika) pr každé opakování!!!
         # - [[1]] obsahuje statistiky (tibble: Variable, Importance, StDev), [[2]] pak grafický výstup (ggplot) zobrajující přispění
@@ -539,37 +340,6 @@ for (px_size_item in px_size) {
         # calculates Continuous Boyce Index
         # str(enms[["10000"]][["Buteo rufinus"]][[4]]
         enm_mxt_gbif.cal <- lapply(enm_mxt_gbif, enmtools.calibrate, env = raster_stack, n.background = 10000)
-
-        # # # # # # # # # # # # # # # # #
-        # # simuluje occurence points!!! - jde použít k novému otestování pro PPPM (Poisson point proces model): třeba pomocí blockCV (nebo novým modelem?) takto to dělal Gabbas??? - pak uvádím úplně nové statistiky modelované již z těchto PPPM bodů?!
-        # # # # # # # # # # # # # # # # #
-        # # po párech X a Y souřadnice
-        # # str(enm_mxt_gbif.sim[,1], max.level = 1) / první sada x,y souřadnic: enm_mxt_gbif.sim[,1]$x enm_mxt_gbif.sim[,1]$y
-        # # str(enm_mxt_gbif.sim[,2], max.level = 1)
-        # enm_mxt_gbif.sim <- sapply(enm_mxt_gbif, sim.points, n.points = 10000)
-        # # as.data.frame(enm_mxt_gbif.sim[,2])
-
-
-
-
-        # str(enm_mxt_gbif, max.level = 1)
-        # str(enm_mxt_gbif[[1]]$test.evaluation)
-
-        # interactive.plot( enm_mxt_gbif)
-
-        # v <- visualize.enm(enm_mxt_gbif, raster_stack, layers = c=("wc_1000_bio09"))
-        # v$suit.plot
-        # v$background.plot
-
-
-
-
-
-
-
-        # ############################## ořez výsledné predikce
-        # pred_gbif_mean_crop <- crop(pred_gbif_mean, extent(czechia_3035))
-        # pred_gbif_mean_mask_czechia <- mask(pred_gbif_mean_crop, czechia_3035)
 
 
 
@@ -602,9 +372,8 @@ for (px_size_item in px_size) {
         enm_mxt_ndop.r.m <- calc(enm_mxt_ndop.r, fun = mean)
 
 
-
         # writeRaster(enm_mxt_ndop.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/mean_suitability_", sp, "_", px_size_item, "_", replicates, "_ndop.tif"), format = "GTiff", overwrite = TRUE)
-        png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/predikce/", sp, "_", px_size_item, "_", replicates, "_ndop.png"))
+        png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/predikce/_", sp, "_", px_size_item, "_", replicates, "_ndop.png"))
         plot(enm_mxt_ndop.r.m, main = paste0(sp, ", NDOP, AUC=", round(enm_mxt_ndop.auc, digits = 3)))
         par(bg = NA)
         plot(czechia_3035$geometry, add = TRUE)
@@ -612,10 +381,11 @@ for (px_size_item in px_size) {
         points(enm_mxt_ndop.s$presence.points)
         dev.off()
 
-
         enm_mxt_ndop.vip <- sapply(enm_mxt_ndop, enmtools.vip)
 
         enm_mxt_ndop.cal <- lapply(enm_mxt_ndop, enmtools.calibrate, env = raster_stack, n.background = 10000)
+
+
 
         ###
         ### all (ndpop+gbif)
@@ -627,7 +397,6 @@ for (px_size_item in px_size) {
         colnames(enm_mxt_all.pp)[1] <- "Longitude"
         colnames(enm_mxt_all.pp)[2] <- "Latitude"
         enm_species <- enmtools.species(range = raster_stack[[1]], species.name = as.character(sp), presence.points = enm_mxt_all.pp)
-
 
         enm_mxt_all.s <- enm_species
 
@@ -646,7 +415,7 @@ for (px_size_item in px_size) {
         enm_mxt_all.r.m <- calc(enm_mxt_all.r, fun = mean)
 
         # writeRaster(enm_mxt_all.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/mean_suitability_", sp, "_", px_size_item, "_", replicates, "_all.tif"), format = "GTiff", overwrite = TRUE)
-        png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/predikce/", sp, "_", px_size_item, "_", replicates, "_all.png"))
+        png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/predikce/_", sp, "_", px_size_item, "_", replicates, "_all.png"))
         plot(enm_mxt_all.r.m, main = paste0(sp, ",GBIF+NDOP, AUC=", round(enm_mxt_all.auc, digits = 3)))
         par(bg = NA)
         plot(czechia_3035$geometry, add = TRUE)
@@ -654,9 +423,7 @@ for (px_size_item in px_size) {
         points(enm_mxt_all.s$presence.points)
         dev.off()
 
-
         enm_mxt_all.vip <- sapply(enm_mxt_all, enmtools.vip)
-
 
         enm_mxt_all.cal <- lapply(enm_mxt_all, enmtools.calibrate, env = raster_stack, n.background = 10000)
 
