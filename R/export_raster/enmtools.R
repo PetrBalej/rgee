@@ -25,7 +25,7 @@ options(scipen = 999) # výpis čísel v nezkrácené podobě
 options(java.parameters = c("-Xmx20g"))
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
-    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "blockCV", "ggplot2", "dismo", "rmaxent", "ENMToolsRMaxent", "data.table", "MASS", "spatstat", "parallel", "foreach")
+    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "blockCV", "ggplot2", "dismo", "rmaxent", "ENMToolsRMaxent", "data.table", "MASS", "spatstat", "purrr")
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -51,10 +51,10 @@ export_path <-
 
 rcrs <- "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 limit_min_occurences <- 100
-limit_max_occurences <- 155
+limit_max_occurences <- 70000
 px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
-replicates <- 2
-pres <- "test" # předpona png obrázků s predikcí
+replicates <- 3
+pres <- "i" # předpona png obrázků s predikcí
 generate_bias_raster <- FALSE
 trans_coords <- TRUE
 enmsr <- list()
@@ -553,23 +553,42 @@ for (px_size_item in px_size) {
         enm_mxt_gbif.vip.t <- lapply(enm_mxt_gbif.vip[seq(1, replicates * 2, 2)], function(x) {
             as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
         })
-        enm_mxt_gbif.vip.s <- do.call("add_row", enm_mxt_gbif.vip.t) %>%
-            summarise_if(is.numeric, mean, na.rm = TRUE) %>%
-            unite("new", names(taS)) # separate(xy, c("x", "y"))
 
         enm_mxt_ndop.vip.t <- lapply(enm_mxt_ndop.vip[seq(1, replicates * 2, 2)], function(x) {
             as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
         })
-        enm_mxt_ndop.vip.s <- do.call("add_row", enm_mxt_ndop.vip.t) %>%
-            summarise_if(is.numeric, mean, na.rm = TRUE) %>%
-            unite("new", names(taS)) # separate(xy, c("x", "y"))
 
         enm_mxt_all.vip.t <- lapply(enm_mxt_all.vip[seq(1, replicates * 2, 2)], function(x) {
             as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
         })
-        enm_mxt_all.vip.s <- do.call("add_row", enm_mxt_all.vip.t) %>%
-            summarise_if(is.numeric, mean, na.rm = TRUE) %>%
-            unite("new", names(taS)) # separate(xy, c("x", "y"))
+
+        if (replicates == 1) {
+            enm_mxt_gbif.vip.s <- do.call("add_row", enm_mxt_gbif.vip.t)
+            enm_mxt_ndop.vip.s <- do.call("add_row", enm_mxt_ndop.vip.t)
+            enm_mxt_all.vip.s <- do.call("add_row", enm_mxt_all.vip.t)
+        } else {
+            b_g <- enm_mxt_gbif.vip.t[[1]]
+            b_n <- enm_mxt_ndop.vip.t[[1]]
+            b_a <- enm_mxt_all.vip.t[[1]]
+            for (n in 1:replicates) {
+                if (n > 1) {
+                    b_g %<>%  add_row(enm_mxt_gbif.vip.t[[n]])
+                    b_n %<>%  add_row(enm_mxt_ndop.vip.t[[n]])
+                    b_a %<>%  add_row(enm_mxt_all.vip.t[[n]])
+                }
+            }
+            enm_mxt_gbif.vip.s <- b_g %>%
+                summarise_if(is.numeric, mean, na.rm = TRUE)
+
+            enm_mxt_ndop.vip.s <- b_n %>%
+                summarise_if(is.numeric, mean, na.rm = TRUE)
+
+            enm_mxt_all.vip.s <- b_a %>%
+                summarise_if(is.numeric, mean, na.rm = TRUE)
+        }
+        enm_mxt_gbif.vip.s.z <- enm_mxt_gbif.vip.s %>% unite("enm_mxt_gbif.vip", names(enm_mxt_gbif.vip.t[[1]])) # separate(xy, c("x", "y"))
+        enm_mxt_ndop.vip.s.z <- enm_mxt_ndop.vip.s %>% unite("enm_mxt_ndop.vip", names(enm_mxt_ndop.vip.t[[1]])) # separate(xy, c("x", "y"))
+        enm_mxt_all.vip.s.z <- enm_mxt_all.vip.s %>% unite("enm_mxt_all.vip", names(enm_mxt_all.vip.t[[1]])) # separate(xy, c("x", "y"))
 
 
         gbif_ndop.geo.m <- raster.overlap(enm_mxt_gbif.r.m.crop.czechia, enm_mxt_ndop.r.m)
@@ -613,21 +632,33 @@ for (px_size_item in px_size) {
             auc.all.te.env = mean(sapply(enm_mxt_all, function(x) x$env.test.evaluation@auc)),
             auc.all.boyce = mean(sapply(enm_mxt_ndop.cal, function(x) x$continuous.boyce$Spearman.cor)),
 
-            # variable permutation importance
-            vip.gbif = enm_mxt_gbif.vip.t,
-            vip.ndop = enm_mxt_ndop.vip.t,
-            vip.all = enm_mxt_all.vip.t,
+            # variable permutation importance - tibble
+            vip1.gbif = enm_mxt_gbif.vip.s,
+            vip1.ndop = enm_mxt_ndop.vip.s,
+            vip1.all = enm_mxt_all.vip.s,
+
+            # variable permutation importance - sloučené
+            vip2.gbif = enm_mxt_gbif.vip.s.z,
+            vip2.ndop = enm_mxt_ndop.vip.s.z,
+            vip2.all = enm_mxt_all.vip.s.z,
+
+
+            # variable permutation importance - sloučené
+            vip3.gbif = unname(unlist(enm_mxt_gbif.vip.s.z)),
+            vip3.ndop = unname(unlist(enm_mxt_ndop.vip.s.z)),
+            vip3.all = unname(unlist(enm_mxt_all.vip.s.z)),
+
 
             # geogr. overlap
             gbif_ndop.geo.D = gbif_ndop.geo.m$D,
             gbif_ndop.geo.I = gbif_ndop.geo.m$I,
             gbif_ndop.geo.cor = gbif_ndop.geo.m$rank.cor,
 
-            gbif_all.geo = gbif_all.geo.m$D,
-            gbif_all.geo.D = gbif_all.geo.m$I,
+            gbif_all.geo.D = gbif_all.geo.m$D,
+            gbif_all.geo.I = gbif_all.geo.m$I,
             gbif_all.geo.cor = gbif_all.geo.m$rank.cor,
 
-            gbif_all_erase.geo.I = gbif_all_erase.geo.m$D,
+            gbif_all_erase.geo.D = gbif_all_erase.geo.m$D,
             gbif_all_erase.geo.I = gbif_all_erase.geo.m$I,
             gbif_all_erase.geo.cor = gbif_all_erase.geo.m$rank.cor,
 
@@ -727,7 +758,7 @@ print(end_time - start_time)
 # enmsr[[1]][[1]]$gbif_all.env
 # mean(map_dbl(enmsr[[1]][[1]]$gbif_all.env, ~ (.$env.D)))
 
-
+# separate(enmsr[[1]][[1]]$vip.all , c("a","b","c","d","e","f","g","h","i","j","k"))
 
 # as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(enmsr[[1]][[1]]$vip[[1]][, 2], enmsr[[1]][[1]]$vip[[1]]$Variable))))))
 
