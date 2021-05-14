@@ -25,7 +25,7 @@ options(scipen = 999) # výpis čísel v nezkrácené podobě
 options(java.parameters = c("-Xmx20g"))
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
-    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "blockCV", "ggplot2", "dismo", "rmaxent", "ENMToolsRMaxent", "data.table", "MASS", "spatstat")
+    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "blockCV", "ggplot2", "dismo", "rmaxent", "ENMToolsRMaxent", "data.table", "MASS", "spatstat", "parallel", "foreach")
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -51,13 +51,14 @@ export_path <-
 
 rcrs <- "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 limit_min_occurences <- 100
-limit_max_occurences <- 70000
+limit_max_occurences <- 155
 px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
-replicates <- 3
-pres <- "XXX" # předpona png obrázků s predikcí
+replicates <- 2
+pres <- "test" # předpona png obrázků s predikcí
 generate_bias_raster <- FALSE
 trans_coords <- TRUE
 enmsr <- list()
+
 # shapefiles
 # BB (+ČR)
 blocks <- st_read(paste0(wd, "/rgee/shp/blocks.shp"))
@@ -82,8 +83,12 @@ if (trans_coords == TRUE) {
     # pokud nebudu i dynamicky měnit přesost nálezů podle pixelu, může zůstat zde
     # je zde pro možnost navázání na pixel size, momentálně na pevno na 300m přesnost pro zjědnodušení
     # XXX odkud jsem generoval???
-    plot_ndop_csv <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp/ndop_300.csv")
-    plot_gbif_csv <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp/gbif_300.csv")
+
+    if (!exists("plot_ndop_csv") & !exists("plot_gbif_csv")) {
+        plot_ndop_csv <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp/ndop_300.csv")
+        plot_gbif_csv <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp/gbif_300.csv")
+    }
+
 
 
 
@@ -165,8 +170,8 @@ if (trans_coords == TRUE) {
     # write_csv(cci_all_3035, paste0(export_path, "cci_all_3035.csv"))
 } else {
     ############################## zatím nefunkční větev, nutno opravit logiku v kódu aby se nemusely pokaždé znovu zpracovávat kompletní csv všech záznamů
-    ############################## 
-    ############################## 
+    ##############################
+    ##############################
     # plot_gbif_csv <- readRDS(paste0(export_path, "cci_gbif_3035.rds"))
     # plot_ndop_csv <- readRDS(paste0(export_path, "cci_ndop_3035.rds"))
     # plot_all_csv <- readRDS(paste0(export_path, "cci_all_3035.rds"))
@@ -305,7 +310,8 @@ for (px_size_item in px_size) {
     # # # bias_ndop[is.na(bias_ndop[])] <- 0
 
     # obrácení pořadí druhů, od nejméně početných pro urychlení prvních výsledků
-    species <- ptaci_ndop_distinct$species # přepisuju původní seznam z ndop_top
+    species <- rev(ptaci_ndop_distinct$species) # přepisuju původní seznam z ndop_top
+
 
     for (sp in species) { # sp in ptaci_gbif_distinct$species
         # foreach(sindex = 1:nrow(species), .combine=combine, .packages=c('dismo', "rJava")) %dopar% {
@@ -376,7 +382,7 @@ for (px_size_item in px_size) {
         # names(enm_mxt_gbif) <- paste0("rep", 1:repl)
         enm_mxt_gbif.r <- stack(sapply(enm_mxt_gbif, function(x) x$suitability))
         enm_mxt_gbif.r.m <- calc(enm_mxt_gbif.r, fun = mean)
-        # writeRaster(enm_mxt_gbif.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/mean_suitability_", sp, "_", px_size_item, "_", replicates, "_gbif.tif"), format = "GTiff", overwrite = TRUE)
+        writeRaster(enm_mxt_gbif.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.tif"), format = "GTiff", overwrite = TRUE)
         png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/predikce/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.png"))
         plot(enm_mxt_gbif.r.m,
             main = paste0(sp, " | GBIF, AUC=", round(enm_mxt_gbif.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
@@ -429,7 +435,9 @@ for (px_size_item in px_size) {
         enm_mxt_ndop.r.m <- calc(enm_mxt_ndop.r, fun = mean)
 
 
-        # writeRaster(enm_mxt_ndop.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/mean_suitability_", sp, "_", px_size_item, "_", replicates, "_ndop.tif"), format = "GTiff", overwrite = TRUE)
+
+
+        writeRaster(enm_mxt_ndop.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.tif"), format = "GTiff", overwrite = TRUE)
         png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/predikce/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.png"))
         plot(enm_mxt_ndop.r.m,
             main = paste0(sp, " | NDOP, AUC=", round(enm_mxt_ndop.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
@@ -474,7 +482,7 @@ for (px_size_item in px_size) {
         enm_mxt_all.r <- stack(sapply(enm_mxt_all, function(x) x$suitability))
         enm_mxt_all.r.m <- calc(enm_mxt_all.r, fun = mean)
 
-        # writeRaster(enm_mxt_all.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/mean_suitability_", sp, "_", px_size_item, "_", replicates, "_all.tif"), format = "GTiff", overwrite = TRUE)
+        writeRaster(enm_mxt_all.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.tif"), format = "GTiff", overwrite = TRUE)
         png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/predikce/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.png"))
         plot(enm_mxt_all.r.m,
             main = paste0(sp, " | GBIF+NDOP, AUC=", round(enm_mxt_all.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
@@ -485,6 +493,8 @@ for (px_size_item in px_size) {
         par()
         points(enm_mxt_all.s$presence.points, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
         dev.off()
+
+
 
         enm_mxt_all.vip <- sapply(enm_mxt_all, enmtools.vip)
 
@@ -531,10 +541,45 @@ for (px_size_item in px_size) {
 
 
         eos <- list()
+
+
         for (r in 1:replicates) {
             eos[[r]] <- env.overlap(enm_mxt_all[[r]], enm_mxt_gbif[[r]], env = raster_stack)[1:3]
         }
 
+
+
+
+        enm_mxt_gbif.vip.t <- lapply(enm_mxt_gbif.vip[seq(1, replicates * 2, 2)], function(x) {
+            as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+        })
+        enm_mxt_gbif.vip.s <- do.call("add_row", enm_mxt_gbif.vip.t) %>%
+            summarise_if(is.numeric, mean, na.rm = TRUE) %>%
+            unite("new", names(taS)) # separate(xy, c("x", "y"))
+
+        enm_mxt_ndop.vip.t <- lapply(enm_mxt_ndop.vip[seq(1, replicates * 2, 2)], function(x) {
+            as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+        })
+        enm_mxt_ndop.vip.s <- do.call("add_row", enm_mxt_ndop.vip.t) %>%
+            summarise_if(is.numeric, mean, na.rm = TRUE) %>%
+            unite("new", names(taS)) # separate(xy, c("x", "y"))
+
+        enm_mxt_all.vip.t <- lapply(enm_mxt_all.vip[seq(1, replicates * 2, 2)], function(x) {
+            as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+        })
+        enm_mxt_all.vip.s <- do.call("add_row", enm_mxt_all.vip.t) %>%
+            summarise_if(is.numeric, mean, na.rm = TRUE) %>%
+            unite("new", names(taS)) # separate(xy, c("x", "y"))
+
+
+        gbif_ndop.geo.m <- raster.overlap(enm_mxt_gbif.r.m.crop.czechia, enm_mxt_ndop.r.m)
+        gbif_all.geo.m <- raster.overlap(enm_mxt_all.r.m, enm_mxt_gbif.r.m)
+        gbif_all_erase.geo.m <- raster.overlap(enm_mxt_all.r.m.erase.czechia, enm_mxt_gbif.r.m.erase.czechia)
+
+
+        #     gbif <- calc(stack(sapply(enm_mxt_gbif, function(x) x$suitability)), fun = mean),
+        #     ndop <- calc(stack(sapply(enm_mxt_ndop, function(x) x$suitability)), fun = mean),
+        #     all <- calc(stack(sapply(enm_mxt_all, function(x) x$suitability)), fun = mean)
 
 
         enmsr[[as.character(px_size_item)]][[as.character(sp)]] <- list(
@@ -543,42 +588,56 @@ for (px_size_item in px_size) {
             species = as.character(sp),
             ndop_c = ndop_f_n,
             gbif_c = gbif_f_n,
-            r = list(
-                gbif <- calc(stack(sapply(enm_mxt_gbif, function(x) x$suitability)), fun = mean),
-                ndop <- calc(stack(sapply(enm_mxt_ndop, function(x) x$suitability)), fun = mean),
-                all <- calc(stack(sapply(enm_mxt_all, function(x) x$suitability)), fun = mean)
-            ),
-            auc = list(
-                gbif = list(
-                    mean(sapply(enm_mxt_gbif, function(x) x$training.evaluation@auc)),
-                    mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@auc)),
-                    mean(sapply(enm_mxt_gbif, function(x) x$env.training.evaluation@auc)),
-                    mean(sapply(enm_mxt_gbif, function(x) x$env.test.evaluation@auc)),
-                    mean(sapply(enm_mxt_gbif.cal, function(x) x$continuous.boyce$Spearman.cor))
-                ),
-                ndop = list(
-                    mean(sapply(enm_mxt_ndop, function(x) x$training.evaluation@auc)),
-                    mean(sapply(enm_mxt_ndop, function(x) x$test.evaluation@auc)),
-                    mean(sapply(enm_mxt_ndop, function(x) x$env.training.evaluation@auc)),
-                    mean(sapply(enm_mxt_ndop, function(x) x$env.test.evaluation@auc)),
-                    mean(sapply(enm_mxt_ndop.cal, function(x) x$continuous.boyce$Spearman.cor))
-                ),
-                all = list(
-                    mean(sapply(enm_mxt_all, function(x) x$training.evaluation@auc)),
-                    mean(sapply(enm_mxt_all, function(x) x$test.evaluation@auc)),
-                    mean(sapply(enm_mxt_all, function(x) x$env.training.evaluation@auc)),
-                    mean(sapply(enm_mxt_all, function(x) x$env.test.evaluation@auc)),
-                    mean(sapply(enm_mxt_ndop.cal, function(x) x$continuous.boyce$Spearman.cor))
-                )
-            ),
-            vip = enm_mxt_gbif.vip[seq(1, replicates * 2, 2)],
-            eos = eos,
-            gbif_ndop.geo = raster.overlap(enm_mxt_gbif.r.m.crop.czechia, enm_mxt_ndop.r.m),
-            gbif_all.geo = raster.overlap(enm_mxt_all.r.m, enm_mxt_gbif.r.m),
-            gbif_all_erase.geo = raster.overlap(enm_mxt_all.r.m.erase.czechia, enm_mxt_gbif.r.m.erase.czechia),
-            gbif_all.env = eos
+            # ukládat zvlášť a průběžně jednotlivě jako samostatné rastery pro budoucí analýzy (třeba analýza diverzity - překryv všech rasterů), tady to bude zdržovat načnění!
+            # r = list(
+            #     gbif <- calc(stack(sapply(enm_mxt_gbif, function(x) x$suitability)), fun = mean),
+            #     ndop <- calc(stack(sapply(enm_mxt_ndop, function(x) x$suitability)), fun = mean),
+            #     all <- calc(stack(sapply(enm_mxt_all, function(x) x$suitability)), fun = mean)
+            # ),
+            # AUC+
+            auc.gbif.tr = mean(sapply(enm_mxt_gbif, function(x) x$training.evaluation@auc)),
+            auc.gbif.te = mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@auc)),
+            auc.gbif.tr.env = mean(sapply(enm_mxt_gbif, function(x) x$env.training.evaluation@auc)),
+            auc.gbif.te.env = mean(sapply(enm_mxt_gbif, function(x) x$env.test.evaluation@auc)),
+            auc.gbif.boyce = mean(sapply(enm_mxt_gbif.cal, function(x) x$continuous.boyce$Spearman.cor)),
+
+            auc.ndop.tr = mean(sapply(enm_mxt_ndop, function(x) x$training.evaluation@auc)),
+            auc.ndop.te = mean(sapply(enm_mxt_ndop, function(x) x$test.evaluation@auc)),
+            auc.ndop.tr.env = mean(sapply(enm_mxt_ndop, function(x) x$env.training.evaluation@auc)),
+            auc.ndop.te.env = mean(sapply(enm_mxt_ndop, function(x) x$env.test.evaluation@auc)),
+            auc.ndop.boyce = mean(sapply(enm_mxt_ndop.cal, function(x) x$continuous.boyce$Spearman.cor)),
+
+            auc.all.tr = mean(sapply(enm_mxt_all, function(x) x$training.evaluation@auc)),
+            auc.all.te = mean(sapply(enm_mxt_all, function(x) x$test.evaluation@auc)),
+            auc.all.tr.env = mean(sapply(enm_mxt_all, function(x) x$env.training.evaluation@auc)),
+            auc.all.te.env = mean(sapply(enm_mxt_all, function(x) x$env.test.evaluation@auc)),
+            auc.all.boyce = mean(sapply(enm_mxt_ndop.cal, function(x) x$continuous.boyce$Spearman.cor)),
+
+            # variable permutation importance
+            vip.gbif = enm_mxt_gbif.vip.t,
+            vip.ndop = enm_mxt_ndop.vip.t,
+            vip.all = enm_mxt_all.vip.t,
+
+            # geogr. overlap
+            gbif_ndop.geo.D = gbif_ndop.geo.m$D,
+            gbif_ndop.geo.I = gbif_ndop.geo.m$I,
+            gbif_ndop.geo.cor = gbif_ndop.geo.m$rank.cor,
+
+            gbif_all.geo = gbif_all.geo.m$D,
+            gbif_all.geo.D = gbif_all.geo.m$I,
+            gbif_all.geo.cor = gbif_all.geo.m$rank.cor,
+
+            gbif_all_erase.geo.I = gbif_all_erase.geo.m$D,
+            gbif_all_erase.geo.I = gbif_all_erase.geo.m$I,
+            gbif_all_erase.geo.cor = gbif_all_erase.geo.m$rank.cor,
+
+            # niche overlap
+            gbif_all.env.D = mean(map_dbl(eos, ~ (.$env.D))),
+            gbif_all.env.I = mean(map_dbl(eos, ~ (.$env.I))),
+            gbif_all.env.cor = mean(map_dbl(eos, ~ (.$env.cor)))
         )
     }
+
     #  dev.off()
 }
 timestamp <- unclass(as.POSIXct(Sys.time()))
@@ -624,3 +683,88 @@ print(end_time - start_time)
 # hdr(rr, format = "ENVI")
 
 # source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R", encoding = "UTF-8")
+
+#      evipn <- lapply(evip, function(x) {
+
+# as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[,2], x$Variable))))))
+#       # print(str(x))
+# #purrr::transpose(x[,2], x$Variable)
+# #as.data.frame(t(as.matrix(unlist(purrr::transpose(x[,2], x$Variable)))))
+
+# # ttest <- as_tibble(x)
+# #   ttest %>%
+# #      dplyr::select(-StDev) %>%
+# #    pivot_longer(cols = c(Importance)) %>%
+# #    group_by(Variable) %>%
+# #    pivot_wider(names_from = Variable, values_from = value)
+
+#     })
+
+
+
+
+
+
+
+
+# evip <- enm_mxt_gbif.vip[seq(1, replicates * 2, 2)]
+# evipn <- lapply(evip, function(x) {
+#     as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+# })
+
+# ta <- do.call("add_row", evipn)
+
+# taS <- ta %>% summarise_if(is.numeric, mean, na.rm = TRUE)
+# taS %>% unite("new", names(taS)) # separate(xy, c("x", "y"))
+
+
+# do.call(paste, c(as.list(taS), sep = ","))
+
+
+# write_csv(taS, paste0(export_path, "uzzzz.csv"), append = TRUE)
+
+
+# enmsr[[1]][[1]]$gbif_all.env
+# mean(map_dbl(enmsr[[1]][[1]]$gbif_all.env, ~ (.$env.D)))
+
+
+
+# as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(enmsr[[1]][[1]]$vip[[1]][, 2], enmsr[[1]][[1]]$vip[[1]]$Variable))))))
+
+
+# as_tibble(purrr::transpose(enmsr[[1]][[1]]$vip[[1]][, 2], enmsr[[1]][[1]]$vip[[1]]$Variable))
+# names(x)
+
+
+# transpose(enmsr[[1]][[1]]$vip[[1]][, 2])
+
+# ttest <- as_tibble(enmsr[[1]][[1]]$vip[[1]])
+
+# ttest %>%
+#     gather(Importance, 1:ncol(ttest)) %>%
+#     spread(Series.Description, val)
+
+
+
+# as_tibble(cbind(vars = enmsr[[1]][[1]]$vip[[1]]$Variable, t(enmsr[[1]][[1]]$vip[[1]][, 2]))) %>% .[-c(1:2), ]
+
+
+# ttest %>%
+#     dplyr::select(-StDev) %>%
+#     pivot_longer(cols = c(Importance)) %>%
+#     group_by(Variable) %>%
+#     pivot_wider(names_from = Variable, values_from = value)
+
+
+
+# write.table(mat, file = "test.txt")
+
+
+# write.csv2(as.data.frame(t(evipn)), paste(export_path, "jeden-delete2.csv"))
+
+
+
+# mtcars %>%
+#     rownames_to_column() %>%
+#     pivot_longer(-rowname, "variable", "value") %>%
+#     pivot_wider(variable, rowname)
