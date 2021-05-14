@@ -563,9 +563,9 @@ for (px_size_item in px_size) {
         })
 
         if (replicates == 1) {
-            enm_mxt_gbif.vip.s <- do.call("add_row", enm_mxt_gbif.vip.t)
-            enm_mxt_ndop.vip.s <- do.call("add_row", enm_mxt_ndop.vip.t)
-            enm_mxt_all.vip.s <- do.call("add_row", enm_mxt_all.vip.t)
+            enm_mxt_gbif.vip.s <- enm_mxt_gbif.vip.t[[1]]
+            enm_mxt_ndop.vip.s <- enm_mxt_ndop.vip.t[[1]]
+            enm_mxt_all.vip.s <- enm_mxt_all.vip.t[[1]]
         } else {
             b_g <- enm_mxt_gbif.vip.t[[1]]
             b_n <- enm_mxt_ndop.vip.t[[1]]
