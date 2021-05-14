@@ -572,9 +572,9 @@ for (px_size_item in px_size) {
             b_a <- enm_mxt_all.vip.t[[1]]
             for (n in 1:replicates) {
                 if (n > 1) {
-                    b_g %<>%  add_row(enm_mxt_gbif.vip.t[[n]])
-                    b_n %<>%  add_row(enm_mxt_ndop.vip.t[[n]])
-                    b_a %<>%  add_row(enm_mxt_all.vip.t[[n]])
+                    b_g %<>% add_row(enm_mxt_gbif.vip.t[[n]])
+                    b_n %<>% add_row(enm_mxt_ndop.vip.t[[n]])
+                    b_a %<>% add_row(enm_mxt_all.vip.t[[n]])
                 }
             }
             enm_mxt_gbif.vip.s <- b_g %>%
