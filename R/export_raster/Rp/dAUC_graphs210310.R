@@ -31,30 +31,394 @@ lapply(required_packages, require, character.only = TRUE)
 
 wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee"
 setwd(wd)
+export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds_csv/"
+# pairs <- list(
+
+#   # # auc
+#   c("auc.gbif.te", "auc.ndop.te"),
+#   c("auc.gbif.te", "auc.all.te"),
+#   # # geogr. overlap
+#   c("gbif_all.geo.D", "gbif_ndop.geo.D"),
+#   c("gbif_all.geo.I", "gbif_ndop.geo.I"),
+#   c("gbif_all_erase.geo.D", "gbif_ndop.geo.D"),
+#   c("gbif_all_erase.geo.I", "gbif_ndop.geo.I"),
+#   # je nějaký rozdíl v globálních po vymazání čr?
+#   c("gbif_all_erase.geo.D", "gbif_all.geo.D"),
+#   c("gbif_all_erase.geo.I", "gbif_all.geo.I"),
+#   # # env. overlap - není s čím do páru porovnávat...
+#   c("gbif_all.env.D", "gbif_all.env.D")
+# )
+
+
 
 pairs <- list(
-  c("SchoenerD_1", "SchoenerD_2"),
-  c("auc_gbif", "auc_all"), c("auc_gbif", "auc_ndop"),
-  c("TSS_gbif", "TSS_all"), c("TSS_gbif", "TSS_ndop"),
-  c("Jaccard_gbif", "Jaccard_all"), c("Jaccard_gbif", "Jaccard_ndop"),
-  c("Sorensen_gbif", "Sorensen_all"), c("Sorensen_gbif", "Sorensen_ndop"),
-  c("WarrenI_1", "WarrenI_2"),
-  c("HellingerDist_1", "HellingerDist_2")
+
+  # # auc
+  c("auc.all.te", "auc.gbif.te", "auc.ndop.te"),
+  #  c("auc.all.boyce", "auc.gbif.boyce", "auc.ndop.boyce"), # boyce je k ničemu, kritizovali hi jako neschopný rozlišit rozdíly v jednom článku - yru3it enmtools.calibrate? nebo udělat recalibrate?
+  # # geogr. overlap
+  c("gbif_all.geo.D", "gbif_all_erase.geo.D", "gbif_ndop.geo.D"),
+  c("gbif_all.geo.I", "gbif_all_erase.geo.I", "gbif_ndop.geo.I"),
+  # # env. overlap - není s čím do páru porovnávat...
+  c("gbif_all.env.D", "gbif_all.env.I", "gbif_all.env.I"),
+  c("wcl8.gbif", "wcl8.all", "wcl8.ndop")
+  # c("wcl8_perc.gbif", "wcl8_perc.all", "wcl8_perc.ndop") # cca 30% prišpívají, ale je třeba to rozdělit na samostatné 3 modely (stejný treshold): WC, L8 a WC+L8
 )
 
+
+
+dfe500 <- append(append(
+  append(
+    readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_glm4Qr_500_1_1621157991.74236.rds"),
+    readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_glm4Qr_500_1_1621152134.96594.rds")
+  ),
+  readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_glm4Qr_500_1_1621152060.20922.rds")
+), readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_glm4Qr_500_1_1621150566.15917.rds"))
+
+dfe0 <- append(
+  append(
+    readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_5000_1_1621012083.67113.rds"),
+    readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_10000_3_1621016560.79906.rds")
+  ),
+  readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_1000_1_1621022574.0087.rds")
+)
+
+
+
+dfe <- append(dfe500, dfe0)
+
+
+# dfe <- list(
+#  "5000" = readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_5000_1_1621012083.67113.rds"),
+#  "10000" = readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_10000_3_1621016560.79906.rds"),
+#  "1000" = readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_1000_1_1621022574.0087.rds"))
+# dfe <-
+# readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_1000_1_1621022574.0087.rds")
+
+# dfAUCorig_10000 <- dfe[["10000"]]
+
+
+for (i in seq_along(names(dfe))) {
+  tibble <- dfe[[i]] %>% # ttemp
+    map_depth(2, na.omit) %>%
+    map(as_tibble) %>%
+    bind_rows(.id = "species") %>%
+    # group_by(species) %>% dplyr::select(-r)
+    distinct(species, .keep_all = TRUE)
+
+
+
+
+  ##### nejdříve seřadit podle abecedy a až pak tomu dát klíč - pomůže to?
+  # tibble_ordered <- tibble %>%  arrange(desc(species))  %>% mutate(id = row_number(), .before= species)
+  # tibble_gbif <- tibble_ordered %>% expand(vip1.gbif) %>% rename_all(paste0, "_gbif") %>% mutate(id = row_number(), .after = 0)
+  # tibble_all <- tibble_ordered %>% expand(vip1.all) %>% rename_all(paste0, "_all") %>% mutate(id = row_number(), .after = 0)
+  # tibble_ndop <- tibble_ordered %>% expand(vip1.ndop) %>% rename_all(paste0, "_ndop") %>% mutate(id = row_number(), .after = 0)
+
+  # tibble_result  <- tibble_ordered %>% inner_join(tibble_gbif, by = "id") %>% inner_join(tibble_all, by = "id") %>% inner_join( tibble_ndop, by = "id")
+
+  # tibble_ordered  %>% dplyr::select(id, species, vip1.all)
+  # tibble_result %>% dplyr::select(species,  l8_6.8_10000_EVI.Importance_gbif) # vip1.gbif    l8_6.8_10000_EVI.Importance_gbif   enm_mxt_gbif.vip_gbif   vip3.gbif_gbif
+
+
+
+  ## # # # # #  možná bych ani nemusel hodnotu průměrovat už v modelu, ale až tady!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  # tibble_ordered %>% summarize(vip1.all)
+  tibble %<>% tibble %>% group_by(species, px_size_item) # sp = paste(species, px_size_item)
+
+  tibble_gbif <- tibble %>%
+    summarize(vip1.gbif, .groups = "keep") %>%
+    rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+    rename_all(paste0, ".gbif")
+  tibble_all <- tibble %>%
+    summarize(vip1.all, .groups = "keep") %>%
+    rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+    rename_all(paste0, ".all")
+  tibble_ndop <- tibble %>%
+    summarize(vip1.ndop, .groups = "keep") %>%
+    rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+    rename_all(paste0, ".ndop")
+
+  tibble_result <- tibble %>%
+    left_join(tibble_gbif, by = c("species" = "species.gbif")) %>%
+    left_join(tibble_all, by = c("species" = "species.all")) %>%
+    left_join(tibble_ndop, by = c("species" = "species.ndop")) %>%
+    ungroup() %>%
+    dplyr::select(-contains("vip")) %>%
+    rename_all(gsub, pattern = ".Importance.", replacement = ".Imp.")
+
+
+
+  # spojím to až na konci!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!§§
+  if (i == 1) {
+    # založím novou tibble na základě vyprázdněné první
+    tibble_grains <- tibble_result[NULL, ]
+  }
+
+  tibble_grains %<>% add_row(tibble_result)
+}
+
+tibble_grains %<>% mutate(gbif_ndop_rate = (gbif_c / ndop_c))
+tibble_grains %<>% mutate(gbif_ndop_perc = ((ndop_c * 100) / gbif_c))
+
+tibble_grains_numeric <- tibble_grains %>% select_if(., is.numeric) # pro základní deskriptivní statistiku
+
+tibble_grains %<>% mutate(wc.gbif = rowSums(select(., matches("^wc_.*\\.Imp\\.gbif$"))))
+tibble_grains %<>% mutate(wc.all = rowSums(select(., matches("^wc_.*\\.Imp\\.all$"))))
+tibble_grains %<>% mutate(wc.ndop = rowSums(select(., matches("^wc_.*\\.Imp\\.ndop$"))))
+
+tibble_grains %<>% mutate(l8.gbif = rowSums(select(., matches("^l8_.*\\.Imp\\.gbif$"))))
+tibble_grains %<>% mutate(l8.all = rowSums(select(., matches("^l8_.*\\.Imp\\.all$"))))
+tibble_grains %<>% mutate(l8.ndop = rowSums(select(., matches("^l8_.*\\.Imp\\.ndop$"))))
+
+
+tibble_grains %<>% mutate(wcl8.gbif = (wc.gbif / l8.gbif))
+tibble_grains %<>% mutate(wcl8.all = (wc.all / l8.all))
+tibble_grains %<>% mutate(wcl8.ndop = (wc.ndop / l8.ndop))
+
+tibble_grains %<>% mutate(wcl8_perc.gbif = ((l8.gbif * 100) / wc.gbif))
+tibble_grains %<>% mutate(wcl8_perc.all = ((l8.all * 100) / wc.all))
+tibble_grains %<>% mutate(wcl8_perc.ndop = ((l8.ndop * 100) / wc.ndop))
+
+
+pdf(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/pdf_outputs/overall.pdf"))
+
+
+# generovat per (filter): px_size, species,
+
+boxplot(x = as.list(as.data.frame(tibble_grains %>% filter(px_size_item == 1000) %>% select_if(., is.numeric) %>% dplyr::select(contains("_c")))))
+
+boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains("auc.")) %>% dplyr::select(contains(".te")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 2), rep("green", 2), rep("cyan3", 2)))
+
+boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".Imp")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 11), rep("cyan3", 11), rep("green", 11)))
+
+boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".geo.")))), las = 2, cex.axis = 0.7)
+
+boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".env.")))), las = 2, cex.axis = 0.7)
+dev.off()
+##  souhrn - hlavně celkový počet nálezů ndop/gbif 1489274/3304575  - mám to filtrované 2010-2020???
+# tibble_grains  %>% filter(px_size_item == 1000) %>% select_if(., is.numeric) %>% summarise(across(everything(), ~ sum(., is.na(.), 0)))
+
+
+
+
+# # kontrola
+# tibble  %>% dplyr::select(species, vip1.gbif)
+# tibble_result %>% dplyr::select(species,  l8_3.5_10000_MNDWI.Importance.gbif) # vip1.gbif    l8_6.8_10000_EVI.Importance_gbif   enm_mxt_gbif.vip_gbif   vip3.gbif_gbif
+
+
+
+
+
+
+
+#
+#
+# pokusy, smazat později
+#
+#
+
+# tibble_ordered %>% dplyr::select(id, species, vip1.all)  %>% arrange(vip1.gbif)
+
+# tibble_ordered %>%dplyr::select(id, species, reps,  vip3.gbif, ndop_c, gbif_c)
+
+# tibble_ordered  %>%  pivot_longer(vip1.all)  %>%  dplyr::select(id, species, name, value$EVI.Importance_all )
+
+
+# tibble_ordered %>% mutate(by_continent = map(by_continent, ~.x %>% group_by(country) %>% nest(.key = by_country)))
+
+# tibble_ordered  %>% flatten_df(tibble_ordered )
+
+
+# tibble_ordered %>%  separate(vip1.all, c("a","b","c","d","e","f","g","h","i","j","k"), convert = TRUE) %>% dplyr::select(species,  a, b, c, d, e, f, g, h, i, j, k)
+# tibble_ordered %>%  separate(vip1.all, c("a","b","c","d","e","f","g","h","i","j","k")) %>% dplyr::select(species,  a, b, c, d, e, f, g, h, i, j, k)
+
+# tibble_ordered %>% summarize(vip1.all)
+
+# #%>%  pivot_longer(vip.all)
+
+# dplyr::select(species, vip.all, ndop_c)
+#   unnest_wider(vip.all)
+
+# # $wc_10000_bio13.Importance
+# gbif_vip <- tibble %>% dplyr::select(vip.all)
+# # takhle se dostanu až na úroveň zanořené tabulky - pak řádky napárovat
+# gbif_vip$vip.all # totéž jen s tibble %>% expand(vip.all)
+
+
+# tibble %<>% mutate(id = row_number())
+# tibble_vip <- tibble %>% expand(vip.all) %>% mutate(id = row_number())
+
+# tibble %>% inner_join(tibble_vip, by = "id")
+
+
+
+
+
+# data_zones <- add_row_numbers(tibble)
+
+
+# tibble_vip <- tibble %>% expand(vip.all) %>% mutate(id = row_number())
+
+# tibble %>% inner_join(tibble_vip, by = "id")
+
+
+# tibble %>% mutate(xxx = expand(vip.all)$wc_10000_bio13.Importance)
+
+# tibble %>% expand(vip.all, species)%>%  dplyr::select(species, wc_10000_bio13.Importance)
+
+
+
+# gbif_vip$vip.all %>%  unnest_wider(l8_3.5_10000_MNDWI.Importance)
+
+# tibble %>% pivot_wider(vip.all)
+# tibble %>% pivot_longer(vip.all) %>% dplyr::select(name)
+
+
+
+# ########
+# tibble %>%  separate(vip.all, c("a","b","c","d","e","f","g","h","i","j","k"), convert = TRUE) %>% dplyr::select(species,  a, b, c, d, e, f, g, h, i, j, k)
+
+# tibble %>%  separate(vip.all, c("a","b","c","d"), convert = TRUE)
+
+# tibble %>% unnest(vip.auc)
+
+
+
+# separate(vip.all, c("a","b","c","d","e","f","g","h","i","j","k"), convert = TRUE) %>% dplyr::select(species,  a, b, c, d, e, f, g, h, i, j, k) %>%
+#   mutate_if(is.numeric, round, 5)
+
+# dplyr::select(vip.all)
+
+# tibble %>% separate(vip.all , c("a","b","c","d","e","f","g","h","i","j","k"), convert = TRUE) %>% dplyr::select(species,  a, b, c, d, e, f, g, h, i, j, k)
+
+
+# tibble %>% mutate(vipN = unlist(vip.all))%>% dplyr::select(vipN)
+
+
+# tibble %>% separate(vip.all, c("a","b","c","d","e","f","g","h","i","j","k"), convert = TRUE) %>%  separate(vip.all, c("a","b","c","d","e","f","g","h","i","j","k"), convert = TRUE)  %>% dplyr::select(species,  a, b, c, d, e, f, g, h, i, j, k)
+# #  %>%  separate(vip.all, c("a","b","c","d","e","f","g","h","i","j","k"))
+
+# dplyr::select(-r) %>%  mutate(auc_csv = map_chr(auc, toString)) %>% dplyr::select(auc_csv)
+#   #filter(species == "Cinclus cinclus") %>%
+#  # dplyr::select(auc)# %>%  unnest_wider(auc )  #%>% extract2(2)   # %>% hoist(auc ) # %>%  unnest_wider(auc )  %>% add_column()# %>%  unnest_wider( auc ) # %>% unnest_wider( auc ) #  %>% unnest(auc) %>% unnest(auc)
+
+# tibble%>%dplyr::select(species, a, b, c, d, e, f, g, h, i, j, k)
+
+# tibble  %>% separate(vip.all, c("a","b","c","d","e","f","g","h","i","j","k"))
+
+# separate(data = tibble, col = vip.all, into = c("a","b","c","d","e","f","g","h","i","j","k"), sep = "_")
+# print(tibble  %>% dplyr::select(vip.all ), width = Inf)
+# tibble <- dfAUCorig_10000[[1]] %>%
+#   map_depth(2, na.omit) %>%
+#   map(as_tibble) %>%
+#   unnest(auc) %>%
+#   group_by(species) %>%
+#   mutate(col = paste0('col', row_number())) %>%
+#   pivot_wider(names_from = col, values_from = auc) %>%
+#   ungroup -> df1
+
+
+# df1 %>% dplyr::select(species, col1, col2, col3, col4, col5)
+
+
+
+# as.data.frame(unlist(tibble))
+
+
+# stop()
+#   # mutate_if(is.list, simplify_all) %>%
+#   # unnest()
+
+
+#   #  mutate(aucTEST = dfAUCorig_10000[[1]][["Cinclus cinclus"]]$auc$ndop[[1]] ) %>% dplyr::select(aucTEST)
+# # flatten_dfr(.id= '', auc)
+#   #  mutate(nauc = map(auc, as_tibble), .name_repair = "minimal") %>%
+# # mutate(aucTEST = unlist(auc))
+
+
+# #unnest_wider(auc, simplify = TRUE, names_sep = "_") %>%
+# #unnest_wider(auc) %>% unnest_wider( values )
+
+
+
+
+#   #mutate(auct = 123) %>%
+#    #unnest_wider(dfAUCorig_10000[[1]] %>% dplyr::select(auc), simplify = TRUE, names_sep = "_")
+# # hoist(auc,first_AUC = list("gbif", 1L))
+
+
+
+# # %>% mutate(
+# #   a = map_dbl(x, "a"),
+# #   b = map_dbl(x, "b", .null = NA_real_)
+# # )
+
+# # dfAUCorig_10000_ <- dfAUCorig_10000
+# # names(dfAUCorig_10000[[1]])
+
+# # for(sp in names(dfAUCorig_10000_[[1]])){
+# #  # nutné odstranit rastery
+# # dfAUCorig_10000_[[1]][[sp]]$r <- NULL
+# # }
+
+# # df <- as.data.frame(do.call(rbind, lapply(dfAUCorig_10000_, as.data.frame)))
+
+# # dfAUCorig_10000_u <- unlist(dfAUCorig_10000_)
+# # stop()
+
+
+
+# rds <- dfAUCorig_10000
+
+# for (pxs in names(rds)) {
+#   # nutné odstranit ra
+#   for (sp in names(rds[[pxs]])) {
+#     print(paste0(pxs, " - ", sp, " **********************************************************************************************"))
+
+# # print(str(rds[[pxs]][[sp]]$vip[[1]]))
+
+# # cnames <- rds[[pxs]][[sp]]$vip[[1]]$Variable
+# # print(purrr::transpose(rds[[pxs]][[sp]]$vip[[1]][,2], cnames))
+
+# # vip1 <- as.data.frame(t(as.matrix(unlist(purrr::transpose(rds[[pxs]][[sp]]$vip[[1]][,2], cnames))))) # .names = rds[[pxs]][[sp]]$vip[[1]]$Variable
+
+# # write_csv(vip1 , paste0(export_path, "t4a.csv"), append = TRUE)
+
+# # vip <- as.data.frame(t(as.matrix(unlist(rds[[pxs]][[sp]]$vip))))
+
+# # # as.data.frame(transpose(rds[[pxs]][[sp]]$vip[[1]][, 2]))
+# # write_csv(vip  , paste0(export_path, "t4b.csv"), append = TRUE)
+# # stop()
+
+# # AUC 15
+
+# auc <- as.data.frame(t(as.matrix(unlist(rds[[pxs]][[sp]]$auc))))
+# print(names(auc))
+# print(as_tibble(auc))
+
+# write_csv(auc  , paste0(export_path, "auc.csv"), append = TRUE) #bind_cols(csvgee_1[1, ], csvgee_2[1, ])
+
+# stop()
+#     # dfAUCorig_10000_[[1]][[sp]]$r <- NULL
+
+#     # str(dfAUCorig_10000[[1]][["Cinclus cinclus"]]$auc, max.level = 2)
+#   }
+# }
+
+
+
+# dfAUCorig_10000
+
+# for (res in dfAUCorig_10000 ) {
+# print(class(res))
+
+# }
+
+
 for (p in pairs) {
-  print(paste0(p[1], "/", p[2]))
-
-  p_1 <- strsplit(p[1], "_")
-  p_2 <- strsplit(p[2], "_")
-  print(p_1[[1]][1])
-  print(p_1[[1]][2])
-  print(p_2[[1]][1])
-  print(p_2[[1]][2])
-
-
-  title <- paste0(p_1[[1]][1], " (", p_1[[1]][2], "+", p_2[[1]][2], ")")
-  appendix <- paste0(p_1[[1]][1], " (", p_1[[1]][2], "+", p_2[[1]][2], ")")
+  title <- paste0(p[1], "+", p[2], "+", p[3])
+  appendix <- paste0(p[1], "+", p[2], "+", p[3])
 
   # title <- paste0(p[1], "/", p[2])
   # appendix <- paste0(p[1], "-", p[2])
@@ -65,40 +429,68 @@ for (p in pairs) {
   # dfAUCorig <- read.csv2("AUCall100.csv", header = TRUE)
 
   # dfAUCorig <- read_csv(paste0(wd, "/../export/schuzka2-total-gbif-ndop6/topX-final.csv"))
-  dfAUCorig_10000 <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/gOverlap_10000.csv")
-  dfAUCorig_1000 <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/gOverlap_1000.csv")
+  # dfAUCorig_10000 <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/gOverlap_10000.csv")
+  # dfAUCorig_1000 <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/gOverlap_1000.csv")
 
-  dfAUCorig <- dfAUCorig_10000 %>% add_row(dfAUCorig_1000)
+  # dfAUCorig <- dfAUCorig_10000 %>% add_row(dfAUCorig_1000)
+
+  dfAUCorig <- tibble_grains
 
 
   # dfAUCorig_count <- as.integer(count(dfAUCorig) / 4)
   dfAUCorig_count <- as.integer(count(dfAUCorig) / 4) * 4
 
 
-  auc_limit <- 0.7
-  # select important columns, rename columns with AUC differences to Q1 and Q2 (first and second research question)
-  # creates a "long" table from a "wide" one
-  # dfAUC <- select(dfAUCorig, (c("species_", "species", "spec", "recnum", "grain", "Q1" = "dAUC1_2", "Q2" = "dAUC1_3"))) %>%
-  dfAUCfiltr <- dfAUCorig %>%
-    # dopočet pořadí START
-    # arrange(recnum, pixel_size) %>%
-    # mutate(recnum_n = rep(dfAUCorig_count:1, each = 4)) %>%
-    # mutate(recnum_n = rep(dfAUCorig_count:1, each = 1)) %>%
-    # dopočet pořadí END
-    # filter(Training.samples > 50) %>%
-    # filter(Test.samples > 30) %>%
-    # select(species1_, species1, species1_short, recnum, recnum_n, pixel_size, Q1, Q2, species2, Training.samples, Training.samples.all, Training.AUC, Training.AUC.all) ### %>%
-    ### gather("Q1", "Q2", key = "Question", value = "dAUC")
-    filter(auc_gbif >= auc_limit) %>%
-    filter(auc_all >= auc_limit) %>%
-    filter(auc_ndop >= auc_limit)
+  auc_limit <- 0.5
+  typ_filtrace <- "GBIF_NDOP" # "GBIF_ALL" "GBIF_NDOP" "ALL_NDOP" "NDOP" "GBIF"
+
+  if (typ_filtrace == "GBIF_ALL") {
+    dfAUCfiltr <- dfAUCorig %>%
+      filter(auc.all.te >= auc_limit) %>%
+      filter(auc.gbif.te >= auc_limit)
+  }
+
+  if (typ_filtrace == "GBIF_NDOP") {
+    dfAUCfiltr <- dfAUCorig %>%
+      filter(auc.ndop.te >= auc_limit) %>%
+      filter(auc.gbif.te >= auc_limit)
+  }
+
+  if (typ_filtrace == "ALL_NDOP") {
+    dfAUCfiltr <- dfAUCorig %>%
+      filter(auc.ndop.te >= auc_limit) %>%
+      filter(auc.all.te >= auc_limit)
+  }
+
+  if (typ_filtrace == "NDOP") {
+    dfAUCfiltr <- dfAUCorig %>%
+      filter(auc.ndop.te >= auc_limit)
+  }
+
+  if (typ_filtrace == "GBIF") {
+    dfAUCfiltr <- dfAUCorig %>%
+      filter(auc.gbif.te >= auc_limit)
+  }
 
 
-  c_orig <- as_tibble(dfAUCorig %>% group_by(pixel_size) %>% count(pixel_size))
-  c_filter <- as_tibble(dfAUCfiltr %>% group_by(pixel_size) %>% count(pixel_size))
+  #
+  # neměl bych podle auc filtrovat individuálně podle !!!typu datasetu a velikosti zrna!!! a ne odstraňovat úplně všechny druhy jen když nevyšel jen jeden model?!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!§
+  # Zohlednit to jaké páry porovnávám, u GBIFxALL mě nezajímá přesnost NDOP a naopak!
+  #
+  # nutná křížová filtrace per podle AUC per pixel i dataset!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! - lze filtrovat podle group_by?
+
+
+
+
+  c_orig <- as_tibble(dfAUCorig %>% group_by(px_size_item) %>% count(px_size_item))
+  c_filter <- as_tibble(dfAUCfiltr %>% group_by(px_size_item) %>% count(px_size_item))
   reduction <- as_tibble(c_orig %>% mutate(n_filter = c_filter$n) %>% mutate(perc = (n_filter * 100 / n)))
 
-  dfAUC <- dfAUCfiltr %>% gather(p[1], p[2], key = "Question", value = "dAUC")
+
+  ### stačí předat jen vektor - nemusím pokaždé specifikovat počet!
+  # df %>% gather("key", "value", x, y, z) is equivalent to df %>% pivot_longer(c(x, y, z), names_to = "key", values_to = "value")
+
+  dfAUC <- dfAUCfiltr %>% gather(p[1], p[2], p[3], key = "Question", value = "dAUC")
 
   cnt.all <- count(dfAUCorig)
   cnt.filtr <- count(dfAUCfiltr)
@@ -109,7 +501,7 @@ for (p in pairs) {
   # dfAUC <- dfAUCorig %>%
   #   filter(Training.samples > 30) %>%
   #   filter(Test.samples > 20) %>%
-  #   select(species1_, species1, species1_short, recnum, pixel_size, Q1, Q2, species2, Training.samples, Training.samples.all) %>%
+  #   dplyr::select(species1_, species1, species1_short, recnum, px_size_item, Q1, Q2, species2, Training.samples, Training.samples.all) %>%
   #   gather("Training.samples", "Training.samples.all", key = "Question", value = "dAUC")
 
 
@@ -122,16 +514,16 @@ for (p in pairs) {
 
   # join bird traits to dfAUC
   df1 <- dfAUC %>%
-    left_join(dftraits, by = c("species1" = "species")) %>%
+    left_join(dftraits, by = c("species" = "species")) %>%
     filter(!is.na(Habitat))
-  df1n <- dfAUC %>%
-    left_join(dftraits, by = c("species1" = "species")) %>%
-    filter(is.na(Habitat)) %>%
-    select(-species_old, -Habitat, -Migration, -Distribution, -Protection)
-  df2 <- df1n %>% left_join(dftraits, by = c("species2" = "species"))
+  # df1n <- dfAUC %>%
+  #   left_join(dftraits, by = c("species1" = "species")) %>%
+  #   filter(is.na(Habitat)) %>%
+  #   dplyr::select(-species_old, -Habitat, -Migration, -Distribution, -Protection)
+  # df2 <- df1n %>% left_join(dftraits, by = c("species2" = "species"))
 
-  df <- df1 %>% add_row(df2)
-
+  # df <- df1 %>% add_row(df2)
+  df <- df1
   glimpse(df) # check data
 
   # anti1 <- dfAUC %>% anti_join(dftraits, by = c("species1" = "species")) %>% distinct(species1)
@@ -165,7 +557,7 @@ for (p in pairs) {
 
 
   # labels
-  titfreqpixel_size <- paste0("Dependence of ", title, " on species frequency level (according to grain)")
+  titfreqpx_size_item <- paste0("Dependence of ", title, " on species frequency level (according to grain)")
   titQ1 <- "Q1: difference between global GIF and GIF model with local (NDOP) validation"
   titQ2 <- "Q2: difference between global GIF and adjusted GBIF+NDOP model"
   titQ1Q2 <- "Q1: global (GIF) model with local (NDOP) validation; Q2: GBIF + NDOP model"
@@ -185,21 +577,23 @@ for (p in pairs) {
   labelmigr <- "Migration type: L: long-distance, P: partial, R: resident, S: short-distance"
 
 
-  pdf(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp2/pdf_outputs/", appendix, ".pdf"))
+  pdf(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/pdf_outputs/", appendix, "_aucLim-", auc_limit, "_filtr-", typ_filtrace, ".pdf"))
 
   grid.arrange(top = caption, tableGrob(reduction))
   # grid.table(reduction)
 
 
-  frequency <- c("recnum", "occ_count_ndop", "presence_ndop", "occ_count_gbif", "presence_gbif")
+
+  # , "auc.all.te", "auc.gbif.te", "auc.ndop.te","gbif_all.geo.D", "gbif_all_erase.geo.D", "gbif_ndop.geo.D","gbif_all.env.D", "gbif_all.env.I", "gbif_all.env.I"
+  frequency <- c("ndop_c", "gbif_c", "gbif_ndop_rate", "gbif_ndop_perc")
   for (f in frequency) {
     #----------------------------------------------------------------------------------------------------------------
     # check if there is a dependence of AUC diff on species frequency level
     pic_lm <- ggplot(df, aes(x = eval(parse(text = f)), y = as.numeric(dAUC))) +
       geom_point() +
       geom_smooth(method = loess) +
-      facet_grid(Question ~ pixel_size) +
-      labs(title = titfreqpixel_size, subtitle = titQ1Q2, x = paste0(labelfreq, " (normalized by \'", f, "\')"), y = labely, caption = caption)
+      facet_grid(Question ~ px_size_item) +
+      labs(title = titfreqpx_size_item, subtitle = titQ1Q2, x = paste0(labelfreq, " (normalized by \'", f, "\')"), y = labely, caption = caption) # + scale_y_continuous(trans = 'log2')
     print(pic_lm)
     # .... spíš žádná závislost není, což je fajn; u Q2 možná rozdíl v AUC trochu klesá s vyšším počtem záznamů o druhu,
     # .... ale asi spíš neprůkazně (někdy otestovat, ale teď není čas)
@@ -216,8 +610,8 @@ for (p in pairs) {
   # "Dependence of dAUC on habitat and grain"
   pic_box <- ggplot(df, aes(x = Habitat, y = as.numeric(dAUC), fill = Habitat)) +
     geom_boxplot() +
-    facet_grid(Question ~ pixel_size) +
-    labs(title = tithab, subtitle = titQ1Q2, x = labelhab, y = labely)
+    facet_grid(Question ~ px_size_item) +
+    labs(title = tithab, subtitle = titQ1Q2, x = labelhab, y = labely) #+ scale_y_continuous(trans = 'log2')
   print(pic_box)
   # .... rozdíly v habitatech u Q1 budou: nejhorší jsou globální modely oproti national validaci pro farmland a lesní ptáky
   # .... o něco lepší pro birds of urban environment, nejmenší pro wetland birds
@@ -231,8 +625,8 @@ for (p in pairs) {
 
   pic_box <- ggplot(df, aes(x = factor(Protection, level = c("C", "H", "E", "N")), y = as.numeric(dAUC), fill = Protection)) +
     geom_boxplot() +
-    facet_grid(Question ~ pixel_size) +
-    labs(title = titprot, subtitle = titQ1Q2, x = labelprot, y = labely)
+    facet_grid(Question ~ px_size_item) +
+    labs(title = titprot, subtitle = titQ1Q2, x = labelprot, y = labely) #+ scale_y_continuous(trans = 'log2')
   print(pic_box)
   # .... žádný jasný trend, že modely pro chráněné a nechráněné byly lepší či horší?
   # .... obdobně jako u Habitat se zdá, že s vyšším grain spíš horší national a stírají se rozdíly mezi skupinami?
@@ -241,8 +635,8 @@ for (p in pairs) {
   # "Dependence of dAUC on European distribution and grain"
   pic_box <- ggplot(df, aes(x = Distribution, y = as.numeric(dAUC), fill = Distribution)) +
     geom_boxplot() +
-    facet_grid(Question ~ pixel_size) +
-    labs(title = titdist, subtitle = titQ1Q2, x = labeldist, y = labely)
+    facet_grid(Question ~ px_size_item) +
+    labs(title = titdist, subtitle = titQ1Q2, x = labeldist, y = labely) #+ scale_y_continuous(trans = 'log2')
   print(pic_box)
   # ... tady pokud nějaké rozdíly, tak spíš ve větším grain?
 
@@ -252,8 +646,8 @@ for (p in pairs) {
   # to samé se dá udělat pro typ migrace, ale to asi nemá smysl ukazovat, protože není důvod, proč by na tom mělo něco záležet
   pic_box <- ggplot(df, aes(x = factor(Migration, level = c("R", "P", "S", "L")), y = as.numeric(dAUC), fill = Migration)) +
     geom_boxplot() +
-    facet_grid(Question ~ pixel_size) +
-    labs(title = titmigr, subtitle = titQ1Q2, x = labelmigr, y = labely)
+    facet_grid(Question ~ px_size_item) +
+    labs(title = titmigr, subtitle = titQ1Q2, x = labelmigr, y = labely) #+ scale_y_continuous(trans = 'log2')
   print(pic_box)
 
   dev.off()
@@ -270,7 +664,7 @@ for (p in pairs) {
 
 # adata <- df %>%
 #   filter(pixel_size == 100) %>%
-#   select(species1_, Habitat, Q1) %>%
+#   dplyr::select(species1_, Habitat, Q1) %>%
 #   mutate_at(vars(Habitat), factor)
 
 # print(summary(adata))
@@ -291,7 +685,7 @@ for (p in pairs) {
 # # outliers <- adata %>%
 # #   group_by(Habitat) %>%
 # #   identify_outliers(Q1) %>%
-# #   select(species1_) %>%
+# #   dplyr::select(species1_) %>%
 # #   pull(species1_)
 
 # # adata %<>% filter(!species1_ %in% as.vector(outliers))
@@ -307,7 +701,7 @@ for (p in pairs) {
 # # outliers <- adata %>%
 # #   group_by(Habitat) %>%
 # #   identify_outliers(Q1) %>%
-# #   select(species1_) %>%
+# #   dplyr::select(species1_) %>%
 # #   pull(species1_)
 
 # # adata %<>% filter(!species1_ %in% as.vector(outliers))
@@ -375,3 +769,152 @@ for (p in pairs) {
 # # https://www.datanovia.com/en/lessons/kruskal-wallis-test-in-r/
 # # print(adata %>% kruskal_test(Q1 ~ Habitat))
 # # print(adata %>% kruskal_effsize(Q1 ~ Habitat))
+
+
+
+
+
+
+
+# > names(tibble_result )
+#   [1] "reps"
+#   [2] "px_size_item"
+#   [3] "species"
+#   [4] "ndop_c"
+#   [5] "gbif_c"
+#   [6] "auc.gbif.tr"
+#   [7] "auc.gbif.te"
+#   [8] "auc.gbif.tr.env"
+#   [9] "auc.gbif.te.env"
+#  [10] "auc.gbif.boyce"
+#  [11] "auc.ndop.tr"
+#  [12] "auc.ndop.te"
+#  [13] "auc.ndop.tr.env"
+#  [14] "auc.ndop.te.env"
+#  [15] "auc.ndop.boyce"
+#  [16] "auc.all.tr"
+#  [17] "auc.all.te"
+#  [18] "auc.all.tr.env"
+#  [19] "auc.all.te.env"
+#  [20] "auc.all.boyce"
+#  [21] "vip1.gbif"
+#  [22] "vip1.ndop"
+#  [23] "vip1.all"
+#  [24] "vip2.gbif"
+#  [25] "vip2.ndop"
+#  [26] "vip2.all"
+#  [27] "vip3.gbif"
+#  [28] "vip3.ndop"
+#  [29] "vip3.all"
+#  [30] "gbif_ndop.geo.D"
+#  [31] "gbif_ndop.geo.I"
+#  [32] "gbif_ndop.geo.cor"
+#  [33] "gbif_all.geo.D"
+#  [34] "gbif_all.geo.I"
+#  [35] "gbif_all.geo.cor"
+#  [36] "gbif_all_erase.geo.D"
+#  [37] "gbif_all_erase.geo.I"
+#  [38] "gbif_all_erase.geo.cor"
+#  [39] "gbif_all.env.D"
+#  [40] "gbif_all.env.I"
+#  [41] "gbif_all.env.cor"
+#  [42] "sp"
+#  [43] "l8_3.5_5000_MNDWI.Importance.gbif"
+#  [44] "l8_6.8_5000_EVI.Importance.gbif"
+#  [45] "l8_6.8_5000_MNDWI.Importance.gbif"
+#  [46] "l8_9.11_5000_B5.Importance.gbif"
+#  [47] "l8_9.11_5000_EVI.Importance.gbif"
+#  [48] "l8_9.11_5000_MNDWI.Importance.gbif"
+#  [49] "wc_5000_bio02.Importance.gbif"
+#  [50] "wc_5000_bio03.Importance.gbif"
+#  [51] "wc_5000_bio09.Importance.gbif"
+#  [52] "wc_5000_bio13.Importance.gbif"
+#  [53] "wc_5000_bio15.Importance.gbif"
+#  [54] "l8_3.5_10000_MNDWI.Importance.gbif"
+#  [55] "l8_6.8_10000_EVI.Importance.gbif"
+#  [56] "l8_6.8_10000_MNDWI.Importance.gbif"
+#  [57] "l8_9.11_10000_B5.Importance.gbif"
+#  [58] "l8_9.11_10000_EVI.Importance.gbif"
+#  [59] "l8_9.11_10000_MNDWI.Importance.gbif"
+#  [60] "wc_10000_bio02.Importance.gbif"
+#  [61] "wc_10000_bio03.Importance.gbif"
+#  [62] "wc_10000_bio09.Importance.gbif"
+#  [63] "wc_10000_bio13.Importance.gbif"
+#  [64] "wc_10000_bio15.Importance.gbif"
+#  [65] "l8_3.5_1000_MNDWI.Importance.gbif"
+#  [66] "l8_6.8_1000_EVI.Importance.gbif"
+#  [67] "l8_6.8_1000_MNDWI.Importance.gbif"
+#  [68] "l8_9.11_1000_B5.Importance.gbif"
+#  [69] "l8_9.11_1000_EVI.Importance.gbif"
+#  [70] "l8_9.11_1000_MNDWI.Importance.gbif"
+#  [71] "wc_1000_bio02.Importance.gbif"
+#  [72] "wc_1000_bio03.Importance.gbif"
+#  [73] "wc_1000_bio09.Importance.gbif"
+#  [74] "wc_1000_bio13.Importance.gbif"
+#  [75] "wc_1000_bio15.Importance.gbif"
+#  [76] "l8_3.5_5000_MNDWI.Importance.all"
+#  [77] "l8_6.8_5000_EVI.Importance.all"
+#  [78] "l8_6.8_5000_MNDWI.Importance.all"
+#  [79] "l8_9.11_5000_B5.Importance.all"
+#  [80] "l8_9.11_5000_EVI.Importance.all"
+#  [81] "l8_9.11_5000_MNDWI.Importance.all"
+#  [82] "wc_5000_bio02.Importance.all"
+#  [83] "wc_5000_bio03.Importance.all"
+#  [84] "wc_5000_bio09.Importance.all"
+#  [85] "wc_5000_bio13.Importance.all"
+#  [86] "wc_5000_bio15.Importance.all"
+#  [87] "l8_3.5_10000_MNDWI.Importance.all"
+#  [88] "l8_6.8_10000_EVI.Importance.all"
+#  [89] "l8_6.8_10000_MNDWI.Importance.all"
+#  [90] "l8_9.11_10000_B5.Importance.all"
+#  [91] "l8_9.11_10000_EVI.Importance.all"
+#  [92] "l8_9.11_10000_MNDWI.Importance.all"
+#  [93] "wc_10000_bio02.Importance.all"
+#  [94] "wc_10000_bio03.Importance.all"
+#  [95] "wc_10000_bio09.Importance.all"
+#  [96] "wc_10000_bio13.Importance.all"
+#  [97] "wc_10000_bio15.Importance.all"
+#  [98] "l8_3.5_1000_MNDWI.Importance.all"
+#  [99] "l8_6.8_1000_EVI.Importance.all"
+# [100] "l8_6.8_1000_MNDWI.Importance.all"
+# [101] "l8_9.11_1000_B5.Importance.all"
+# [102] "l8_9.11_1000_EVI.Importance.all"
+# [103] "l8_9.11_1000_MNDWI.Importance.all"
+# [104] "wc_1000_bio02.Importance.all"
+# [105] "wc_1000_bio03.Importance.all"
+# [106] "wc_1000_bio09.Importance.all"
+# [107] "wc_1000_bio13.Importance.all"
+# [108] "wc_1000_bio15.Importance.all"
+# [109] "l8_3.5_5000_MNDWI.Importance.ndop"
+# [110] "l8_6.8_5000_EVI.Importance.ndop"
+# [111] "l8_6.8_5000_MNDWI.Importance.ndop"
+# [112] "l8_9.11_5000_B5.Importance.ndop"
+# [113] "l8_9.11_5000_EVI.Importance.ndop"
+# [114] "l8_9.11_5000_MNDWI.Importance.ndop"
+# [115] "wc_5000_bio02.Importance.ndop"
+# [116] "wc_5000_bio03.Importance.ndop"
+# [117] "wc_5000_bio09.Importance.ndop"
+# [118] "wc_5000_bio13.Importance.ndop"
+# [119] "wc_5000_bio15.Importance.ndop"
+# [120] "l8_3.5_10000_MNDWI.Importance.ndop"
+# [121] "l8_6.8_10000_EVI.Importance.ndop"
+# [122] "l8_6.8_10000_MNDWI.Importance.ndop"
+# [123] "l8_9.11_10000_B5.Importance.ndop"
+# [124] "l8_9.11_10000_EVI.Importance.ndop"
+# [125] "l8_9.11_10000_MNDWI.Importance.ndop"
+# [126] "wc_10000_bio02.Importance.ndop"
+# [127] "wc_10000_bio03.Importance.ndop"
+# [128] "wc_10000_bio09.Importance.ndop"
+# [129] "wc_10000_bio13.Importance.ndop"
+# [130] "wc_10000_bio15.Importance.ndop"
+# [131] "l8_3.5_1000_MNDWI.Importance.ndop"
+# [132] "l8_6.8_1000_EVI.Importance.ndop"
+# [133] "l8_6.8_1000_MNDWI.Importance.ndop"
+# [134] "l8_9.11_1000_B5.Importance.ndop"
+# [135] "l8_9.11_1000_EVI.Importance.ndop"
+# [136] "l8_9.11_1000_MNDWI.Importance.ndop"
+# [137] "wc_1000_bio02.Importance.ndop"
+# [138] "wc_1000_bio03.Importance.ndop"
+# [139] "wc_1000_bio09.Importance.ndop"
+# [140] "wc_1000_bio13.Importance.ndop"
+# [141] "wc_1000_bio15.Importance.ndop"

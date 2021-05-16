@@ -50,11 +50,28 @@ export_path <-
 # limit_max_occurences_ndop_top <- 10000 # 70000; nepoužívané
 
 rcrs <- "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
-limit_min_occurences <- 100
-limit_max_occurences <- 70000
+limit_min_occurences <- 100 # 100, 10000, 20000,30000
+limit_max_occurences <- 160
+
+# # 1
+# limit_min_occurences <- 100 # 100, 10000, 20000,30000
+# limit_max_occurences <- 913
+
+# # 2
+# limit_min_occurences <- 914 # 100, 10000, 20000,30000
+# limit_max_occurences <- 3305
+
+# # 3
+# limit_min_occurences <- 3306 # 100, 10000, 20000,30000
+# limit_max_occurences <- 7741
+
+# # 4
+# limit_min_occurences <- 7742 # 100, 10000, 20000,30000
+# limit_max_occurences <- 70000
+
 px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
-replicates <- 3
-pres <- "i" # předpona png obrázků s predikcí
+replicates <- 1
+pres <- "del" # předpona png obrázků s predikcí a dalších outputů
 generate_bias_raster <- FALSE
 trans_coords <- TRUE
 enmsr <- list()
@@ -126,7 +143,7 @@ if (trans_coords == TRUE) {
         summarise(count = n_distinct(key)) %>%
         arrange(desc(count)) %>%
         filter(count >= limit_min_occurences) %>%
-        filter(count <= limit_max_occurences) %>%
+        filter(count < limit_max_occurences) %>%
         filter(!is.na(species))
     ptaci_gbif_distinct <- plot_gbif_csv %>%
         group_by(species) %>%
@@ -370,14 +387,51 @@ for (px_size_item in px_size) {
             verbose = TRUE,
             bias = bias_gbif,
             nback = 10000
+            # args = c("threads=4")
         ),
         simplify = FALSE
         )
+
+        # str(enm_mxt_ndop[[1]]$training.evaluation@confusion, max.level = 2)
+        # str(enm_mxt_ndop[[1]]$test.evaluation@confusion, max.level = 2)
+
+        # str(enm_mxt_ndop[[1]]$test.evaluation@confusion, max.level = 2)
+
+        # str(enm_mxt_ndop[[1]]$test.evaluation@TPR, max.level = 2) TPR, TNR, FPR, FNR
+        # str(enm_mxt_ndop[[1]]$test.evaluation@kappa, max.level = 2)
+
+        # TPR <- enm_mxt_ndop[[1]]$test.evaluation@confusion[,1] / (enm_mxt_ndop[[1]]$test.evaluation@confusion[,1] + enm_mxt_ndop[[1]]$test.evaluation@confusion[,3])
+        # enm_mxt_ndop[[1]]$test.evaluation@TPR
+
+        # cp <- cutpointr(tp = enm_mxt_ndop[[1]]$test.evaluation@confusion[,1], fp = enm_mxt_ndop[[1]]$test.evaluation@confusion[,2], fn = enm_mxt_ndop[[1]]$test.evaluation@confusion[,3], tn = enm_mxt_ndop[[1]]$test.evaluation@confusion[,4])
+
+
+        # TSS <- enm_mxt_ndop[[1]]$test.evaluation@TPR + enm_mxt_ndop[[1]]$test.evaluation@FPR -
+
+        # tp <-  enm_mxt_ndop[[1]]$test.evaluation@confusion[,1]
+        # fp <-  enm_mxt_ndop[[1]]$test.evaluation@confusion[,2]
+        # fn <- enm_mxt_ndop[[1]]$test.evaluation@confusion[,3]
+        # tn <-  enm_mxt_ndop[[1]]$test.evaluation@confusion[,4]
+
+        # cm <- enm_mxt_ndop[[1]]$test.evaluation@confusion
+        # cp <- cutpointr(cm, tp,fp,  method = maximize_metric, metric = sum_sens_spec)
+
+        # sum_sens_spec(tp, fp, tn, fn)
+        # cohens_kappa(tp, fp, tn, fn)
+        # metric_constrain(tp, fp, tn, fn)
+        # accuracy(tp, fp, tn, fn)
+        # maximize_metric(tp, fp, tn, fn)
+        # abs_d_sens_spec(tp, fp, tn, fn)
+        # threshold(enm_mxt_ndop[[1]]$test.evaluation)
+        # cutpointr(tp, fp, tn, fn)
+
 
         # str(enm_mxt_gbif[[1]]$test.evaluation@auc)
         # str(enms[["10000"]][["Buteo rufinus"]][[1]][["m"]][[1]]$test.evaluation@auc)
         # enm_mxt_gbif.auc <- mean(sapply(enms[["10000"]][["Buteo rufinus"]][[1]][["m"]], function(x) x$test.evaluation@auc))
         enm_mxt_gbif.auc <- mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@auc))
+        enm_mxt_gbif.np.tr <- mean(sapply(enm_mxt_gbif, function(x) x$training.evaluation@np))
+        enm_mxt_gbif.np.te <- mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@np))
         # plot(enms[["10000"]][["Buteo rufinus"]][[1]][["m"]][[1]]$suitability)
         # names(enm_mxt_gbif) <- paste0("rep", 1:repl)
         enm_mxt_gbif.r <- stack(sapply(enm_mxt_gbif, function(x) x$suitability))
@@ -427,10 +481,13 @@ for (px_size_item in px_size) {
             verbose = TRUE,
             bias = bias_ndop,
             nback = 10000
+            # args = c("threads=4")
         ),
         simplify = FALSE
         )
         enm_mxt_ndop.auc <- mean(sapply(enm_mxt_ndop, function(x) x$test.evaluation@auc))
+        enm_mxt_ndop.np.tr <- mean(sapply(enm_mxt_ndop, function(x) x$training.evaluation@np))
+        enm_mxt_ndop.np.te <- mean(sapply(enm_mxt_ndop, function(x) x$test.evaluation@np))
         enm_mxt_ndop.r <- stack(sapply(enm_mxt_ndop, function(x) x$suitability))
         enm_mxt_ndop.r.m <- calc(enm_mxt_ndop.r, fun = mean)
 
@@ -475,10 +532,13 @@ for (px_size_item in px_size) {
             verbose = TRUE,
             bias = bias_all,
             nback = 10000
+            # args = c("threads=4")
         ),
         simplify = FALSE
         )
         enm_mxt_all.auc <- mean(sapply(enm_mxt_all, function(x) x$test.evaluation@auc))
+        enm_mxt_all.np.tr <- mean(sapply(enm_mxt_all, function(x) x$training.evaluation@np))
+        enm_mxt_all.np.te <- mean(sapply(enm_mxt_all, function(x) x$test.evaluation@np))
         enm_mxt_all.r <- stack(sapply(enm_mxt_all, function(x) x$suitability))
         enm_mxt_all.r.m <- calc(enm_mxt_all.r, fun = mean)
 
@@ -599,14 +659,23 @@ for (px_size_item in px_size) {
         #     gbif <- calc(stack(sapply(enm_mxt_gbif, function(x) x$suitability)), fun = mean),
         #     ndop <- calc(stack(sapply(enm_mxt_ndop, function(x) x$suitability)), fun = mean),
         #     all <- calc(stack(sapply(enm_mxt_all, function(x) x$suitability)), fun = mean)
-
-
+        #
+        #
+        #  přidat sensitivitu, specificitu a TSS!!!
+        #
+        #
         enmsr[[as.character(px_size_item)]][[as.character(sp)]] <- list(
             reps = replicates,
             px_size_item = px_size_item,
             species = as.character(sp),
             ndop_c = ndop_f_n,
             gbif_c = gbif_f_n,
+            gbif.np.tr = enm_mxt_gbif.np.tr,
+            gbif.np.te = enm_mxt_gbif.np.te,
+            all.np.tr = enm_mxt_all.np.tr,
+            all.np.te = enm_mxt_all.np.te,
+            ndop.np.tr = enm_mxt_ndop.np.tr,
+            ndop.np.te = enm_mxt_ndop.np.te,
             # ukládat zvlášť a průběžně jednotlivě jako samostatné rastery pro budoucí analýzy (třeba analýza diverzity - překryv všech rasterů), tady to bude zdržovat načnění!
             # r = list(
             #     gbif <- calc(stack(sapply(enm_mxt_gbif, function(x) x$suitability)), fun = mean),
@@ -667,12 +736,13 @@ for (px_size_item in px_size) {
             gbif_all.env.I = mean(map_dbl(eos, ~ (.$env.I))),
             gbif_all.env.cor = mean(map_dbl(eos, ~ (.$env.cor)))
         )
+        gc()
     }
 
     #  dev.off()
 }
 timestamp <- unclass(as.POSIXct(Sys.time()))
-saveRDS(enmsr, file = paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_", px_size, "_", replicates, "_", timestamp, ".rds"))
+saveRDS(enmsr, file = paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_", pres, "_", px_size, "_", replicates, "_", timestamp, ".rds"))
 
 end_time <- Sys.time()
 
