@@ -28,7 +28,7 @@ options(scipen = 999) # výpis čísel v nezkrácené podobě
 options(java.parameters = c("-Xmx20g"))
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
-    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "blockCV", "ggplot2", "dismo", "rmaxent", "ENMToolsRMaxent", "data.table", "MASS", "spatstat", "purrr") # "rmaxent",
+    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "dismo", "rmaxent", "ENMToolsRMaxent", "spatstat", "purrr") # "rmaxent", "blockCV", "ggplot2", "MASS", "data.table",
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # library(devtools)
@@ -46,15 +46,16 @@ lapply(required_packages, require, character.only = TRUE)
 
 # domovský adresář (nebo jiný), z něhož se odvodí další cesty
 # wd <- path.expand("~")
-wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2" # samsung500ntfs # paste0(path.expand("~"), "/Downloads/rgee2/rgee")
+
+
+wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee" # samsung500ntfs # paste0(path.expand("~"), "/Downloads/rgee2/rgee")
 
 setwd(wd)
 
-source(paste0(getwd(), "/rgee/R/export_raster/functions.R"))
-source(paste0(getwd(), "/rgee/R/export_raster/ndop_top.R"))
+source(paste0(getwd(), "/R/export_raster/functions.R"))
+source(paste0(getwd(), "/R/export_raster/ndop_top.R"))
 
-export_path <-
-    paste0(getwd(), "/tmp3/")
+export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
 # asi nebudu zapisovat do csv, rovnou z proměnných?  (potenciálně špatně přenositelné a vyhodnotitelné někým jiným...)
 # filename_csv <- "gOverlap_3v_10000X.csv"
 # limit_max_occurences_ndop_top <- 10000 # 70000; nepoužívané
@@ -65,7 +66,7 @@ rcrs <- "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +
 #  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R", encoding = "UTF-8")
 if (is.na(cmd_arg[1])) {
     limit_min_occurences <- 100 # 100, 10000, 20000,30000
-    limit_max_occurences <- 160
+    limit_max_occurences <- 155
 
     print(str(cmd_arg[1]))
     print("nepředán žádný argument")
@@ -93,20 +94,20 @@ if (is.na(cmd_arg[1])) {
 }
 
 
-px_size <- c(1000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
-replicates <- 1
-pres <- paste0("glmE", cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů
+px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
+replicates <- 3
+pres <- paste0("mxtE", cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů
 generate_bias_raster <- FALSE
 trans_coords <- FALSE # když mám předem uložené přetransformované souřadnice, můžu dát FALSE, šetří to čas, musím mít ale vygenerovaný předem celý rozsah druhů (100-70000)
 enmsr <- list()
 
 # shapefiles
 # BB (+ČR)
-blocks <- st_read(paste0(wd, "/rgee/shp/blocks.shp"))
+blocks <- st_read(paste0(wd, "/shp/blocks.shp"))
 # BB - ČR
-blocks_erased_cz <- st_read(paste0(wd, "/rgee/shp/blocks_erased_cz.shp"))
+blocks_erased_cz <- st_read(paste0(wd, "/shp/blocks_erased_cz.shp"))
 # ČR
-czechia <- st_read(paste0(wd, "/rgee/shp/ne_10m_admin_0_countries/czechia/cz_3035.shp"))
+czechia <- st_read(paste0(wd, "/shp/ne_10m_admin_0_countries/czechia/cz_3035.shp"))
 
 # reálně se tím řídit nemusím, neodpovídá to reálnému počtu záznamů použitých do modelů, jen pomocná metrika?
 # ndop_top <- ndop_top(paste0(getwd(), "/rgee/species/ndop/ndop-top-2021-03-21.xlsx"))
@@ -126,8 +127,8 @@ czechia <- st_read(paste0(wd, "/rgee/shp/ne_10m_admin_0_countries/czechia/cz_303
 # XXX odkud jsem generoval???
 
 if (!exists("plot_ndop_csv") & !exists("plot_gbif_csv")) {
-    plot_ndop_csv <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp/ndop_300.csv")
-    plot_gbif_csv <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp/gbif_300.csv")
+    plot_ndop_csv <- read_csv(paste0(export_path, "/inputs/occurrences/ndop_300.csv"))
+    plot_gbif_csv <- read_csv(paste0(export_path, "/inputs/occurrences/gbif_300.csv"))
 }
 
 
@@ -158,6 +159,7 @@ plot_gbif_csv <- plot_gbif_csv %>%
     dplyr::select(key, species, latitude, longitude)
 
 
+
 # počet záznamů na druh - pro limit nejnižšího (nejvyššího) počtu záznamů
 ptaci_ndop_distinct <- plot_ndop_csv %>%
     group_by(species) %>%
@@ -166,6 +168,11 @@ ptaci_ndop_distinct <- plot_ndop_csv %>%
     filter(count >= limit_min_occurences) %>%
     filter(count < limit_max_occurences) %>%
     filter(!is.na(species))
+
+if (is.na(cmd_arg[1])) {
+    # pokud jedu po skupinách, nemůžu dávat min limit u GBIF dat, nedošlo by k úplným průnikům s NDOP
+    limit_min_occurences <- 100
+}
 ptaci_gbif_distinct <- plot_gbif_csv %>%
     group_by(species) %>%
     summarise(count = n_distinct(key)) %>%
@@ -198,9 +205,9 @@ if (trans_coords == TRUE) {
         add_row(cci_ndop_3035 %>% dplyr::select(key, species, geometry))
     ### nalezy_end###
 
-    saveRDS(cci_gbif_3035, file = paste0(export_path, "cci_gbif_3035.rds"))
-    saveRDS(cci_ndop_3035, file = paste0(export_path, "cci_ndop_3035.rds"))
-    saveRDS(cci_all_3035, file = paste0(export_path, "cci_all_3035.rds"))
+    saveRDS(cci_gbif_3035, file = paste0(export_path, "/inputs/occurrences/cci_gbif_3035.rds"))
+    saveRDS(cci_ndop_3035, file = paste0(export_path, "/inputs/occurrences/cci_ndop_3035.rds"))
+    saveRDS(cci_all_3035, file = paste0(export_path, "/inputs/occurrences/cci_all_3035.rds"))
 
     # write_csv(cci_gbif_3035 , paste0(export_path, "cci_gbif_3035.csv"))
     # write_csv(cci_ndop_3035 , paste0(export_path, "cci_ndop_3035.csv"))
@@ -209,9 +216,9 @@ if (trans_coords == TRUE) {
     ############################## zatím nefunkční větev, nutno opravit logiku v kódu aby se nemusely pokaždé znovu zpracovávat kompletní csv všech záznamů
     ##############################
     ##############################
-    cci_gbif_3035 <- readRDS(paste0(export_path, "cci_gbif_3035.rds")) # %>% filter(species %in% ptaci_gbif_distinct$species) # netřeba filtrovat zde, stejně druh vybírám znovu v cyklu nad druhy
-    cci_ndop_3035 <- readRDS(paste0(export_path, "cci_ndop_3035.rds")) # %>% filter(species %in% ptaci_gbif_distinct$species)
-    cci_all_3035 <- readRDS(paste0(export_path, "cci_all_3035.rds")) # %>% filter(species %in% ptaci_gbif_distinct$species)
+    cci_gbif_3035 <- readRDS(paste0(export_path, "/inputs/occurrences/cci_gbif_3035.rds")) # %>% filter(species %in% ptaci_gbif_distinct$species) # netřeba filtrovat zde, stejně druh vybírám znovu v cyklu nad druhy
+    cci_ndop_3035 <- readRDS(paste0(export_path, "/inputs/occurrences/cci_ndop_3035.rds")) # %>% filter(species %in% ptaci_gbif_distinct$species)
+    cci_all_3035 <- readRDS(paste0(export_path, "/inputs/occurrences/cci_all_3035.rds")) # %>% filter(species %in% ptaci_gbif_distinct$species)
 }
 
 
@@ -245,7 +252,7 @@ for (px_size_item in px_size) {
     # # propíše všude jednotně NA - nutné, asi dříve problém s predikcemi nad většími oblastmi s NA nad Alpami?
     # raster_stack <- raster::mask(raster_stack, sum(raster_stack))
 
-    raster_stack <- stack(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/export/seasons-prep-11/central-europe-", px_size_item, ".grd"))
+    raster_stack <- stack(paste0(export_path, "/inputs/predictors/central-europe-", px_size_item, ".grd"))
     rcrs <- crs(raster_stack)
     raster_stack <- setMinMax(raster_stack)
 
@@ -257,7 +264,7 @@ for (px_size_item in px_size) {
     # ořez původního raster_stack na ČR pro lokální SDM
     raster_stack_crop <- crop(raster_stack, extent(czechia_3035))
     raster_stack_mask_czechia <- mask(raster_stack_crop, czechia_3035)
-
+    raster_stack_mask_czechia <- setMinMax(raster_stack_mask_czechia)
 
     rlist <- list()
 
@@ -274,7 +281,7 @@ for (px_size_item in px_size) {
         r.max <- maxValue(bias_gbif)
         bias_gbif <- ((bias_gbif - r.min) / (r.max - r.min)) / 10
         crs(bias_gbif) <- rcrs
-        writeRaster(bias_gbif, paste0(export_path, "bbXbias_gbif-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
+        writeRaster(bias_gbif, paste0(export_path, "/inputs/bias_rasters/bbXbias_gbif-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
 
         print("ALL")
         all_ppp <- ppp(st_coordinates(cci_all_3035)[, 1], st_coordinates(cci_all_3035)[, 2], window = ow)
@@ -284,7 +291,7 @@ for (px_size_item in px_size) {
         r.max <- maxValue(bias_all)
         bias_all <- ((bias_all - r.min) / (r.max - r.min)) / 10
         crs(bias_all) <- rcrs
-        writeRaster(bias_all, paste0(export_path, "bbXbias_all-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
+        writeRaster(bias_all, paste0(export_path, "/inputs/bias_rasters/bbXbias_all-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
 
         print("NDOP")
         ext <- extent(raster_stack_mask_czechia[[1]])
@@ -296,24 +303,24 @@ for (px_size_item in px_size) {
         r.max <- maxValue(bias_ndop)
         bias_ndop <- ((bias_ndop - r.min) / (r.max - r.min)) / 10
         crs(bias_ndop) <- rcrs
-        writeRaster(bias_ndop, paste0(export_path, "bbXbias_ndop-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
+        writeRaster(bias_ndop, paste0(export_path, "/inputs/bias_rasters/bbXbias_ndop-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
 
         rlist <- list(bias_gbif, bias_ndop, bias_all)
     } else {
-        bias_gbif <- raster(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/Xbias_gbif-density-", px_size_item, ".tif"))
+        bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_gbif-density-", px_size_item, ".tif"))
         # r.min <- minValue(bias_gbif)
         # r.max <- maxValue(bias_gbif)
         # bias_gbif <- ((bias_gbif - r.min) / (r.max - r.min))
         # crs(bias_gbif) <- rcrs
 
 
-        bias_ndop <- raster(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/Xbias_ndop-density-", px_size_item, ".tif"))
+        bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_ndop-density-", px_size_item, ".tif"))
         # r.min <- minValue(bias_ndop)
         # r.max <- maxValue(bias_ndop)
         # bias_ndop <- ((bias_ndop - r.min) / (r.max - r.min))
         # crs(bias_ndop) <- rcrs
 
-        bias_all <- raster(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/Xbias_all-density-", px_size_item, ".tif"))
+        bias_all <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_all-density-", px_size_item, ".tif"))
         #                 r.min <- minValue(bias_all)
         #         r.max <- maxValue(bias_all)
         #         bias_all <- ((bias_all - r.min) / (r.max - r.min))
@@ -404,12 +411,17 @@ for (px_size_item in px_size) {
 
         print("maskování prediktorů dle bufferu druhu")
         raster_stack_b <- mask(raster_stack, buffer.global)
+        raster_stack_b <- setMinMax(raster_stack_b)
+
         raster_stack_mask_czechia_b <- mask(raster_stack_mask_czechia, buffer.local)
+        raster_stack_mask_czechia_b <- setMinMax(raster_stack_mask_czechia_b)
 
         bias_gbif_b <- mask(bias_gbif, buffer.global)
         bias_all_b <- mask(bias_all, buffer.global)
         bias_ndop_b <- mask(bias_ndop, buffer.local)
-
+        bias_gbif_b <- setMinMax(bias_gbif_b)
+        bias_all_b <- setMinMax(bias_all_b)
+        bias_ndop_b <- setMinMax(bias_ndop_b)
 
         # st_write(st_as_sf(buf), paste0(export_path, "delete-buffery.shp"))
         # buf <- buffer(as_Spatial(st_intersection(all_f, czechia_3035)), width=50000, dissolve=TRUE)
@@ -431,7 +443,7 @@ for (px_size_item in px_size) {
 
         enm_mxt_gbif.s <- enm_species
 
-        enm_mxt_gbif <- replicate(replicates, enmtools.glm(
+        enm_mxt_gbif <- replicate(replicates, enmtools.maxent(
             enm_species,
             raster_stack_b,
             test.prop = 0.3,
@@ -483,13 +495,13 @@ for (px_size_item in px_size) {
         # enm_mxt_gbif.auc <- mean(sapply(enms[["10000"]][["Buteo rufinus"]][[1]][["m"]], function(x) x$test.evaluation@auc))
 
 
-        enm_mxt_gbif.rbreath <- lapply(enm_mxt_gbif, raster.breadth)
-        enm_mxt_gbif.rbreath.B1 <- mean(sapply(enm_mxt_gbif.rbreath, function(x) x$B1))
-        enm_mxt_gbif.rbreath.B2 <- mean(sapply(enm_mxt_gbif.rbreath, function(x) x$B2))
+        enm_mxt_gbif.breadth <- lapply(enm_mxt_gbif, raster.breadth)
+        enm_mxt_gbif.breadth.B1 <- mean(sapply(enm_mxt_gbif.breadth, function(x) x$B1))
+        enm_mxt_gbif.breadth.B2 <- mean(sapply(enm_mxt_gbif.breadth, function(x) x$B2))
 
-        enm_mxt_gbif.ebreath <- lapply(enm_mxt_gbif, env.breadth, env = raster_stack_b)
-        enm_mxt_gbif.ebreath.B1 <- mean(sapply(enm_mxt_gbif.ebreath, function(x) x$B1))
-        enm_mxt_gbif.ebreath.B2 <- mean(sapply(enm_mxt_gbif.ebreath, function(x) x$B2))
+        enm_mxt_gbif.ebreadth <- lapply(enm_mxt_gbif, env.breadth, env = raster_stack_b)
+        enm_mxt_gbif.ebreadth.B1 <- mean(sapply(enm_mxt_gbif.ebreadth, function(x) x$B1))
+        enm_mxt_gbif.ebreadth.B2 <- mean(sapply(enm_mxt_gbif.ebreadth, function(x) x$B2))
 
         enm_mxt_gbif.auc <- mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@auc))
         enm_mxt_gbif.np.tr <- mean(sapply(enm_mxt_gbif, function(x) x$training.evaluation@np))
@@ -498,8 +510,8 @@ for (px_size_item in px_size) {
         # names(enm_mxt_gbif) <- paste0("rep", 1:repl)
         enm_mxt_gbif.r <- stack(sapply(enm_mxt_gbif, function(x) x$suitability))
         enm_mxt_gbif.r.m <- calc(enm_mxt_gbif.r, fun = mean)
-        writeRaster(enm_mxt_gbif.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.tif"), format = "GTiff", overwrite = TRUE)
-        png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/predikce/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.png"))
+        writeRaster(enm_mxt_gbif.r.m, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.tif"), format = "GTiff", overwrite = TRUE)
+        png(paste0(export_path, "/outputs/png/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.png"))
         plot(enm_mxt_gbif.r.m,
             main = paste0(sp, " | GBIF, AUC=", round(enm_mxt_gbif.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
             sub = paste0("GBIF: ", gbif_f_n)
@@ -536,7 +548,7 @@ for (px_size_item in px_size) {
 
         enm_mxt_ndop.s <- enm_species
 
-        enm_mxt_ndop <- replicate(replicates, enmtools.glm(
+        enm_mxt_ndop <- replicate(replicates, enmtools.maxent(
             enm_species,
             raster_stack_mask_czechia_b,
             test.prop = 0.3,
@@ -549,12 +561,12 @@ for (px_size_item in px_size) {
         simplify = FALSE
         )
 
-        enm_mxt_ndop.rbreath <- lapply(enm_mxt_ndop, raster.breadth)
-        enm_mxt_ndop.rbreath.B1 <- mean(sapply(enm_mxt_ndop.rbreath, function(x) x$B1))
-        enm_mxt_ndop.rbreath.B2 <- mean(sapply(enm_mxt_ndop.rbreath, function(x) x$B2))
-        enm_mxt_ndop.ebreath <- lapply(enm_mxt_ndop, env.breadth, env = raster_stack_mask_czechia_b)
-        enm_mxt_ndop.ebreath.B1 <- mean(sapply(enm_mxt_ndop.ebreath, function(x) x$B1))
-        enm_mxt_ndop.ebreath.B2 <- mean(sapply(enm_mxt_ndop.ebreath, function(x) x$B2))
+        enm_mxt_ndop.breadth <- lapply(enm_mxt_ndop, raster.breadth)
+        enm_mxt_ndop.breadth.B1 <- mean(sapply(enm_mxt_ndop.breadth, function(x) x$B1))
+        enm_mxt_ndop.breadth.B2 <- mean(sapply(enm_mxt_ndop.breadth, function(x) x$B2))
+        enm_mxt_ndop.ebreadth <- lapply(enm_mxt_ndop, env.breadth, env = raster_stack_mask_czechia_b)
+        enm_mxt_ndop.ebreadth.B1 <- mean(sapply(enm_mxt_ndop.ebreadth, function(x) x$B1))
+        enm_mxt_ndop.ebreadth.B2 <- mean(sapply(enm_mxt_ndop.ebreadth, function(x) x$B2))
 
         enm_mxt_ndop.auc <- mean(sapply(enm_mxt_ndop, function(x) x$test.evaluation@auc))
         enm_mxt_ndop.np.tr <- mean(sapply(enm_mxt_ndop, function(x) x$training.evaluation@np))
@@ -562,8 +574,8 @@ for (px_size_item in px_size) {
         enm_mxt_ndop.r <- stack(sapply(enm_mxt_ndop, function(x) x$suitability))
         enm_mxt_ndop.r.m <- calc(enm_mxt_ndop.r, fun = mean)
 
-        writeRaster(enm_mxt_ndop.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.tif"), format = "GTiff", overwrite = TRUE)
-        png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/predikce/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.png"))
+        writeRaster(enm_mxt_ndop.r.m, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.tif"), format = "GTiff", overwrite = TRUE)
+        png(paste0(export_path, "/outputs/png/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.png"))
         plot(enm_mxt_ndop.r.m,
             main = paste0(sp, " | NDOP, AUC=", round(enm_mxt_ndop.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
             sub = paste0("NDOP: ", ndop_f_n)
@@ -592,7 +604,7 @@ for (px_size_item in px_size) {
 
         enm_mxt_all.s <- enm_species
 
-        enm_mxt_all <- replicate(replicates, enmtools.glm(
+        enm_mxt_all <- replicate(replicates, enmtools.maxent(
             enm_species,
             raster_stack_b,
             test.prop = 0.3,
@@ -605,13 +617,13 @@ for (px_size_item in px_size) {
         simplify = FALSE
         )
 
-        enm_mxt_all.rbreath <- lapply(enm_mxt_all, raster.breadth)
-        enm_mxt_all.rbreath.B1 <- mean(sapply(enm_mxt_all.rbreath, function(x) x$B1))
-        enm_mxt_all.rbreath.B2 <- mean(sapply(enm_mxt_all.rbreath, function(x) x$B2))
+        enm_mxt_all.breadth <- lapply(enm_mxt_all, raster.breadth)
+        enm_mxt_all.breadth.B1 <- mean(sapply(enm_mxt_all.breadth, function(x) x$B1))
+        enm_mxt_all.breadth.B2 <- mean(sapply(enm_mxt_all.breadth, function(x) x$B2))
 
-        enm_mxt_all.ebreath <- lapply(enm_mxt_all, env.breadth, env = raster_stack_b)
-        enm_mxt_all.ebreath.B1 <- mean(sapply(enm_mxt_all.ebreath, function(x) x$B1))
-        enm_mxt_all.ebreath.B2 <- mean(sapply(enm_mxt_all.ebreath, function(x) x$B2))
+        enm_mxt_all.ebreadth <- lapply(enm_mxt_all, env.breadth, env = raster_stack_b)
+        enm_mxt_all.ebreadth.B1 <- mean(sapply(enm_mxt_all.ebreadth, function(x) x$B1))
+        enm_mxt_all.ebreadth.B2 <- mean(sapply(enm_mxt_all.ebreadth, function(x) x$B2))
 
         enm_mxt_all.auc <- mean(sapply(enm_mxt_all, function(x) x$test.evaluation@auc))
         enm_mxt_all.np.tr <- mean(sapply(enm_mxt_all, function(x) x$training.evaluation@np))
@@ -619,8 +631,8 @@ for (px_size_item in px_size) {
         enm_mxt_all.r <- stack(sapply(enm_mxt_all, function(x) x$suitability))
         enm_mxt_all.r.m <- calc(enm_mxt_all.r, fun = mean)
 
-        writeRaster(enm_mxt_all.r.m, paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.tif"), format = "GTiff", overwrite = TRUE)
-        png(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/predikce/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.png"))
+        writeRaster(enm_mxt_all.r.m, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.tif"), format = "GTiff", overwrite = TRUE)
+        png(paste0(export_path, "/outputs/png/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.png"))
         plot(enm_mxt_all.r.m,
             main = paste0(sp, " | GBIF+NDOP, AUC=", round(enm_mxt_all.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
             sub = paste0("(NDOP/GBIF: ", ndop_f_n, "/", gbif_f_n, " = ", round(f_n), "%")
@@ -744,20 +756,21 @@ for (px_size_item in px_size) {
             all.np.te = enm_mxt_all.np.te,
             ndop.np.tr = enm_mxt_ndop.np.tr,
             ndop.np.te = enm_mxt_ndop.np.te,
-            # rbreath
-            gbif.rbreath.B1 = enm_mxt_gbif.rbreath.B1,
-            gbif.rbreath.B2 = enm_mxt_gbif.rbreath.B2,
-            ndop.rbreath.B1 = enm_mxt_ndop.rbreath.B1,
-            ndop.rbreath.B2 = enm_mxt_ndop.rbreath.B2,
-            all.rbreath.B1 = enm_mxt_all.rbreath.B1,
-            all.rbreath.B2 = enm_mxt_all.rbreath.B2,
+            # rbreadth
+            gbif.breadth.B1 = enm_mxt_gbif.breadth.B1,
+            gbif.breadth.B2 = enm_mxt_gbif.breadth.B2,
+            ndop.breadth.B1 = enm_mxt_ndop.breadth.B1,
+            ndop.breadth.B2 = enm_mxt_ndop.breadth.B2,
+            all.breadth.B1 = enm_mxt_all.breadth.B1,
+            all.breadth.B2 = enm_mxt_all.breadth.B2,
             # ebreath
-            gbif.ebreath.B1 = enm_mxt_gbif.ebreath.B1,
-            gbif.ebreath.B2 = enm_mxt_gbif.ebreath.B2,
-            ndop.ebreath.B1 = enm_mxt_ndop.ebreath.B1,
-            ndop.ebreath.B2 = enm_mxt_ndop.ebreath.B2,
-            all.ebreath.B1 = enm_mxt_all.ebreath.B1,
-            all.ebreath.B2 = enm_mxt_all.ebreath.B2,
+
+            gbif.ebreadth.B1 = enm_mxt_gbif.ebreadth.B1,
+            gbif.ebreadth.B2 = enm_mxt_gbif.ebreadth.B2,
+            ndop.ebreadth.B1 = enm_mxt_ndop.ebreadth.B1,
+            ndop.ebreadth.B2 = enm_mxt_ndop.ebreadth.B2,
+            all.ebreadth.B1 = enm_mxt_all.ebreadth.B1,
+            all.ebreadth.B2 = enm_mxt_all.ebreadth.B2,
 
             # AUC
             auc.gbif.tr = mean(sapply(enm_mxt_gbif, function(x) x$training.evaluation@auc)),
@@ -827,7 +840,7 @@ for (px_size_item in px_size) {
     #  dev.off()
 }
 timestamp <- unclass(as.POSIXct(Sys.time()))
-saveRDS(enmsr, file = paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_", pres, "_", px_size, "_", replicates, "_", timestamp, ".rds"))
+saveRDS(enmsr, file = paste0(export_path, "/outputs/rds/enmsr_", pres, "_", px_size, "_", replicates, "_", timestamp, ".rds"))
 
 end_time <- Sys.time()
 
