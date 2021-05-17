@@ -21,12 +21,20 @@ synonyms <- list(
     "Lyrurus tetrix" = "Tetrao tetrix"
 )
 
+cmd_arg <- commandArgs(trailingOnly = TRUE)
+
+
 options(scipen = 999) # výpis čísel v nezkrácené podobě
 options(java.parameters = c("-Xmx20g"))
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
     c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "blockCV", "ggplot2", "dismo", "rmaxent", "ENMToolsRMaxent", "data.table", "MASS", "spatstat", "purrr")
 install.packages(setdiff(required_packages, rownames(installed.packages())))
+
+# library(devtools)
+# install_local("/home/petr/Documents/github/enmtools/ENMTools", force = TRUE, build=TRUE)
+# install_github("danlwarren/ENMTools")
+
 
 # načte všechny požadované knihovny jako dělá jednotlivě library()
 lapply(required_packages, require, character.only = TRUE)
@@ -50,8 +58,44 @@ export_path <-
 # limit_max_occurences_ndop_top <- 10000 # 70000; nepoužívané
 
 rcrs <- "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
-limit_min_occurences <- 100 # 100, 10000, 20000,30000
-limit_max_occurences <- 160
+
+#  Rscript "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R" 1
+#  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R", encoding = "UTF-8")
+if (is.na(cmd_arg[1])) {
+    limit_min_occurences <- 100 # 100, 10000, 20000,30000
+    limit_max_occurences <- 150
+
+    print(str(cmd_arg[1]))
+    print("nepředán žádný argument")
+    cmd_arg_str <- 0
+} else {
+    print("předán argument")
+    print(cmd_arg[1])
+    cmd_arg_str <- cmd_arg[1]
+    if (cmd_arg[1] == 1) {
+
+        # 1
+        limit_min_occurences <- 100 # 100, 10000, 20000,30000
+        limit_max_occurences <- 913
+    }
+
+    if (cmd_arg[1] == 2) {
+        # 2
+        limit_min_occurences <- 914 # 100, 10000, 20000,30000
+        limit_max_occurences <- 3305
+    }
+    if (cmd_arg[1] == 3) {
+        # 3
+        limit_min_occurences <- 3306 # 100, 10000, 20000,30000
+        limit_max_occurences <- 7741
+    }
+    if (cmd_arg[1] == 4) {
+        # 4
+        limit_min_occurences <- 7742 # 100, 10000, 20000,30000
+        limit_max_occurences <- 70000
+    }
+}
+
 
 # # 1
 # limit_min_occurences <- 100 # 100, 10000, 20000,30000
@@ -70,10 +114,10 @@ limit_max_occurences <- 160
 # limit_max_occurences <- 70000
 
 px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
-replicates <- 1
-pres <- "del" # předpona png obrázků s predikcí a dalších outputů
+replicates <- 2
+pres <- paste0("del6-new2_", cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů
 generate_bias_raster <- FALSE
-trans_coords <- TRUE
+trans_coords <- FALSE # když mám předem uložené přetransformované souřadnice, můžu dát FALSE, šetří to čas, musím mít ale vygenerovaný předem celý rozsah druhů (100-70000)
 enmsr <- list()
 
 # shapefiles
@@ -94,70 +138,71 @@ czechia <- st_read(paste0(wd, "/rgee/shp/ne_10m_admin_0_countries/czechia/cz_303
 
 
 
+
+### nalezy_start###
+# příprava nálezových dat (další krok)
+# pokud nebudu i dynamicky měnit přesost nálezů podle pixelu, může zůstat zde
+# je zde pro možnost navázání na pixel size, momentálně na pevno na 300m přesnost pro zjědnodušení
+# XXX odkud jsem generoval???
+
+if (!exists("plot_ndop_csv") & !exists("plot_gbif_csv")) {
+    plot_ndop_csv <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp/ndop_300.csv")
+    plot_gbif_csv <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp/gbif_300.csv")
+}
+
+
+
+
+# počet záznamů na druh - jen příprava bez filtrů
+ptaci_ndop_distinct <- plot_ndop_csv %>%
+    group_by(species) %>%
+    summarise(count = n_distinct(key)) %>%
+    arrange(desc(count))
+ptaci_gbif_distinct <- plot_gbif_csv %>%
+    group_by(species) %>%
+    summarise(count = n_distinct(key)) %>%
+    arrange(desc(count))
+
+
+# zjištění synonym a přejmenování druhů v GBIF datech podle NDOPu, aby se umožnila následná společná filtrace pro modelování dle druhů
+# 1) výběr druhů z NDOP které se nenavázaly na GBIF
+df1x <- ptaci_ndop_distinct %>%
+    anti_join(ptaci_gbif_distinct, by = c("species" = "species")) %>%
+    filter(species %in% names(synonyms)) %>%
+    mutate(syn = "XXX")
+# 2) přidání synonym
+df1x$syn <- sapply(df1x$species, function(x, synonyms) {
+    synonyms[[as.character(x)]]
+}, synonyms)
+# 3) přejmenování případných druhů v GBIF, které se napárují se synonymy
+plot_gbif_csv <- plot_gbif_csv %>%
+    left_join(df1x, by = c("species" = "syn")) %>%
+    mutate(species = ifelse(is.na(species.y), species, species.y)) %>%
+    dplyr::select(key, species, latitude, longitude)
+
+
+# počet záznamů na druh - pro limit nejnižšího (nejvyššího) počtu záznamů
+ptaci_ndop_distinct <- plot_ndop_csv %>%
+    group_by(species) %>%
+    summarise(count = n_distinct(key)) %>%
+    arrange(desc(count)) %>%
+    filter(count >= limit_min_occurences) %>%
+    filter(count < limit_max_occurences) %>%
+    filter(!is.na(species))
+ptaci_gbif_distinct <- plot_gbif_csv %>%
+    group_by(species) %>%
+    summarise(count = n_distinct(key)) %>%
+    arrange(desc(count)) %>%
+    filter(count >= limit_min_occurences) %>%
+    # filter(count <= limit_max_occurences) %>%
+    filter(!is.na(species))
+
+
+
 if (trans_coords == TRUE) {
-    ### nalezy_start###
-    # příprava nálezových dat (další krok)
-    # pokud nebudu i dynamicky měnit přesost nálezů podle pixelu, může zůstat zde
-    # je zde pro možnost navázání na pixel size, momentálně na pevno na 300m přesnost pro zjědnodušení
-    # XXX odkud jsem generoval???
-
-    if (!exists("plot_ndop_csv") & !exists("plot_gbif_csv")) {
-        plot_ndop_csv <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp/ndop_300.csv")
-        plot_gbif_csv <- read_csv("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp/gbif_300.csv")
-    }
-
-
-
-
-    # počet záznamů na druh - jen příprava bez filtrů
-    ptaci_ndop_distinct <- plot_ndop_csv %>%
-        group_by(species) %>%
-        summarise(count = n_distinct(key)) %>%
-        arrange(desc(count))
-    ptaci_gbif_distinct <- plot_gbif_csv %>%
-        group_by(species) %>%
-        summarise(count = n_distinct(key)) %>%
-        arrange(desc(count))
-
-
-    # zjištění synonym a přejmenování druhů v GBIF datech podle NDOPu, aby se umožnila následná společná filtrace pro modelování dle druhů
-    # 1) výběr druhů z NDOP které se nenavázaly na GBIF
-    df1x <- ptaci_ndop_distinct %>%
-        anti_join(ptaci_gbif_distinct, by = c("species" = "species")) %>%
-        filter(species %in% names(synonyms)) %>%
-        mutate(syn = "XXX")
-    # 2) přidání synonym
-    df1x$syn <- sapply(df1x$species, function(x, synonyms) {
-        synonyms[[as.character(x)]]
-    }, synonyms)
-    # 3) přejmenování případných druhů v GBIF, které se napárují se synonymy
-    plot_gbif_csv <- plot_gbif_csv %>%
-        left_join(df1x, by = c("species" = "syn")) %>%
-        mutate(species = ifelse(is.na(species.y), species, species.y)) %>%
-        dplyr::select(key, species, latitude, longitude)
-
-
-    # počet záznamů na druh - pro limit nejnižšího (nejvyššího) počtu záznamů
-    ptaci_ndop_distinct <- plot_ndop_csv %>%
-        group_by(species) %>%
-        summarise(count = n_distinct(key)) %>%
-        arrange(desc(count)) %>%
-        filter(count >= limit_min_occurences) %>%
-        filter(count < limit_max_occurences) %>%
-        filter(!is.na(species))
-    ptaci_gbif_distinct <- plot_gbif_csv %>%
-        group_by(species) %>%
-        summarise(count = n_distinct(key)) %>%
-        arrange(desc(count)) %>%
-        filter(count >= limit_min_occurences) %>%
-        # filter(count <= limit_max_occurences) %>%
-        filter(!is.na(species))
-
-
     # vybrané druhy dle limitů početnosti
     plot_ndop_csv_100 <- plot_ndop_csv %>% filter(species %in% ptaci_ndop_distinct$species)
     plot_gbif_csv_100 <- plot_gbif_csv %>% filter(species %in% ptaci_gbif_distinct$species)
-
     # transformace a převod souřadnic
     print("transformace")
     print("cci_gbif_3035")
@@ -178,9 +223,9 @@ if (trans_coords == TRUE) {
     ### nalezy_end###
 
 
-    # saveRDS(cci_gbif_3035, file = paste0(export_path, "cci_gbif_3035.rds"))
-    # saveRDS(cci_ndop_3035, file = paste0(export_path, "cci_ndop_3035.rds"))
-    # saveRDS(cci_all_3035, file = paste0(export_path, "cci_all_3035.rds"))
+    saveRDS(cci_gbif_3035, file = paste0(export_path, "cci_gbif_3035.rds"))
+    saveRDS(cci_ndop_3035, file = paste0(export_path, "cci_ndop_3035.rds"))
+    saveRDS(cci_all_3035, file = paste0(export_path, "cci_all_3035.rds"))
 
     # write_csv(cci_gbif_3035 , paste0(export_path, "cci_gbif_3035.csv"))
     # write_csv(cci_ndop_3035 , paste0(export_path, "cci_ndop_3035.csv"))
@@ -189,9 +234,9 @@ if (trans_coords == TRUE) {
     ############################## zatím nefunkční větev, nutno opravit logiku v kódu aby se nemusely pokaždé znovu zpracovávat kompletní csv všech záznamů
     ##############################
     ##############################
-    # plot_gbif_csv <- readRDS(paste0(export_path, "cci_gbif_3035.rds"))
-    # plot_ndop_csv <- readRDS(paste0(export_path, "cci_ndop_3035.rds"))
-    # plot_all_csv <- readRDS(paste0(export_path, "cci_all_3035.rds"))
+    cci_gbif_3035 <- readRDS(paste0(export_path, "cci_gbif_3035.rds")) # %>% filter(species %in% ptaci_gbif_distinct$species) # netřeba filtrovat zde, stejně druh vybírám znovu v cyklu nad druhy
+    cci_ndop_3035 <- readRDS(paste0(export_path, "cci_ndop_3035.rds")) # %>% filter(species %in% ptaci_gbif_distinct$species)
+    cci_all_3035 <- readRDS(paste0(export_path, "cci_all_3035.rds")) # %>% filter(species %in% ptaci_gbif_distinct$species)
 
     # # počet záznamů na druh - pro limit nejnižšího (nejvyššího) počtu záznamů
     # ptaci_ndop_distinct <- plot_ndop_csv %>%
@@ -327,7 +372,11 @@ for (px_size_item in px_size) {
     # # # bias_ndop[is.na(bias_ndop[])] <- 0
 
     # obrácení pořadí druhů, od nejméně početných pro urychlení prvních výsledků
-    species <- rev(ptaci_ndop_distinct$species) # přepisuju původní seznam z ndop_top
+
+
+    ptaci_intersect_distinct <- ptaci_ndop_distinct %>% filter(species %in% ptaci_gbif_distinct$species)
+
+    species <- rev(ptaci_intersect_distinct$species) # přepisuju původní seznam z ndop_top
 
 
     for (sp in species) { # sp in ptaci_gbif_distinct$species
@@ -364,15 +413,72 @@ for (px_size_item in px_size) {
             print("***")
         }
 
+
+
+
+
+        # příprava occurences
+
+
+
+        # per pixel
+        enm_mxt_gbif.pp.orig <- as.data.frame(st_coordinates(gbif_f))
+        enm_mxt_gbif.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(gbif_f), raster_stack), spatial = TRUE))))
+        colnames(enm_mxt_gbif.pp)[1] <- "Longitude"
+        colnames(enm_mxt_gbif.pp)[2] <- "Latitude"
+
+        enm_mxt_ndop.pp.orig <- as.data.frame(st_coordinates(ndop_f))
+        enm_mxt_ndop.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(ndop_f), raster_stack_mask_czechia), spatial = TRUE))))
+        colnames(enm_mxt_ndop.pp)[1] <- "Longitude"
+        colnames(enm_mxt_ndop.pp)[2] <- "Latitude"
+
+        enm_mxt_all.pp.orig <- as.data.frame(st_coordinates(all_f))
+        enm_mxt_all.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(all_f), raster_stack), spatial = TRUE))))
+        colnames(enm_mxt_all.pp)[1] <- "Longitude"
+        colnames(enm_mxt_all.pp)[2] <- "Latitude"
+
+        # jen ČR NDOP i GBIF
+        local.pp <- as.data.frame(st_coordinates(st_intersection(all_f, czechia_3035)))
+        colnames(local.pp)[1] <- "Longitude"
+        colnames(local.pp)[2] <- "Latitude"
+
+        # background.buffer(points = enm_mxt_all.pp, buffer.width = 50000, buffer.type = "circles", return.type = "polygon", n = 10000)
+        # - nefunguje ani v cran veryi ani y githubu> could not find function "background.buffer"
+        # buffer.global <- background.shape.buffer(points = enm_mxt_all.pp, radius = 50000)
+        # buffer.local <- background.shape.buffer(points = local.pp, radius = 50000)
+
+        # buffer.global <- background.buffer(points = enm_mxt_all.pp, buffer.width = 50000, buffer.type = "circles", return.type = "polygon", n = 10000)
+        # buffer.local <- background.buffer(points = local.pp , buffer.width = 50000, buffer.type = "circles", return.type = "polygon", n = 10000)
+
+        # buffer.global <- buffer(as_Spatial(all_f), width = 50000, dissolve = TRUE)
+        # buffer.local <- buffer(as_Spatial(st_intersection(all_f, czechia_3035)), width = 50000, dissolve = TRUE)
+
+        buffer.global <- background.raster.buffer(points = enm_mxt_all.pp, radius = 100000, mask = raster_stack[[1]])
+        buffer.local <- background.raster.buffer(points = local.pp, radius = 100000, mask = raster_stack_mask_czechia[[1]])
+
+
+        print("maskování prediktorů dle bufferu druhu")
+        raster_stack_b <- mask(raster_stack, buffer.global)
+        raster_stack_mask_czechia_b <- mask(raster_stack_mask_czechia, buffer.local)
+
+        bias_gbif_b <- mask(bias_gbif, buffer.global)
+        bias_all_b <- mask(bias_all, buffer.global)
+        bias_ndop_b <- mask(bias_ndop, buffer.local)
+
+
+        # st_write(st_as_sf(buf), paste0(export_path, "delete-buffery.shp"))
+        # buf <- buffer(as_Spatial(st_intersection(all_f, czechia_3035)), width=50000, dissolve=TRUE)
+
         ###
         ### gbif
         ###
         print("GBIF")
-        enm_mxt_gbif.pp <- as.data.frame(st_coordinates(gbif_f))
 
-        colnames(enm_mxt_gbif.pp)[1] <- "Longitude"
-        colnames(enm_mxt_gbif.pp)[2] <- "Latitude"
-        enm_species <- enmtools.species(range = raster_stack[[1]], species.name = as.character(sp), presence.points = enm_mxt_gbif.pp)
+
+        enm_species <- enmtools.species(
+            range = buffer.global, #  raster_stack_b[[1]],
+            species.name = as.character(sp), presence.points = enm_mxt_gbif.pp
+        )
         # enms[["10000"]][["Buteo rufinus"]][[1]][["o"]]$presence.points$Longitude
 
         # bias2 <- raster("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/i/bias_tg_Chlidonias-hybrida_2_gbif.tif") # 100000 10000 - totožné pro všešchny rozlišení rasterů?
@@ -382,10 +488,11 @@ for (px_size_item in px_size) {
 
         enm_mxt_gbif <- replicate(replicates, enmtools.glm(
             enm_species,
-            raster_stack,
+            raster_stack_b,
             test.prop = 0.3,
+            bg.source = "range",
             verbose = TRUE,
-            bias = bias_gbif,
+            bias = bias_gbif_b,
             nback = 10000
             # args = c("threads=4")
         ),
@@ -429,6 +536,10 @@ for (px_size_item in px_size) {
         # str(enm_mxt_gbif[[1]]$test.evaluation@auc)
         # str(enms[["10000"]][["Buteo rufinus"]][[1]][["m"]][[1]]$test.evaluation@auc)
         # enm_mxt_gbif.auc <- mean(sapply(enms[["10000"]][["Buteo rufinus"]][[1]][["m"]], function(x) x$test.evaluation@auc))
+
+
+        # raster.breadth(monticola.glm)
+
         enm_mxt_gbif.auc <- mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@auc))
         enm_mxt_gbif.np.tr <- mean(sapply(enm_mxt_gbif, function(x) x$training.evaluation@np))
         enm_mxt_gbif.np.te <- mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@np))
@@ -445,7 +556,7 @@ for (px_size_item in px_size) {
         par(bg = NA)
         plot(czechia_3035$geometry, add = TRUE)
         par()
-        points(enm_mxt_gbif.s$presence.points, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
+        points(enm_mxt_gbif.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
         dev.off()
 
         # možnost vypsat si VIP jednotlivých proměnných - vypisuje se po PÁRECH (výsledky+grafika) pr každé opakování!!!
@@ -456,7 +567,7 @@ for (px_size_item in px_size) {
 
         # calculates Continuous Boyce Index
         # str(enms[["10000"]][["Buteo rufinus"]][[4]]
-        enm_mxt_gbif.cal <- lapply(enm_mxt_gbif, enmtools.calibrate, env = raster_stack, n.background = 10000)
+        enm_mxt_gbif.cal <- lapply(enm_mxt_gbif, enmtools.calibrate, env = raster_stack_b, n.background = 10000)
 
 
 
@@ -465,21 +576,26 @@ for (px_size_item in px_size) {
         ###
 
         print("NDOP")
-        enm_mxt_ndop.pp <- as.data.frame(st_coordinates(ndop_f))
 
-        colnames(enm_mxt_ndop.pp)[1] <- "Longitude"
-        colnames(enm_mxt_ndop.pp)[2] <- "Latitude"
-        enm_species <- enmtools.species(range = raster_stack_mask_czechia[[1]], species.name = as.character(sp), presence.points = enm_mxt_ndop.pp)
+
+
+
+
+        enm_species <- enmtools.species(
+            range = buffer.local, # raster_stack_mask_czechia_b[[1]],
+            species.name = as.character(sp), presence.points = enm_mxt_ndop.pp
+        )
 
 
         enm_mxt_ndop.s <- enm_species
 
         enm_mxt_ndop <- replicate(replicates, enmtools.glm(
             enm_species,
-            raster_stack_mask_czechia,
+            raster_stack_mask_czechia_b,
             test.prop = 0.3,
+            bg.source = "range",
             verbose = TRUE,
-            bias = bias_ndop,
+            bias = bias_ndop_b,
             nback = 10000
             # args = c("threads=4")
         ),
@@ -503,12 +619,12 @@ for (px_size_item in px_size) {
         par(bg = NA)
         plot(czechia_3035$geometry, add = TRUE)
         par()
-        points(enm_mxt_ndop.s$presence.points, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
+        points(enm_mxt_ndop.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
         dev.off()
 
         enm_mxt_ndop.vip <- sapply(enm_mxt_ndop, enmtools.vip)
 
-        enm_mxt_ndop.cal <- lapply(enm_mxt_ndop, enmtools.calibrate, env = raster_stack, n.background = 10000)
+        enm_mxt_ndop.cal <- lapply(enm_mxt_ndop, enmtools.calibrate, env = raster_stack_mask_czechia_b, n.background = 10000)
 
 
 
@@ -517,20 +633,23 @@ for (px_size_item in px_size) {
         ###
         print("ALL")
 
-        enm_mxt_all.pp <- as.data.frame(st_coordinates(all_f))
 
-        colnames(enm_mxt_all.pp)[1] <- "Longitude"
-        colnames(enm_mxt_all.pp)[2] <- "Latitude"
-        enm_species <- enmtools.species(range = raster_stack[[1]], species.name = as.character(sp), presence.points = enm_mxt_all.pp)
+
+
+        enm_species <- enmtools.species(
+            range = buffer.global, # raster_stack_b[[1]],
+            species.name = as.character(sp), presence.points = enm_mxt_all.pp
+        )
 
         enm_mxt_all.s <- enm_species
 
         enm_mxt_all <- replicate(replicates, enmtools.glm(
             enm_species,
-            raster_stack,
+            raster_stack_b,
             test.prop = 0.3,
+            bg.source = "range",
             verbose = TRUE,
-            bias = bias_all,
+            bias = bias_all_b,
             nback = 10000
             # args = c("threads=4")
         ),
@@ -551,14 +670,14 @@ for (px_size_item in px_size) {
         par(bg = NA)
         plot(czechia_3035$geometry, add = TRUE)
         par()
-        points(enm_mxt_all.s$presence.points, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
+        points(enm_mxt_all.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
         dev.off()
 
 
 
         enm_mxt_all.vip <- sapply(enm_mxt_all, enmtools.vip)
 
-        enm_mxt_all.cal <- lapply(enm_mxt_all, enmtools.calibrate, env = raster_stack, n.background = 10000)
+        enm_mxt_all.cal <- lapply(enm_mxt_all, enmtools.calibrate, env = raster_stack_b, n.background = 10000)
 
 
 
@@ -578,7 +697,7 @@ for (px_size_item in px_size) {
 
         # eos <- list()
         # for (r in 1:replicates) {
-        #     eos[[r]] <- env.overlap(enm_mxt_all[[r]], enm_mxt_gbif[[r]], env = raster_stack)[1:3]
+        #     eos[[r]] <- env.overlap(enm_mxt_all[[r]], enm_mxt_gbif[[r]], env = raster_stack_b)[1:3]
         # }
 
         # # kompletní výsledky
@@ -604,7 +723,7 @@ for (px_size_item in px_size) {
 
 
         for (r in 1:replicates) {
-            eos[[r]] <- env.overlap(enm_mxt_all[[r]], enm_mxt_gbif[[r]], env = raster_stack)[1:3]
+            eos[[r]] <- env.overlap(enm_mxt_all[[r]], enm_mxt_gbif[[r]], env = raster_stack_b)[1:3]
         }
 
 
@@ -784,7 +903,7 @@ print(end_time - start_time)
 # hdr(rr, format = "ENVI")
 
 # source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R", encoding = "UTF-8")
-
+# system(paste("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R", 1))
 #      evipn <- lapply(evip, function(x) {
 
 # as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[,2], x$Variable))))))
