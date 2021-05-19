@@ -28,7 +28,7 @@ options(scipen = 999) # výpis čísel v nezkrácené podobě
 options(java.parameters = c("-Xmx20g"))
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
-    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "dismo", "rmaxent", "ENMToolsRMaxent", "spatstat", "purrr") # "rmaxent", "blockCV", "ggplot2", "MASS", "data.table",
+    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "dismo", "rmaxent", "ENMToolsRMaxent", "spatstat", "purrr", "abind") # "rmaxent", "blockCV", "ggplot2", "MASS", "data.table",
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # library(devtools)
@@ -66,7 +66,7 @@ rcrs <- "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +
 #  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R", encoding = "UTF-8")
 if (is.na(cmd_arg[1])) {
     limit_min_occurences <- 100 # 100, 10000, 20000,30000
-    limit_max_occurences <- 155
+    limit_max_occurences <- 150
 
     print(str(cmd_arg[1]))
     print("nepředán žádný argument")
@@ -77,26 +77,26 @@ if (is.na(cmd_arg[1])) {
     cmd_arg_str <- cmd_arg[1]
     if (cmd_arg[1] == 1) {
         limit_min_occurences <- 100 # 100, 10000, 20000,30000
-        limit_max_occurences <- 913
+        limit_max_occurences <- 923
     }
     if (cmd_arg[1] == 2) {
-        limit_min_occurences <- 914 # 100, 10000, 20000,30000
-        limit_max_occurences <- 3305
+        limit_min_occurences <- 924 # 100, 10000, 20000,30000
+        limit_max_occurences <- 3505
     }
     if (cmd_arg[1] == 3) {
-        limit_min_occurences <- 3306 # 100, 10000, 20000,30000
-        limit_max_occurences <- 7741
+        limit_min_occurences <- 3506 # 100, 10000, 20000,30000
+        limit_max_occurences <- 9741
     }
     if (cmd_arg[1] == 4) {
-        limit_min_occurences <- 7742 # 100, 10000, 20000,30000
+        limit_min_occurences <- 9742 # 100, 10000, 20000,30000
         limit_max_occurences <- 70000
     }
 }
 
 
 px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
-replicates <- 3
-pres <- paste0("mxtE", cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů
+replicates <- 2
+pres <- paste0("xxxxxxxx", cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů
 generate_bias_raster <- FALSE
 trans_coords <- FALSE # když mám předem uložené přetransformované souřadnice, můžu dát FALSE, šetří to čas, musím mít ale vygenerovaný předem celý rozsah druhů (100-70000)
 enmsr <- list()
@@ -443,7 +443,7 @@ for (px_size_item in px_size) {
 
         enm_mxt_gbif.s <- enm_species
 
-        enm_mxt_gbif <- replicate(replicates, enmtools.maxent(
+        enm_mxt_gbif <- replicate(replicates, enmtools.glm(
             enm_species,
             raster_stack_b,
             test.prop = 0.3,
@@ -455,6 +455,10 @@ for (px_size_item in px_size) {
         ),
         simplify = FALSE
         )
+
+        cm <- lapply(enm_mxt_gbif, function(x) performance(x$conf))
+        enm_mxt_gbif.matrix <- abind(cm, along = 3)
+        enm_mxt_gbif.perf <- apply(enm_mxt_gbif.matrix, c(1, 2), mean)
 
         # str(enm_mxt_ndop[[1]]$training.evaluation@confusion, max.level = 2)
         # str(enm_mxt_ndop[[1]]$test.evaluation@confusion, max.level = 2)
@@ -548,7 +552,7 @@ for (px_size_item in px_size) {
 
         enm_mxt_ndop.s <- enm_species
 
-        enm_mxt_ndop <- replicate(replicates, enmtools.maxent(
+        enm_mxt_ndop <- replicate(replicates, enmtools.glm(
             enm_species,
             raster_stack_mask_czechia_b,
             test.prop = 0.3,
@@ -560,6 +564,10 @@ for (px_size_item in px_size) {
         ),
         simplify = FALSE
         )
+
+        cm <- lapply(enm_mxt_ndop, function(x) performance(x$conf))
+        enm_mxt_ndop.matrix <- abind(cm, along = 3)
+        enm_mxt_ndop.perf <- apply(enm_mxt_ndop.matrix, c(1, 2), mean)
 
         enm_mxt_ndop.breadth <- lapply(enm_mxt_ndop, raster.breadth)
         enm_mxt_ndop.breadth.B1 <- mean(sapply(enm_mxt_ndop.breadth, function(x) x$B1))
@@ -604,7 +612,7 @@ for (px_size_item in px_size) {
 
         enm_mxt_all.s <- enm_species
 
-        enm_mxt_all <- replicate(replicates, enmtools.maxent(
+        enm_mxt_all <- replicate(replicates, enmtools.glm(
             enm_species,
             raster_stack_b,
             test.prop = 0.3,
@@ -616,6 +624,11 @@ for (px_size_item in px_size) {
         ),
         simplify = FALSE
         )
+
+        cm <- lapply(enm_mxt_all, function(x) performance(x$conf))
+        enm_mxt_all.matrix <- abind(cm, along = 3)
+        enm_mxt_all.perf <- apply(enm_mxt_all.matrix, c(1, 2), mean)
+
 
         enm_mxt_all.breadth <- lapply(enm_mxt_all, raster.breadth)
         enm_mxt_all.breadth.B1 <- mean(sapply(enm_mxt_all.breadth, function(x) x$B1))
@@ -791,22 +804,15 @@ for (px_size_item in px_size) {
             auc.all.te.env = mean(sapply(enm_mxt_all, function(x) x$env.test.evaluation@auc)),
             auc.all.boyce = mean(sapply(enm_mxt_ndop.cal, function(x) x$continuous.boyce$Spearman.cor)),
 
+            # performance indexy, treshold maxSSS (dismo: spec_sens)
+            perf.gbif = as_tibble(enm_mxt_gbif.perf),
+            perf.all = as_tibble(enm_mxt_all.perf),
+            perf.ndop = as_tibble(enm_mxt_ndop.perf),
+
             # variable permutation importance - tibble
             vip1.gbif = enm_mxt_gbif.vip.s,
             vip1.ndop = enm_mxt_ndop.vip.s,
             vip1.all = enm_mxt_all.vip.s,
-
-            # variable permutation importance - sloučené
-            vip2.gbif = enm_mxt_gbif.vip.s.z,
-            vip2.ndop = enm_mxt_ndop.vip.s.z,
-            vip2.all = enm_mxt_all.vip.s.z,
-
-
-            # variable permutation importance - sloučené
-            vip3.gbif = unname(unlist(enm_mxt_gbif.vip.s.z)),
-            vip3.ndop = unname(unlist(enm_mxt_ndop.vip.s.z)),
-            vip3.all = unname(unlist(enm_mxt_all.vip.s.z)),
-
 
             # geogr. overlap
             gbif_ndop.geo.D = gbif_ndop.geo.m$D,
@@ -967,3 +973,16 @@ print(end_time - start_time)
 #     rownames_to_column() %>%
 #     pivot_longer(-rowname, "variable", "value") %>%
 #     pivot_wider(variable, rowname)
+
+
+
+
+# m_poz <- matrix(c(1,2,3,4,5,6), ncol = 2)
+# m_negat <- matrix(c(1,2,3,6,5,4), ncol= 2)
+# print(m_poz)
+# print(m_negat)
+# plot(m_poz)
+# plot(m_negat)
+# print(cor(m_poz[,1] , m_poz[,2] , method="spearman"))
+# print(cor(m_negat[,1] , m_poz[,2] , method="spearman"))
+# stop()
