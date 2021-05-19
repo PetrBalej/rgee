@@ -28,13 +28,14 @@ options(scipen = 999) # výpis čísel v nezkrácené podobě
 options(java.parameters = c("-Xmx20g"))
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
-    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "dismo", "rmaxent", "ENMToolsRMaxent", "spatstat", "purrr", "abind") # "rmaxent", "blockCV", "ggplot2", "MASS", "data.table",
+    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "dismo", "rmaxent", "ENMToolsPB", "spatstat", "purrr", "abind") # "rmaxent", "blockCV", "ggplot2", "MASS", "data.table",
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # library(devtools)
 # install_local("/home/petr/Documents/github/enmtools/ENMTools", force = TRUE, build=TRUE)
 # library(devtools)
 # install_github("danlwarren/ENMTools", force = TRUE)
+# install_github("PetrBalej/ENMTools", force = TRUE, ref="pb")
 
 
 # nutná změna ve zdrojáku background.buffer.R   x <- circles(points, d=buffer.width, lonlat=FALSE) # původně TRUE
@@ -77,18 +78,18 @@ if (is.na(cmd_arg[1])) {
     cmd_arg_str <- cmd_arg[1]
     if (cmd_arg[1] == 1) {
         limit_min_occurences <- 100 # 100, 10000, 20000,30000
-        limit_max_occurences <- 923
+        limit_max_occurences <- 2000
     }
     if (cmd_arg[1] == 2) {
-        limit_min_occurences <- 924 # 100, 10000, 20000,30000
-        limit_max_occurences <- 3505
+        limit_min_occurences <- 2001 # 100, 10000, 20000,30000
+        limit_max_occurences <- 6000
     }
     if (cmd_arg[1] == 3) {
-        limit_min_occurences <- 3506 # 100, 10000, 20000,30000
-        limit_max_occurences <- 9741
+        limit_min_occurences <- 6001 # 100, 10000, 20000,30000
+        limit_max_occurences <- 15000
     }
     if (cmd_arg[1] == 4) {
-        limit_min_occurences <- 9742 # 100, 10000, 20000,30000
+        limit_min_occurences <- 15001 # 100, 10000, 20000,30000
         limit_max_occurences <- 70000
     }
 }
@@ -96,7 +97,7 @@ if (is.na(cmd_arg[1])) {
 
 px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
 replicates <- 2
-pres <- paste0("xxxxxxxx", cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů
+pres <- paste0("glmTest2", cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů
 generate_bias_raster <- FALSE
 trans_coords <- FALSE # když mám předem uložené přetransformované souřadnice, můžu dát FALSE, šetří to čas, musím mít ale vygenerovaný předem celý rozsah druhů (100-70000)
 enmsr <- list()
@@ -169,7 +170,7 @@ ptaci_ndop_distinct <- plot_ndop_csv %>%
     filter(count < limit_max_occurences) %>%
     filter(!is.na(species))
 
-if (is.na(cmd_arg[1])) {
+if (!is.na(cmd_arg[1])) {
     # pokud jedu po skupinách, nemůžu dávat min limit u GBIF dat, nedošlo by k úplným průnikům s NDOP
     limit_min_occurences <- 100
 }
@@ -227,20 +228,13 @@ if (trans_coords == TRUE) {
 start_time <- Sys.time()
 for (px_size_item in px_size) {
 
-
-    #  pdf(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/predikce_", px_size_item, ".pdf"))
-
     # # # původní načítání rasterů prediktorů, dočasná optimalizace aby se nemusel pokaždé skrz propisovat NA hodnoty
     # rasters_path <- paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/export/seasons/", px_size_item, "/")
     # vif5 <- c(
     #     paste0("l8_3-5_", px_size_item, "_MNDWI"),
-    #     paste0("l8_6-8_", px_size_item, "_EVI"),
-    #     paste0("l8_6-8_", px_size_item, "_MNDWI"),
-    #     paste0("l8_9-11_", px_size_item, "_B5"),
-    #     paste0("l8_9-11_", px_size_item, "_EVI"),
-    #     paste0("l8_9-11_", px_size_item, "_MNDWI"),
-    #     paste0("wc_", px_size_item, "_bio02"),
+    #     paste0("l8_9-11_", px_size_item, "_B7"),
     #     paste0("wc_", px_size_item, "_bio03"),
+    #     paste0("wc_", px_size_item, "_bio04"),
     #     paste0("wc_", px_size_item, "_bio09"),
     #     paste0("wc_", px_size_item, "_bio13"),
     #     paste0("wc_", px_size_item, "_bio15")
@@ -252,9 +246,14 @@ for (px_size_item in px_size) {
     # # propíše všude jednotně NA - nutné, asi dříve problém s predikcemi nad většími oblastmi s NA nad Alpami?
     # raster_stack <- raster::mask(raster_stack, sum(raster_stack))
 
-    raster_stack <- stack(paste0(export_path, "/inputs/predictors/central-europe-", px_size_item, ".grd"))
+    raster_stack <- stack(paste0(export_path, "/inputs/predictors/central-europe-2levelVIF-", px_size_item, ".grd"))
+
+
     rcrs <- crs(raster_stack)
     raster_stack <- setMinMax(raster_stack)
+
+    # rr<-writeRaster(raster_stack, paste0(export_path, "/inputs/predictors/central-europe-2levelVIF-", px_size_item, ".grd"), format = "raster")
+    # hdr(rr, format = "ENVI")
 
     # sjednocení CRS
     blocks_3035 <- blocks %>% st_transform(rcrs)
@@ -504,8 +503,7 @@ for (px_size_item in px_size) {
         enm_mxt_gbif.breadth.B2 <- mean(sapply(enm_mxt_gbif.breadth, function(x) x$B2))
 
         enm_mxt_gbif.ebreadth <- lapply(enm_mxt_gbif, env.breadth, env = raster_stack_b)
-        enm_mxt_gbif.ebreadth.B1 <- mean(sapply(enm_mxt_gbif.ebreadth, function(x) x$B1))
-        enm_mxt_gbif.ebreadth.B2 <- mean(sapply(enm_mxt_gbif.ebreadth, function(x) x$B2))
+        enm_mxt_gbif.ebreadth.B2 <- mean(sapply(enm_mxt_gbif.ebreadth, function(x) x$env.B2))
 
         enm_mxt_gbif.auc <- mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@auc))
         enm_mxt_gbif.np.tr <- mean(sapply(enm_mxt_gbif, function(x) x$training.evaluation@np))
@@ -572,9 +570,9 @@ for (px_size_item in px_size) {
         enm_mxt_ndop.breadth <- lapply(enm_mxt_ndop, raster.breadth)
         enm_mxt_ndop.breadth.B1 <- mean(sapply(enm_mxt_ndop.breadth, function(x) x$B1))
         enm_mxt_ndop.breadth.B2 <- mean(sapply(enm_mxt_ndop.breadth, function(x) x$B2))
+
         enm_mxt_ndop.ebreadth <- lapply(enm_mxt_ndop, env.breadth, env = raster_stack_mask_czechia_b)
-        enm_mxt_ndop.ebreadth.B1 <- mean(sapply(enm_mxt_ndop.ebreadth, function(x) x$B1))
-        enm_mxt_ndop.ebreadth.B2 <- mean(sapply(enm_mxt_ndop.ebreadth, function(x) x$B2))
+        enm_mxt_ndop.ebreadth.B2 <- mean(sapply(enm_mxt_ndop.ebreadth, function(x) x$env.B2))
 
         enm_mxt_ndop.auc <- mean(sapply(enm_mxt_ndop, function(x) x$test.evaluation@auc))
         enm_mxt_ndop.np.tr <- mean(sapply(enm_mxt_ndop, function(x) x$training.evaluation@np))
@@ -635,8 +633,7 @@ for (px_size_item in px_size) {
         enm_mxt_all.breadth.B2 <- mean(sapply(enm_mxt_all.breadth, function(x) x$B2))
 
         enm_mxt_all.ebreadth <- lapply(enm_mxt_all, env.breadth, env = raster_stack_b)
-        enm_mxt_all.ebreadth.B1 <- mean(sapply(enm_mxt_all.ebreadth, function(x) x$B1))
-        enm_mxt_all.ebreadth.B2 <- mean(sapply(enm_mxt_all.ebreadth, function(x) x$B2))
+        enm_mxt_all.ebreadth.B2 <- mean(sapply(enm_mxt_all.ebreadth, function(x) x$env.B2))
 
         enm_mxt_all.auc <- mean(sapply(enm_mxt_all, function(x) x$test.evaluation@auc))
         enm_mxt_all.np.tr <- mean(sapply(enm_mxt_all, function(x) x$training.evaluation@np))
@@ -669,6 +666,9 @@ for (px_size_item in px_size) {
         enm_mxt_gbif.r.m.crop <- crop(enm_mxt_gbif.r.m, extent(czechia_3035))
         enm_mxt_gbif.r.m.crop.czechia <- mask(enm_mxt_gbif.r.m.crop, czechia_3035)
 
+        # ořez ALL ČR
+        enm_mxt_all.r.m.crop <- crop(enm_mxt_all.r.m, extent(czechia_3035))
+        enm_mxt_all.r.m.crop.czechia <- mask(enm_mxt_all.r.m.crop, czechia_3035)
 
         # výřez ČR z GBIF
         enm_mxt_gbif.r.m.erase <- crop(enm_mxt_gbif.r.m, extent(blocks_erased_cz_3035))
@@ -677,6 +677,19 @@ for (px_size_item in px_size) {
         # výřez ČR z ALL
         enm_mxt_all.r.m.erase <- crop(enm_mxt_all.r.m, extent(blocks_erased_cz_3035))
         enm_mxt_all.r.m.erase.czechia <- mask(enm_mxt_all.r.m.erase, blocks_erased_cz_3035)
+
+
+
+        # dodatečné raster breadth
+        # cropnutá ČR
+        gbif_crop.breadth <- raster.breadth(enm_mxt_gbif.r.m.crop.czechia)
+        all_crop.breadth <- raster.breadth(enm_mxt_all.r.m.crop.czechia)
+
+        # erasnutá ČR
+        gbif_erase.breadth <- raster.breadth(enm_mxt_gbif.r.m.crop.czechia)
+        all_erase.breadth <- raster.breadth(enm_mxt_all.r.m.crop.czechia)
+
+
 
 
         eos.gbif_all <- list()
@@ -776,13 +789,19 @@ for (px_size_item in px_size) {
             ndop.breadth.B2 = enm_mxt_ndop.breadth.B2,
             all.breadth.B1 = enm_mxt_all.breadth.B1,
             all.breadth.B2 = enm_mxt_all.breadth.B2,
-            # ebreath
+            # rbreadth dodatečné po cropu a erasu
+            gbif_crop.breadth.B1 <- gbif_crop.breadth$B1,
+            gbif_crop.breadth.B2 <- gbif_crop.breadth$B2,
+            all_crop.breadth.B1 <- all_crop.breadth$B1,
+            all_crop.breadth.B2 <- all_crop.breadth$B2,
+            gbif_erase.breadth.B1 <- gbif_erase.breadth$B1,
+            gbif_erase.breadth.B2 <- gbif_erase.breadth$B2,
+            all_erase.breadth.B1 <- all_erase.breadth$B1,
+            all_erase.breadth.B2 <- all_erase.breadth$B2,
 
-            gbif.ebreadth.B1 = enm_mxt_gbif.ebreadth.B1,
+            # ebreath
             gbif.ebreadth.B2 = enm_mxt_gbif.ebreadth.B2,
-            ndop.ebreadth.B1 = enm_mxt_ndop.ebreadth.B1,
             ndop.ebreadth.B2 = enm_mxt_ndop.ebreadth.B2,
-            all.ebreadth.B1 = enm_mxt_all.ebreadth.B1,
             all.ebreadth.B2 = enm_mxt_all.ebreadth.B2,
 
             # AUC
