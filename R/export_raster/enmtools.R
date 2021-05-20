@@ -55,6 +55,7 @@ setwd(wd)
 
 source(paste0(getwd(), "/R/export_raster/functions.R"))
 source(paste0(getwd(), "/R/export_raster/ndop_top.R"))
+source(paste0(getwd(), "/R/export_raster/sedi.R"))
 
 export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
 # asi nebudu zapisovat do csv, rovnou z proměnných?  (potenciálně špatně přenositelné a vyhodnotitelné někým jiným...)
@@ -459,39 +460,18 @@ for (px_size_item in px_size) {
         enm_mxt_gbif.matrix <- abind(cm, along = 3)
         enm_mxt_gbif.perf <- apply(enm_mxt_gbif.matrix, c(1, 2), mean)
 
-        # str(enm_mxt_ndop[[1]]$training.evaluation@confusion, max.level = 2)
-        # str(enm_mxt_ndop[[1]]$test.evaluation@confusion, max.level = 2)
+        # thr.gbif <- mean(sapply(enm_mxt_gbif, function(x) x$thr$spec_sens))
 
-        # str(enm_mxt_ndop[[1]]$test.evaluation@confusion, max.level = 2)
+        thr.gbif <- sapply(enm_mxt_gbif, function(x) x$thr)
 
-        # str(enm_mxt_ndop[[1]]$test.evaluation@TPR, max.level = 2) TPR, TNR, FPR, FNR
-        # str(enm_mxt_ndop[[1]]$test.evaluation@kappa, max.level = 2)
-
-        # TPR <- enm_mxt_ndop[[1]]$test.evaluation@confusion[,1] / (enm_mxt_ndop[[1]]$test.evaluation@confusion[,1] + enm_mxt_ndop[[1]]$test.evaluation@confusion[,3])
-        # enm_mxt_ndop[[1]]$test.evaluation@TPR
-
-        # cp <- cutpointr(tp = enm_mxt_ndop[[1]]$test.evaluation@confusion[,1], fp = enm_mxt_ndop[[1]]$test.evaluation@confusion[,2], fn = enm_mxt_ndop[[1]]$test.evaluation@confusion[,3], tn = enm_mxt_ndop[[1]]$test.evaluation@confusion[,4])
-
-
-        # TSS <- enm_mxt_ndop[[1]]$test.evaluation@TPR + enm_mxt_ndop[[1]]$test.evaluation@FPR -
-
-        # tp <-  enm_mxt_ndop[[1]]$test.evaluation@confusion[,1]
-        # fp <-  enm_mxt_ndop[[1]]$test.evaluation@confusion[,2]
-        # fn <- enm_mxt_ndop[[1]]$test.evaluation@confusion[,3]
-        # tn <-  enm_mxt_ndop[[1]]$test.evaluation@confusion[,4]
-
-        # cm <- enm_mxt_ndop[[1]]$test.evaluation@confusion
-        # cp <- cutpointr(cm, tp,fp,  method = maximize_metric, metric = sum_sens_spec)
-
-        # sum_sens_spec(tp, fp, tn, fn)
-        # cohens_kappa(tp, fp, tn, fn)
-        # metric_constrain(tp, fp, tn, fn)
-        # accuracy(tp, fp, tn, fn)
-        # maximize_metric(tp, fp, tn, fn)
-        # abs_d_sens_spec(tp, fp, tn, fn)
-        # threshold(enm_mxt_ndop[[1]]$test.evaluation)
-        # cutpointr(tp, fp, tn, fn)
-
+        sedi.gbif.p <- lapply(enm_mxt_gbif, function(x) sedi(x$conf))
+        sedi.gbif <- mean(sapply(sedi.gbif.p, function(x) {
+            if (x[[1]] == "SEDI equal to") {
+                x[[2]]
+            } else {
+                NA
+            }
+        }))
 
         # str(enm_mxt_gbif[[1]]$test.evaluation@auc)
         # str(enms[["10000"]][["Buteo rufinus"]][[1]][["m"]][[1]]$test.evaluation@auc)
@@ -524,10 +504,24 @@ for (px_size_item in px_size) {
         points(enm_mxt_gbif.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
         dev.off()
 
-        # možnost vypsat si VIP jednotlivých proměnných - vypisuje se po PÁRECH (výsledky+grafika) pr každé opakování!!!
-        # - [[1]] obsahuje statistiky (tibble: Variable, Importance, StDev), [[2]] pak grafický výstup (ggplot) zobrajující přispění
-        # str(enm_mxt_gbif.vip[[1]], max.level = 2) # možnost vypsat si VIP jednotlivých proměnných
-        # enms[["10000"]][["Buteo rufinus"]][[1]][["vip"]][[1]]$Variables $Importance $StDev
+
+        # Maximum test sensitivity plus specificity
+        # pro Maxent nemůže být plogis, při cloglog ýýstupu (nebo raději dát předtím do args RAW? - je ale k dispozici v rmaxent::project(), případně v původní???)
+        # použít https://rdrr.io/github/johnbaums/rmaxent/man/to_logistic.html to_logistic(x = thr.gbif.mss, from = "cloglog")
+        thr.gbif.mss <- plogis(mean(sapply(enm_mxt_gbif, function(x) {
+            x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
+        })))
+
+        raster.gbif <- enm_mxt_gbif.r.m
+        raster.gbif[raster.gbif < thr.gbif.mss] <- 0
+        raster.gbif[raster.gbif >= thr.gbif.mss] <- 1
+        pa.gbif.freq <- freq(raster.gbif)
+        writeRaster(raster.gbif, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.pa.tif"), format = "GTiff", overwrite = TRUE, dataType = "LOG1S")
+
+        # raster::predict()  pro GLM https://rdrr.io/cran/raster/man/predict.html
+        # dismo::predict() pro Maxent https://www.rdocumentation.org/packages/dismo/versions/1.3-3/topics/predict
+        # ne, teď už můžu použít rovnou suitability raster...
+
         enm_mxt_gbif.vip <- sapply(enm_mxt_gbif, enmtools.vip)
 
         # calculates Continuous Boyce Index
@@ -567,6 +561,17 @@ for (px_size_item in px_size) {
         enm_mxt_ndop.matrix <- abind(cm, along = 3)
         enm_mxt_ndop.perf <- apply(enm_mxt_ndop.matrix, c(1, 2), mean)
 
+        thr.ndop <- mean(sapply(enm_mxt_ndop, function(x) x$thr$spec_sens))
+
+        sedi.ndop.p <- lapply(enm_mxt_ndop, function(x) sedi(x$conf))
+        sedi.ndop <- mean(sapply(sedi.ndop.p, function(x) {
+            if (x[[1]] == "SEDI equal to") {
+                x[[2]]
+            } else {
+                NA
+            }
+        }))
+
         enm_mxt_ndop.breadth <- lapply(enm_mxt_ndop, raster.breadth)
         enm_mxt_ndop.breadth.B1 <- mean(sapply(enm_mxt_ndop.breadth, function(x) x$B1))
         enm_mxt_ndop.breadth.B2 <- mean(sapply(enm_mxt_ndop.breadth, function(x) x$B2))
@@ -591,6 +596,19 @@ for (px_size_item in px_size) {
         par()
         points(enm_mxt_ndop.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
         dev.off()
+
+
+        # Maximum test sensitivity plus specificity
+        thr.ndop.mss <- plogis(mean(sapply(enm_mxt_ndop, function(x) {
+            x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
+        })))
+
+        raster.ndop <- enm_mxt_ndop.r.m
+        raster.ndop[raster.ndop < thr.ndop.mss] <- 0
+        raster.ndop[raster.ndop >= thr.ndop.mss] <- 1
+
+        pa.ndop.freq <- freq(raster.ndop)
+        writeRaster(raster.ndop, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.pa.tif"), format = "GTiff", overwrite = TRUE, dataType = "LOG1S")
 
         enm_mxt_ndop.vip <- sapply(enm_mxt_ndop, enmtools.vip)
 
@@ -627,6 +645,16 @@ for (px_size_item in px_size) {
         enm_mxt_all.matrix <- abind(cm, along = 3)
         enm_mxt_all.perf <- apply(enm_mxt_all.matrix, c(1, 2), mean)
 
+        thr.all <- mean(sapply(enm_mxt_all, function(x) x$thr$spec_sens))
+
+        sedi.all.p <- lapply(enm_mxt_all, function(x) sedi(x$conf))
+        sedi.all <- mean(sapply(sedi.all.p, function(x) {
+            if (x[[1]] == "SEDI equal to") {
+                x[[2]]
+            } else {
+                NA
+            }
+        }))
 
         enm_mxt_all.breadth <- lapply(enm_mxt_all, raster.breadth)
         enm_mxt_all.breadth.B1 <- mean(sapply(enm_mxt_all.breadth, function(x) x$B1))
@@ -653,6 +681,18 @@ for (px_size_item in px_size) {
         points(enm_mxt_all.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
         dev.off()
 
+        # Maximum test sensitivity plus specificity
+        thr.all.mss <- plogis(mean(sapply(enm_mxt_all, function(x) {
+            x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
+        })))
+
+        raster.all <- enm_mxt_all.r.m
+        raster.all[raster.all < thr.all.mss] <- 0
+        raster.all[raster.all >= thr.all.mss] <- 1
+        pa.all.freq <- freq(raster.all)
+        writeRaster(raster.all, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.pa.tif"), format = "GTiff", overwrite = TRUE, dataType = "LOG1S")
+
+
 
 
         enm_mxt_all.vip <- sapply(enm_mxt_all, enmtools.vip)
@@ -660,6 +700,7 @@ for (px_size_item in px_size) {
         enm_mxt_all.cal <- lapply(enm_mxt_all, enmtools.calibrate, env = raster_stack_b, n.background = 10000)
 
 
+        # # # # # # # # ořezy # # # # # # # # # #
 
         # # ořez výsledné predikce
         # ořez GBIF ČR
@@ -677,7 +718,6 @@ for (px_size_item in px_size) {
         # výřez ČR z ALL
         enm_mxt_all.r.m.erase <- crop(enm_mxt_all.r.m, extent(blocks_erased_cz_3035))
         enm_mxt_all.r.m.erase.czechia <- mask(enm_mxt_all.r.m.erase, blocks_erased_cz_3035)
-
 
 
         # dodatečné raster breadth
@@ -822,6 +862,30 @@ for (px_size_item in px_size) {
             auc.all.tr.env = mean(sapply(enm_mxt_all, function(x) x$env.training.evaluation@auc)),
             auc.all.te.env = mean(sapply(enm_mxt_all, function(x) x$env.test.evaluation@auc)),
             auc.all.boyce = mean(sapply(enm_mxt_ndop.cal, function(x) x$continuous.boyce$Spearman.cor)),
+
+            # sedi
+            sedi.gbif = sedi.gbif,
+            sedi.all = sedi.all,
+            sedi.ndop = sedi.ndop,
+
+            # thr
+            thr.gbif = thr.gbif,
+            thr.all = thr.all,
+            thr.ndop = thr.ndop,
+
+            # PA
+            pa.gbif.sum.p = pa.gbif.freq[1, 2],
+            pa.gbif.sum.a = pa.gbif.freq[2, 2],
+            pa.all.sum.p = pa.all.freq[1, 2],
+            pa.all.sum.a = pa.all.freq[2, 2],
+            pa.ndop.sum.p = pa.ndop.freq[1, 2],
+            pa.ndop.sum.a = pa.ndop.freq[2, 2],
+
+            # překryvy PA map
+            gbif_ndop.pa = as_tibble(rasters_confusion(enm_mxt_ndop.r.m, enm_mxt_gbif.r.m.crop.czechia)),
+            all_ndop.pa = as_tibble(rasters_confusion(enm_mxt_ndop.r.m, enm_mxt_all.r.m.crop.czechia)),
+            all_gbif.pa = as_tibble(rasters_confusion(enm_mxt_all.r.m, enm_mxt_gbif.r.m)),
+            all_gbif_erase.pa = as_tibble(rasters_confusion(enm_mxt_all.r.m.erase.czechia, enm_mxt_gbif.r.m.erase.czechia)),
 
             # performance indexy, treshold maxSSS (dismo: spec_sens)
             perf.gbif = as_tibble(enm_mxt_gbif.perf),

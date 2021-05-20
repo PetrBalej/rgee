@@ -238,24 +238,37 @@ maxtss2 <- function(x, t = "Test") {
 
 
 performance <- function(confusion) {
-    tp <- confusion[1]
-    fp <- confusion[2]
-    fn <- confusion[3]
-    tn <- confusion[4]
-    TPR <- tp / (tp + fn)
-    TNR <- tn / (tn + fp)
-    FPR <- fp / (fp + tn)
-    FNR <- fn / (fn + tp)
-    Sensitivity <- TPR
-    Specificity <- TNR
-    TSS <- Sensitivity + Specificity - 1
-    Jaccard <- TPR / (FNR + TPR + FPR)
-    Sorensen <- 2 * TPR / (FNR + 2 * TPR + FPR)
-    F_measure <- 2 * Jaccard
-    OPR <- fp / (tp + fp)
-    UPR <- 1 - Sensitivity
-    data.frame(
-        TPR = TPR, TNR = TNR, FPR = FPR, FNR = FNR, Sensitivity = Sensitivity, Specificity = Specificity,
-        TSS = TSS, Jaccard = Jaccard, Sorensen = Sorensen, F_measure = F_measure, OPR = OPR, UPR = UPR
-    )
+  tp <- confusion[1]
+  fp <- confusion[2]
+  fn <- confusion[3]
+  tn <- confusion[4]
+  TPR <- tp / (tp + fn)
+  TNR <- tn / (tn + fp)
+  FPR <- fp / (fp + tn)
+  FNR <- fn / (fn + tp)
+  Sensitivity <- TPR
+  Specificity <- TNR
+  TSS <- Sensitivity + Specificity - 1
+  Jaccard <- TPR / (FNR + TPR + FPR)
+  Sorensen <- 2 * TPR / (FNR + 2 * TPR + FPR)
+  F_measure <- 2 * Jaccard
+  OPR <- fp / (tp + fp)
+  UPR <- 1 - Sensitivity
+  data.frame(
+    TPR = TPR, TNR = TNR, FPR = FPR, FNR = FNR, Sensitivity = Sensitivity, Specificity = Specificity,
+    TSS = TSS, Jaccard = Jaccard, Sorensen = Sorensen, F_measure = F_measure, OPR = OPR, UPR = UPR
+  )
+}
+
+
+rasters_confusion <- function(reality, prediction) {
+  overlap <- reality + (prediction * 2)
+  classes <- freq(overlap)
+  confusion <- c()
+  confusion[1] <- classes[4, 2]
+  confusion[2] <- classes[3, 2]
+  confusion[3] <- classes[2, 2]
+  confusion[4] <- classes[1, 2]
+
+  return(performance(confusion))
 }
