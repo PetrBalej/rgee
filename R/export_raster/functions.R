@@ -261,14 +261,49 @@ performance <- function(confusion) {
 }
 
 
+get_freq_by_cat <- function(freq.df, cat.id) {
+  # získání hodnot dle kategorie početnosti z freq()
+  if (is.empty(which(freq.df[, 1] == cat.id))) {
+    return(0)
+  } else {
+    return(unname(freq.df[which(freq.df[, 1] == cat.id), 2]))
+  }
+}
+
 rasters_confusion <- function(reality, prediction) {
   overlap <- reality + (prediction * 2)
   classes <- freq(overlap)
   confusion <- c()
-  confusion[1] <- classes[4, 2]
-  confusion[2] <- classes[3, 2]
-  confusion[3] <- classes[2, 2]
-  confusion[4] <- classes[1, 2]
+  confusion[1] <- get_freq_by_cat(classes, 3)
+  confusion[2] <- get_freq_by_cat(classes, 2)
+  confusion[3] <- get_freq_by_cat(classes, 1)
+  confusion[4] <- get_freq_by_cat(classes, 0)
 
   return(performance(confusion))
+}
+
+
+
+stack_NA_repair <- function(raster_stack) {
+  # nutné odstranit pseudo NA hodnoty aby se nepočítyly do rozsahů prediktorů ve výpočtech - zásadní!!!
+  # + propíše NA hodnoty napříč layery a znovu určí minMax hodnoty
+
+  raster_stack_Bx <- subset(raster_stack, grep("_B", names(raster_stack)))
+  # XXX Jelikož jsou zřejmě z export_raster.R špatně vygenerované _EVI, _SAVI a _MSAVI (mají nemožné přeškálované (*10000) rozsahy ±32768, normální je pro indexy ±1 rozsah ±9999),
+  # tak je nutné je nevybírat do výsledných stacků, aby nekazily analýzy. NDVI, (M)NDWI by měly být v pořádku.
+  raster_stack_I <- subset(raster_stack, grep("ND", names(raster_stack))) # po opravě možno grep("I",...)
+  raster_stack_biox <- subset(raster_stack, grep("_bio", names(raster_stack)))
+
+  raster_stack_Bx[raster_stack_Bx == -9999] <- NA
+  raster_stack_I[raster_stack_I == -32768] <- NA
+
+  raster_stack <- stack(raster_stack_Bx, raster_stack_I, raster_stack_biox)
+
+  # + propíše NA hodnoty napříč layery
+  raster_stack <- raster::mask(raster_stack, sum(raster_stack))
+
+  #  znovu určí minMax hodnoty
+  raster_stack <- raster::setMinMax(raster_stack)
+  
+  return(raster_stack)
 }
