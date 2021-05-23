@@ -271,13 +271,14 @@ get_freq_by_cat <- function(freq.df, cat.id) {
 }
 
 rasters_confusion <- function(reality, prediction) {
+  # předpoklad je vstup binárních rasterů!!!
   overlap <- reality + (prediction * 2)
   classes <- freq(overlap)
   confusion <- c()
-  confusion[1] <- get_freq_by_cat(classes, 3)
-  confusion[2] <- get_freq_by_cat(classes, 2)
-  confusion[3] <- get_freq_by_cat(classes, 1)
-  confusion[4] <- get_freq_by_cat(classes, 0)
+  confusion[1] <- get_freq_by_cat(classes, 3) # tp
+  confusion[2] <- get_freq_by_cat(classes, 2) # fp
+  confusion[3] <- get_freq_by_cat(classes, 1) # fn
+  confusion[4] <- get_freq_by_cat(classes, 0) # tn
 
   return(performance(confusion))
 }

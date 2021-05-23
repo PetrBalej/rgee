@@ -96,9 +96,9 @@ if (is.na(cmd_arg[1])) {
 }
 
 
-px_size <- c(1000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
+px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
 replicates <- 1
-pres <- paste0("XXXXXXOWNBA", cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů
+pres <- paste0("XXXXXX", px_size, cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů
 generate_bias_raster <- FALSE
 trans_coords <- FALSE # když mám předem uložené přetransformované souřadnice, můžu dát FALSE, šetří to čas, musím mít ale vygenerovaný předem celý rozsah druhů (100-70000)
 enmsr <- list()
@@ -308,42 +308,77 @@ for (px_size_item in px_size) {
         # paste0("wc_", px_size_item, "_bio15")
 
 
-        # # OWNB
-        paste0("l8_3-5_", px_size_item, "_B10"),
-        paste0("l8_6-8_", px_size_item, "_B10"),
-        paste0("l8_9-11_", px_size_item, "_B10"),
-        paste0("l8_3-5_", px_size_item, "_B7"),
-        paste0("l8_6-8_", px_size_item, "_B7"),
-        paste0("l8_9-11_", px_size_item, "_B7"),
-        paste0("l8_3-5_", px_size_item, "_B5"),
+        # # OWNE
+        # paste0("l8_3-5_", px_size_item, "_B10"),
+        # paste0("l8_3-5_", px_size_item, "_B7"),
+        # paste0("l8_3-5_", px_size_item, "_B5"),
+        # paste0("l8_3-5_", px_size_item, "_B4"),
+        # paste0("l8_3-5_", px_size_item, "_B3"),
+        # paste0("l8_3-5_", px_size_item, "_B2"),
+        # paste0("l8_3-5_", px_size_item, "_B1"),
+        # paste0("l8_3-5_", px_size_item, "_MNDWI"),
+        # paste0("l8_3-5_", px_size_item, "_NDWI"),
+        # paste0("l8_3-5_", px_size_item, "_NDVI"),
+        # paste0("wc_", px_size_item, "_bio03"),
+        # paste0("wc_", px_size_item, "_bio04"),
+        # paste0("wc_", px_size_item, "_bio09"),
+        # paste0("wc_", px_size_item, "_bio13"),
+        # paste0("wc_", px_size_item, "_bio15")
+
+        # OWNH - hclust 1000m pro Evropu , zakomentované po redukci na 10 clusterů
+        # paste0("l8_9-11_", px_size_item, "_B10"),
         paste0("l8_6-8_", px_size_item, "_B5"),
-        paste0("l8_9-11_", px_size_item, "_B5"),
         paste0("l8_3-5_", px_size_item, "_B4"),
-        paste0("l8_6-8_", px_size_item, "_B4"),
-        paste0("l8_9-11_", px_size_item, "_B4"),
-        paste0("l8_3-5_", px_size_item, "_B3"),
-        paste0("l8_6-8_", px_size_item, "_B3"),
-        paste0("l8_9-11_", px_size_item, "_B3"),
-        paste0("l8_3-5_", px_size_item, "_B2"),
-        paste0("l8_6-8_", px_size_item, "_B2"),
-        paste0("l8_9-11_", px_size_item, "_B2"),
-        paste0("l8_3-5_", px_size_item, "_B1"),
-        paste0("l8_6-8_", px_size_item, "_B1"),
-        paste0("l8_9-11_", px_size_item, "_B1"),
+        paste0("l8_3-5_", px_size_item, "_B5"),
         paste0("l8_3-5_", px_size_item, "_MNDWI"),
-        paste0("l8_6-8_", px_size_item, "_MNDWI"),
-        paste0("l8_9-11_", px_size_item, "_MNDWI"),
-        paste0("l8_3-5_", px_size_item, "_NDWI"),
-        paste0("l8_6-8_", px_size_item, "_NDWI"),
-        paste0("l8_9-11_", px_size_item, "_NDWI"),
         paste0("l8_3-5_", px_size_item, "_NDVI"),
-        paste0("l8_6-8_", px_size_item, "_NDVI"),
-        paste0("l8_9-11_", px_size_item, "_NDVI"),
+        # paste0("l8_6-8_", px_size_item, "_NDWI"),
         paste0("wc_", px_size_item, "_bio03"),
-        paste0("wc_", px_size_item, "_bio04"),
+        paste0("wc_", px_size_item, "_bio08"), # kolinear v CR, vyloucit?, radeji bio04, ta si vedle 03 vedla vzdycky dobre?
         paste0("wc_", px_size_item, "_bio09"),
         paste0("wc_", px_size_item, "_bio13"),
         paste0("wc_", px_size_item, "_bio15")
+
+
+
+
+
+        # # # OWNB
+        # paste0("l8_3-5_", px_size_item, "_B10"),
+        # paste0("l8_6-8_", px_size_item, "_B10"),
+        # paste0("l8_9-11_", px_size_item, "_B10"),
+        # paste0("l8_3-5_", px_size_item, "_B7"),
+        # paste0("l8_6-8_", px_size_item, "_B7"),
+        # paste0("l8_9-11_", px_size_item, "_B7"),
+        # paste0("l8_3-5_", px_size_item, "_B5"),
+        # paste0("l8_6-8_", px_size_item, "_B5"),
+        # paste0("l8_9-11_", px_size_item, "_B5"),
+        # paste0("l8_3-5_", px_size_item, "_B4"),
+        # paste0("l8_6-8_", px_size_item, "_B4"),
+        # paste0("l8_9-11_", px_size_item, "_B4"),
+        # paste0("l8_3-5_", px_size_item, "_B3"),
+        # paste0("l8_6-8_", px_size_item, "_B3"),
+        # paste0("l8_9-11_", px_size_item, "_B3"),
+        # paste0("l8_3-5_", px_size_item, "_B2"),
+        # paste0("l8_6-8_", px_size_item, "_B2"),
+        # paste0("l8_9-11_", px_size_item, "_B2"),
+        # paste0("l8_3-5_", px_size_item, "_B1"),
+        # paste0("l8_6-8_", px_size_item, "_B1"),
+        # paste0("l8_9-11_", px_size_item, "_B1"),
+        # paste0("l8_3-5_", px_size_item, "_MNDWI"),
+        # paste0("l8_6-8_", px_size_item, "_MNDWI"),
+        # paste0("l8_9-11_", px_size_item, "_MNDWI"),
+        # paste0("l8_3-5_", px_size_item, "_NDWI"),
+        # paste0("l8_6-8_", px_size_item, "_NDWI"),
+        # paste0("l8_9-11_", px_size_item, "_NDWI"),
+        # paste0("l8_3-5_", px_size_item, "_NDVI"),
+        # paste0("l8_6-8_", px_size_item, "_NDVI"),
+        # paste0("l8_9-11_", px_size_item, "_NDVI"),
+        # paste0("wc_", px_size_item, "_bio03"),
+        # paste0("wc_", px_size_item, "_bio04"),
+        # paste0("wc_", px_size_item, "_bio09"),
+        # paste0("wc_", px_size_item, "_bio13"),
+        # paste0("wc_", px_size_item, "_bio15")
 
 
 
@@ -500,7 +535,7 @@ for (px_size_item in px_size) {
 
         # jen ČR NDOP i GBIF
         # st_coordinates(st_intersection(all_f, czechia_3035))
-        local.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(st_intersection(all_f, czechia_3035)), raster_stack_mask_czechia), spatial = TRUE))))
+        local.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(st_intersection(all_f, st_transform(czechia_3035, st_crs(all_f)))), raster_stack_mask_czechia), spatial = TRUE))))
         colnames(local.pp)[1] <- "Longitude"
         colnames(local.pp)[2] <- "Latitude"
 
@@ -832,22 +867,38 @@ for (px_size_item in px_size) {
 
         # # # # # # # # ořezy # # # # # # # # # #
 
+
+        # po ořezu nenínutné znormalizovat nově vzniklé rastery - dělá se v raster.breadth a raster.overlap automaticky přes raster.standardize (ten ale standardizuje čistě sumou všech pixelů...?!)
+
         # # ořez výsledné predikce
         # ořez GBIF ČR
         enm_mxt_gbif.r.m.crop <- crop(enm_mxt_gbif.r.m, extent(czechia_3035))
         enm_mxt_gbif.r.m.crop.czechia <- mask(enm_mxt_gbif.r.m.crop, czechia_3035)
+        # binární
+        raster.gbif.crop <- crop(raster.gbif, extent(czechia_3035))
+        raster.gbif.crop.czechia <- mask(raster.gbif.crop, czechia_3035)
+
 
         # ořez ALL ČR
         enm_mxt_all.r.m.crop <- crop(enm_mxt_all.r.m, extent(czechia_3035))
         enm_mxt_all.r.m.crop.czechia <- mask(enm_mxt_all.r.m.crop, czechia_3035)
+        # binární
+        raster.all.crop <- crop(raster.all, extent(czechia_3035))
+        raster.all.crop.czechia <- mask(raster.all.crop, czechia_3035)
 
         # výřez ČR z GBIF
         enm_mxt_gbif.r.m.erase <- crop(enm_mxt_gbif.r.m, extent(blocks_erased_cz_3035))
         enm_mxt_gbif.r.m.erase.czechia <- mask(enm_mxt_gbif.r.m.erase, blocks_erased_cz_3035)
+        # binární
+        raster.gbif.erase <- crop(raster.gbif, extent(blocks_erased_cz_3035))
+        raster.gbif.erase.czechia <- mask(raster.gbif.erase, blocks_erased_cz_3035)
 
         # výřez ČR z ALL
         enm_mxt_all.r.m.erase <- crop(enm_mxt_all.r.m, extent(blocks_erased_cz_3035))
         enm_mxt_all.r.m.erase.czechia <- mask(enm_mxt_all.r.m.erase, blocks_erased_cz_3035)
+        # binární
+        raster.all.erase <- crop(raster.all, extent(blocks_erased_cz_3035))
+        raster.all.erase.czechia <- mask(raster.all.erase, blocks_erased_cz_3035)
 
 
         # dodatečné raster breadth
@@ -1012,10 +1063,10 @@ for (px_size_item in px_size) {
             pa.ndop.sum.a = get_freq_by_cat(pa.ndop.freq, 0),
 
             # překryvy PA map
-            gbif_ndop.pa = as_tibble(rasters_confusion(enm_mxt_ndop.r.m, enm_mxt_gbif.r.m.crop.czechia)),
-            all_ndop.pa = as_tibble(rasters_confusion(enm_mxt_ndop.r.m, enm_mxt_all.r.m.crop.czechia)),
-            all_gbif.pa = as_tibble(rasters_confusion(enm_mxt_all.r.m, enm_mxt_gbif.r.m)),
-            all_gbif_erase.pa = as_tibble(rasters_confusion(enm_mxt_all.r.m.erase.czechia, enm_mxt_gbif.r.m.erase.czechia)),
+            gbif_ndop.pa = as_tibble(rasters_confusion(raster.ndop, raster.gbif.crop.czechia)),
+            all_ndop.pa = as_tibble(rasters_confusion(raster.ndop, raster.all.crop.czechia)),
+            all_gbif.pa = as_tibble(rasters_confusion(raster.all, raster.gbif)),
+            all_gbif_erase.pa = as_tibble(rasters_confusion(raster.all.erase.czechia, raster.gbif.erase.czechia)),
 
             # performance indexy, treshold maxSSS (dismo: spec_sens)
             perf.gbif = as_tibble(enm_mxt_gbif.perf),
