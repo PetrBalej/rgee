@@ -28,7 +28,7 @@ options(scipen = 999) # výpis čísel v nezkrácené podobě
 options(java.parameters = c("-Xmx20g"))
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
-    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "dismo", "rmaxent", "ENMToolsPB", "spatstat", "purrr", "abind") # "rmaxent", "blockCV", "ggplot2", "MASS", "data.table",
+    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "dismo", "ENMToolsPB", "spatstat", "purrr", "abind") # "rmaxent", "blockCV", "ggplot2", "MASS", "data.table",
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # library(devtools)
@@ -98,7 +98,7 @@ if (is.na(cmd_arg[1])) {
 
 px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
 replicates <- 1
-pres <- paste0("XXXXXX", px_size, cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů
+pres <- paste0("XXXXXX", px_size, cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů / OWNPFr
 generate_bias_raster <- FALSE
 trans_coords <- FALSE # když mám předem uložené přetransformované souřadnice, můžu dát FALSE, šetří to čas, musím mít ale vygenerovaný předem celý rozsah druhů (100-70000)
 enmsr <- list()
@@ -233,98 +233,6 @@ for (px_size_item in px_size) {
     rasters_path <- paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/export/seasons/", px_size_item, "/")
     vif5 <- c(
 
-        # # nepoužito sada 0.7 EV a pak 0.7 CZ 10000km
-        # paste0("l8_3-5_", px_size_item, "_B10"),
-        # paste0("l8_3-5_", px_size_item, "_B5"),
-        # paste0("l8_6-8_", px_size_item, "_B5"),
-        # paste0("l8_9-11_", px_size_item, "_B10"),
-        # paste0("l8_3-5_", px_size_item, "_NDWI"),
-        # paste0("l8_9-11_", px_size_item, "_MNDWI"),
-        # paste0("l8_9-11_", px_size_item, "_NDWI"),
-        # paste0("wc_", px_size_item, "_bio03"),
-        # paste0("wc_", px_size_item, "_bio04"),
-        # paste0("wc_", px_size_item, "_bio09"),
-        # paste0("wc_", px_size_item, "_bio13"),
-        # paste0("wc_", px_size_item, "_bio15")
-
-        # # DBL7 sada 0.7 EV a pak 0.7 CZ 1000km
-        # paste0("l8_3-5_", px_size_item, "_B5"),
-        # paste0("l8_6-8_", px_size_item, "_B5"),
-        # paste0("l8_3-5_", px_size_item, "_B10"),
-        # paste0("l8_6-8_", px_size_item, "_B10"),
-        # paste0("l8_9-11_", px_size_item, "_B10"),
-        # paste0("l8_3-5_", px_size_item, "_NDVI"),
-        # paste0("l8_9-11_", px_size_item, "_MNDWI"),
-        # paste0("wc_", px_size_item, "_bio03"),
-        # paste0("wc_", px_size_item, "_bio04"),
-        # paste0("wc_", px_size_item, "_bio09"),
-        # paste0("wc_", px_size_item, "_bio13"),
-        # paste0("wc_", px_size_item, "_bio15")
-
-        ### totéž vyleze při čistém vifu pro ČR 0.7!!!!!!!
-        # 1    l8_3.5_1000_B10 2.620665
-        # 2     l8_3.5_1000_B5 4.041503
-        # 3    l8_6.8_1000_B10 3.855841
-        # 4     l8_6.8_1000_B5 3.079406
-        # 5   l8_9.11_1000_B10 1.846656
-        # 6   l8_3.5_1000_NDVI 2.236170
-        # 7  l8_6.8_1000_MNDWI 1.903304
-        # 8      wc_1000_bio03 1.638796
-        # 9      wc_1000_bio04 2.114912
-        # 10     wc_1000_bio09 2.655333
-        # 11     wc_1000_bio13 2.187940
-        # 12     wc_1000_bio15 2.710518
-
-
-        # # DBL75 sada 0.7 EV a pak 0.5 CZ 1000km
-
-        # paste0("l8_9-11_", px_size_item, "_B5"),
-        # paste0("l8_3-5_", px_size_item, "_B10"),
-        # paste0("l8_9-11_", px_size_item, "_B10"),
-        # paste0("l8_3-5_", px_size_item, "_NDVI"),
-        # paste0("l8_9-11_", px_size_item, "_MNDWI"),
-        # paste0("wc_", px_size_item, "_bio03"),
-        # paste0("wc_", px_size_item, "_bio04"),
-        # paste0("wc_", px_size_item, "_bio09"),
-        # paste0("wc_", px_size_item, "_bio15")
-
-        # # OWNA
-        # paste0("l8_3-5_", px_size_item, "_B10"),
-        # paste0("l8_6-8_", px_size_item, "_B10"),
-        # paste0("l8_3-5_", px_size_item, "_B7"),
-        # paste0("l8_6-8_", px_size_item, "_B7"),
-        # paste0("l8_3-5_", px_size_item, "_B5"),
-        # paste0("l8_6-8_", px_size_item, "_B5"),
-        # paste0("l8_3-5_", px_size_item, "_MNDWI"),
-        # paste0("l8_6-8_", px_size_item, "_MNDWI"),
-        # paste0("l8_3-5_", px_size_item, "_NDWI"),
-        # paste0("l8_6-8_", px_size_item, "_NDWI"),
-        # paste0("l8_3-5_", px_size_item, "_NDVI"),
-        # paste0("l8_6-8_", px_size_item, "_NDVI"),
-        # paste0("wc_", px_size_item, "_bio03"),
-        # paste0("wc_", px_size_item, "_bio04"),
-        # paste0("wc_", px_size_item, "_bio09"),
-        # paste0("wc_", px_size_item, "_bio13"),
-        # paste0("wc_", px_size_item, "_bio15")
-
-
-        # # OWNE
-        # paste0("l8_3-5_", px_size_item, "_B10"),
-        # paste0("l8_3-5_", px_size_item, "_B7"),
-        # paste0("l8_3-5_", px_size_item, "_B5"),
-        # paste0("l8_3-5_", px_size_item, "_B4"),
-        # paste0("l8_3-5_", px_size_item, "_B3"),
-        # paste0("l8_3-5_", px_size_item, "_B2"),
-        # paste0("l8_3-5_", px_size_item, "_B1"),
-        # paste0("l8_3-5_", px_size_item, "_MNDWI"),
-        # paste0("l8_3-5_", px_size_item, "_NDWI"),
-        # paste0("l8_3-5_", px_size_item, "_NDVI"),
-        # paste0("wc_", px_size_item, "_bio03"),
-        # paste0("wc_", px_size_item, "_bio04"),
-        # paste0("wc_", px_size_item, "_bio09"),
-        # paste0("wc_", px_size_item, "_bio13"),
-        # paste0("wc_", px_size_item, "_bio15")
-
         # OWNH - hclust 1000m pro Evropu , zakomentované po redukci na 10 clusterů
         # paste0("l8_9-11_", px_size_item, "_B10"),
         paste0("l8_6-8_", px_size_item, "_B5"),
@@ -334,55 +242,12 @@ for (px_size_item in px_size) {
         paste0("l8_3-5_", px_size_item, "_NDVI"),
         # paste0("l8_6-8_", px_size_item, "_NDWI"),
         paste0("wc_", px_size_item, "_bio03"),
+        # paste0("wc_", px_size_item, "_bio04"), # navíc - vyšla z lokálu
         paste0("wc_", px_size_item, "_bio08"), # kolinear v CR, vyloucit?, radeji bio04, ta si vedle 03 vedla vzdycky dobre?
         paste0("wc_", px_size_item, "_bio09"),
         paste0("wc_", px_size_item, "_bio13"),
         paste0("wc_", px_size_item, "_bio15")
 
-
-
-
-
-        # # # OWNB
-        # paste0("l8_3-5_", px_size_item, "_B10"),
-        # paste0("l8_6-8_", px_size_item, "_B10"),
-        # paste0("l8_9-11_", px_size_item, "_B10"),
-        # paste0("l8_3-5_", px_size_item, "_B7"),
-        # paste0("l8_6-8_", px_size_item, "_B7"),
-        # paste0("l8_9-11_", px_size_item, "_B7"),
-        # paste0("l8_3-5_", px_size_item, "_B5"),
-        # paste0("l8_6-8_", px_size_item, "_B5"),
-        # paste0("l8_9-11_", px_size_item, "_B5"),
-        # paste0("l8_3-5_", px_size_item, "_B4"),
-        # paste0("l8_6-8_", px_size_item, "_B4"),
-        # paste0("l8_9-11_", px_size_item, "_B4"),
-        # paste0("l8_3-5_", px_size_item, "_B3"),
-        # paste0("l8_6-8_", px_size_item, "_B3"),
-        # paste0("l8_9-11_", px_size_item, "_B3"),
-        # paste0("l8_3-5_", px_size_item, "_B2"),
-        # paste0("l8_6-8_", px_size_item, "_B2"),
-        # paste0("l8_9-11_", px_size_item, "_B2"),
-        # paste0("l8_3-5_", px_size_item, "_B1"),
-        # paste0("l8_6-8_", px_size_item, "_B1"),
-        # paste0("l8_9-11_", px_size_item, "_B1"),
-        # paste0("l8_3-5_", px_size_item, "_MNDWI"),
-        # paste0("l8_6-8_", px_size_item, "_MNDWI"),
-        # paste0("l8_9-11_", px_size_item, "_MNDWI"),
-        # paste0("l8_3-5_", px_size_item, "_NDWI"),
-        # paste0("l8_6-8_", px_size_item, "_NDWI"),
-        # paste0("l8_9-11_", px_size_item, "_NDWI"),
-        # paste0("l8_3-5_", px_size_item, "_NDVI"),
-        # paste0("l8_6-8_", px_size_item, "_NDVI"),
-        # paste0("l8_9-11_", px_size_item, "_NDVI"),
-        # paste0("wc_", px_size_item, "_bio03"),
-        # paste0("wc_", px_size_item, "_bio04"),
-        # paste0("wc_", px_size_item, "_bio09"),
-        # paste0("wc_", px_size_item, "_bio13"),
-        # paste0("wc_", px_size_item, "_bio15")
-
-
-
-        # OWNC - perm importance v GBIF i NDOP > 0.03
     )
 
     vif5sapply <- lapply(vif5, function(x, rasters_path) {
@@ -520,16 +385,22 @@ for (px_size_item in px_size) {
         # per pixel
         enm_mxt_gbif.pp.orig <- as.data.frame(st_coordinates(gbif_f))
         enm_mxt_gbif.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(gbif_f), raster_stack), spatial = TRUE))))
+        colnames(enm_mxt_gbif.pp.orig)[1] <- "Longitude"
+        colnames(enm_mxt_gbif.pp.orig)[2] <- "Latitude"
         colnames(enm_mxt_gbif.pp)[1] <- "Longitude"
         colnames(enm_mxt_gbif.pp)[2] <- "Latitude"
 
         enm_mxt_ndop.pp.orig <- as.data.frame(st_coordinates(ndop_f))
         enm_mxt_ndop.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(ndop_f), raster_stack_mask_czechia), spatial = TRUE))))
+        colnames(enm_mxt_ndop.pp.orig)[1] <- "Longitude"
+        colnames(enm_mxt_ndop.pp.orig)[2] <- "Latitude"
         colnames(enm_mxt_ndop.pp)[1] <- "Longitude"
         colnames(enm_mxt_ndop.pp)[2] <- "Latitude"
 
         enm_mxt_all.pp.orig <- as.data.frame(st_coordinates(all_f))
         enm_mxt_all.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(all_f), raster_stack), spatial = TRUE))))
+        colnames(enm_mxt_all.pp.orig)[1] <- "Longitude"
+        colnames(enm_mxt_all.pp.orig)[2] <- "Latitude"
         colnames(enm_mxt_all.pp)[1] <- "Longitude"
         colnames(enm_mxt_all.pp)[2] <- "Latitude"
 
@@ -560,12 +431,13 @@ for (px_size_item in px_size) {
         raster_stack_mask_czechia_b <- mask(raster_stack_mask_czechia, buffer.local)
         raster_stack_mask_czechia_b <- setMinMax(raster_stack_mask_czechia_b)
 
-        bias_gbif_b <- mask(bias_gbif, buffer.global)
-        bias_all_b <- mask(bias_all, buffer.global)
-        bias_ndop_b <- mask(bias_ndop, buffer.local)
-        bias_gbif_b <- setMinMax(bias_gbif_b)
-        bias_all_b <- setMinMax(bias_all_b)
-        bias_ndop_b <- setMinMax(bias_ndop_b)
+        # # # zbytečné, nakonec se stejně znovu provede v check.bg() v enmtools.glm() pokud jsou takto zamaskované env prediktory
+        # bias_gbif_b <- mask(bias_gbif, buffer.global)
+        # bias_all_b <- mask(bias_all, buffer.global)
+        # bias_ndop_b <- mask(bias_ndop, buffer.local)
+        # bias_gbif_b <- setMinMax(bias_gbif_b)
+        # bias_all_b <- setMinMax(bias_all_b)
+        # bias_ndop_b <- setMinMax(bias_ndop_b)
 
         # st_write(st_as_sf(buf), paste0(export_path, "delete-buffery.shp"))
         # buf <- buffer(as_Spatial(st_intersection(all_f, czechia_3035)), width=50000, dissolve=TRUE)
@@ -578,7 +450,7 @@ for (px_size_item in px_size) {
 
         enm_species <- enmtools.species(
             range = buffer.global, #  raster_stack_b[[1]],
-            species.name = as.character(sp), presence.points = enm_mxt_gbif.pp
+            species.name = as.character(sp), presence.points = enm_mxt_gbif.pp.orig
         )
         # enms[["10000"]][["Buteo rufinus"]][[1]][["o"]]$presence.points$Longitude
 
@@ -611,7 +483,8 @@ for (px_size_item in px_size) {
             test.prop = 0.3,
             bg.source = "range",
             verbose = TRUE,
-            bias = bias_gbif_b,
+            bias = bias_gbif,
+            # args = c("removeDuplicates=FALSE"), # maxent - zákaz groupování dle pixelů
             nback = 10000
             # args = c("threads=4")
         ),
@@ -702,7 +575,7 @@ for (px_size_item in px_size) {
 
         enm_species <- enmtools.species(
             range = buffer.local, # raster_stack_mask_czechia_b[[1]],
-            species.name = as.character(sp), presence.points = enm_mxt_ndop.pp
+            species.name = as.character(sp), presence.points = enm_mxt_ndop.pp.orig
         )
 
 
@@ -714,7 +587,8 @@ for (px_size_item in px_size) {
             test.prop = 0.3,
             bg.source = "range",
             verbose = TRUE,
-            bias = bias_ndop_b,
+            bias = bias_ndop,
+            # args = c("removeDuplicates=FALSE"), # maxent - zákaz groupování dle pixelů
             nback = 10000
             # args = c("threads=4")
         ),
@@ -787,7 +661,7 @@ for (px_size_item in px_size) {
 
         enm_species <- enmtools.species(
             range = buffer.global, # raster_stack_b[[1]],
-            species.name = as.character(sp), presence.points = enm_mxt_all.pp
+            species.name = as.character(sp), presence.points = enm_mxt_all.pp.orig
         )
 
         enm_mxt_all.s <- enm_species
@@ -798,7 +672,8 @@ for (px_size_item in px_size) {
             test.prop = 0.3,
             bg.source = "range",
             verbose = TRUE,
-            bias = bias_all_b,
+            bias = bias_all,
+            # args = c("removeDuplicates=FALSE"), # maxent - zákaz groupování dle pixelů
             nback = 10000
             # args = c("threads=4")
         ),

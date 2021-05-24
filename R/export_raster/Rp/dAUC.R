@@ -34,30 +34,13 @@ lapply(required_packages, require, character.only = TRUE)
 wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee"
 setwd(wd)
 
-export_path <-  "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/pdf_stats"
-# pairs <- list(
-
-#   # # auc
-#   c("auc.gbif.te", "auc.ndop.te"),
-#   c("auc.gbif.te", "auc.all.te"),
-#   # # geogr. overlap
-#   c("gbif_all.geo.D", "gbif_ndop.geo.D"),
-#   c("gbif_all.geo.I", "gbif_ndop.geo.I"),
-#   c("gbif_all_erase.geo.D", "gbif_ndop.geo.D"),
-#   c("gbif_all_erase.geo.I", "gbif_ndop.geo.I"),
-#   # je nějaký rozdíl v globálních po vymazání čr?
-#   c("gbif_all_erase.geo.D", "gbif_all.geo.D"),
-#   c("gbif_all_erase.geo.I", "gbif_all.geo.I"),
-#   # # env. overlap - není s čím do páru porovnávat...
-#   c("gbif_all.env.D", "gbif_all.env.D")
-# )
-
-
+export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/pdf_stats"
 
 pairs <- list(
 
   # # auc
   c("auc.all.te", "auc.gbif.te", "auc.ndop.te"),
+  c("TSS.all", "TSS.gbif", "TSS.ndop"),
   #  c("auc.all.boyce", "auc.gbif.boyce", "auc.ndop.boyce"), # boyce je k ničemu, kritizovali hi jako neschopný rozlišit rozdíly v jednom článku - yru3it enmtools.calibrate? nebo udělat recalibrate?
   # # geogr. overlap
   c("gbif_all.geo.D", "gbif_all_erase.geo.D", "gbif_ndop.geo.D"),
@@ -68,11 +51,11 @@ pairs <- list(
   c("gbif_all.env.I", "gbif_ndop.env.I", "all_ndop.env.I"),
   c("gbif_all.env.cor", "gbif_ndop.env.cor", "all_ndop.env.cor"),
   # # geogr šířka niky
-  c("gbif.rbreath.B1", "ndop.rbreath.B1", "all.rbreath.B1"),
-  c("gbif.rbreath.B2", "ndop.rbreath.B2", "all.rbreath.B2"),
+  c("gbif.breadth.B1", "ndop.breadth.B1", "all.breadth.B1"),
+  c("gbif.breadth.B2", "ndop.breadth.B2", "all.breadth.B2"),
   # # env šířka niky
-  # c("gbif.ebreath.B1", "ndop.ebreath.B1", "all.ebreath.B1"),
-  # c("gbif.ebreath.B2", "ndop.ebreath.B2", "all.ebreath.B2"),
+
+  c("gbif.ebreadth.B2", "ndop.ebreadth.B2", "all.ebreadth.B2"),
   # # permut. performance prediktorů - poměr WB : L8
   c("wcl8.gbif", "wcl8.all", "wcl8.ndop")
   # c("wcl8_perc.gbif", "wcl8_perc.all", "wcl8_perc.ndop") # cca 30% prišpívají, ale je třeba to rozdělit na samostatné 3 modely (stejný treshold): WC, L8 a WC+L8
@@ -89,7 +72,7 @@ pairs <- list(
 #         all_species <- stack(sapply(all_species_list, function(x) raster(x)))
 #         all_species_mean <- calc(all_species, fun = mean, na.rm=TRUE)
 #   writeRaster(all_species_mean, paste0(export_path, "habitat-suitability-diversity.tif"), format = "GTiff", overwrite = TRUE)
-     
+
 # stop()
 
 
@@ -111,10 +94,13 @@ pairs <- list(
 
 
 # enmsr_glmE1_1000_1_1621239440.03447.rds
+
+prefix <- "OWNPFr"
+
 rds_list <-
   list.files(
-    path = paste0(export_path,"/../tmp3/rds/"), # vse-v-jesdnom/outputs/rds/
-    pattern = paste0("^enmsr_glmE[0-9]_.+\\.rds$"), # "^enmsr_glmE[0-9]_.+\\.rds$"  "^enmsr_xxx[0-9]_.+\\.rds$"
+    path = paste0(export_path, "/../vse-v-jednom/outputs/rds"), # vse-v-jesdnom/outputs/rds/
+    pattern = paste0("^enmsr_", prefix, ".+\\.rds$"), # "^enmsr_glmE[0-9]_.+\\.rds$"  "^enmsr_xxx[0-9]_.+\\.rds$"   enmsr_glmF0_5000_3_1621355712.12381.rds       "^enmsr_glm2PATEST[0-9]_.+\\.rds$"
     ignore.case = TRUE,
     full.names = TRUE
   )
@@ -178,12 +164,40 @@ for (i in seq_along(names(rds_append))) {
     rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
     rename_all(paste0, ".ndop")
 
+
+
+
+  tibble_gbif_p <- tibble %>%
+    summarize(perf.gbif, .groups = "keep") %>%
+    rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+    rename_all(paste0, ".gbif")
+  tibble_all_p <- tibble %>%
+    summarize(perf.all, .groups = "keep") %>%
+    rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+    rename_all(paste0, ".all")
+  tibble_ndop_p <- tibble %>%
+    summarize(perf.ndop, .groups = "keep") %>%
+    rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+    rename_all(paste0, ".ndop")
+
+
+
+
+
+
+
+
+
   tibble_result <- tibble %>%
     left_join(tibble_gbif, by = c("species" = "species.gbif")) %>%
     left_join(tibble_all, by = c("species" = "species.all")) %>%
     left_join(tibble_ndop, by = c("species" = "species.ndop")) %>%
+    left_join(tibble_gbif_p, by = c("species" = "species.gbif")) %>%
+    left_join(tibble_all_p, by = c("species" = "species.all")) %>%
+    left_join(tibble_ndop_p, by = c("species" = "species.ndop")) %>%
     ungroup() %>%
     dplyr::select(-contains("vip")) %>%
+    dplyr::select(-contains("perf.")) %>%
     rename_all(gsub, pattern = ".Importance.", replacement = ".Imp.")
 
 
@@ -202,13 +216,13 @@ tibble_grains %<>% mutate(gbif_ndop_perc = ((ndop_c * 100) / gbif_c))
 
 tibble_grains_numeric <- tibble_grains %>% select_if(., is.numeric) # pro základní deskriptivní statistiku
 
-tibble_grains %<>% mutate(wc.gbif = rowSums(select(., matches("^wc_.*\\.Imp\\.gbif$"))))
-tibble_grains %<>% mutate(wc.all = rowSums(select(., matches("^wc_.*\\.Imp\\.all$"))))
-tibble_grains %<>% mutate(wc.ndop = rowSums(select(., matches("^wc_.*\\.Imp\\.ndop$"))))
+tibble_grains %<>% mutate(wc.gbif = rowSums(dplyr::select(., matches("^wc_.*\\.Imp\\.gbif$"))))
+tibble_grains %<>% mutate(wc.all = rowSums(dplyr::select(., matches("^wc_.*\\.Imp\\.all$"))))
+tibble_grains %<>% mutate(wc.ndop = rowSums(dplyr::select(., matches("^wc_.*\\.Imp\\.ndop$"))))
 
-tibble_grains %<>% mutate(l8.gbif = rowSums(select(., matches("^l8_.*\\.Imp\\.gbif$"))))
-tibble_grains %<>% mutate(l8.all = rowSums(select(., matches("^l8_.*\\.Imp\\.all$"))))
-tibble_grains %<>% mutate(l8.ndop = rowSums(select(., matches("^l8_.*\\.Imp\\.ndop$"))))
+tibble_grains %<>% mutate(l8.gbif = rowSums(dplyr::select(., matches("^l8_.*\\.Imp\\.gbif$"))))
+tibble_grains %<>% mutate(l8.all = rowSums(dplyr::select(., matches("^l8_.*\\.Imp\\.all$"))))
+tibble_grains %<>% mutate(l8.ndop = rowSums(dplyr::select(., matches("^l8_.*\\.Imp\\.ndop$"))))
 
 
 tibble_grains %<>% mutate(wcl8.gbif = (wc.gbif / l8.gbif))
@@ -219,101 +233,110 @@ tibble_grains %<>% mutate(wcl8_perc.gbif = ((l8.gbif * 100) / wc.gbif))
 tibble_grains %<>% mutate(wcl8_perc.all = ((l8.all * 100) / wc.all))
 tibble_grains %<>% mutate(wcl8_perc.ndop = ((l8.ndop * 100) / wc.ndop))
 
+# glimpse(tibble_grains %>% dplyr::select(contains(".ebreadth.")))
 
+pdf(paste0(export_path, "/", prefix, "auc_variable_permutation_importance.pdf"))
 
-pdf(paste0(export_path,"/auc_variable_permutation_importance.pdf"))
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+auc <- tibble_grains %>% pivot_longer(
+  cols = c("auc.ndop.te", "auc.gbif.te", "auc.all.te"),
+  names_to = "auc_type",
+  names_prefix = "p",
+  values_to = "auc_value",
+  values_drop_na = TRUE
+)
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-auc <- tibble_grains %>%  pivot_longer(
-   cols = c("auc.ndop.te", "auc.gbif.te", "auc.all.te"),
-   names_to = "auc_type",
-   names_prefix = "p",
-   values_to = "auc_value",
-   values_drop_na = TRUE
- )
-
-pic_box <- ggplot(auc, aes(x=auc_type, y=auc_value, fill=auc_type)) +  geom_violin()  +
-    facet_grid(~ px_size_item)
+pic_box <- ggplot(auc, aes(x = auc_type, y = auc_value, fill = auc_type)) +
+  geom_violin() +
+  facet_grid(~px_size_item)
 print(pic_box)
 
 # Plot
 pic_box <- auc %>%
-  ggplot( aes(x=auc_type, y=auc_value, fill=auc_type)) +
-    geom_boxplot() +
-    scale_fill_viridis(discrete = TRUE, alpha=0.9) +
-    geom_jitter(color="red", size=0.3, alpha=0.3) +
-    ggtitle("AUC") +
-    xlab("") + facet_wrap(~ px_size_item)
+  ggplot(aes(x = auc_type, y = auc_value, fill = auc_type)) +
+  geom_boxplot() +
+  scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
+  geom_jitter(color = "red", size = 0.3, alpha = 0.3) +
+  ggtitle("AUC") +
+  xlab("") +
+  facet_wrap(~px_size_item)
 
 print(pic_box)
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 
 
 # Plot NDOP
-perm.ndop <- tibble_grains %>%  pivot_longer(
-   cols = contains(".Imp.ndop"),
-   names_to = "imp_type",
-   names_prefix = "p",
-   values_to = "imp_value",
-   values_drop_na = TRUE
- )
+perm.ndop <- tibble_grains %>% pivot_longer(
+  cols = contains(".Imp.ndop"),
+  names_to = "imp_type",
+  names_prefix = "p",
+  values_to = "imp_value",
+  values_drop_na = TRUE
+)
 pic_box <- perm.ndop %>%
-  ggplot( aes(x=imp_type, y=imp_value, fill=imp_type)) +
-    geom_boxplot() +
-    scale_fill_viridis(discrete = TRUE, alpha=0.9) +
-
-    ggtitle("permutation Importance NDOP") +
-    xlab("") + facet_wrap(~ px_size_item)  +
-  theme(text = element_text(size=5),axis.text.x=element_text(angle =- 90, vjust = 0.5))
+  ggplot(aes(x = imp_type, y = imp_value, fill = imp_type)) +
+  geom_boxplot() +
+  scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
+  ggtitle("permutation Importance NDOP") +
+  xlab("") +
+  facet_wrap(~px_size_item) +
+  theme(text = element_text(size = 5), axis.text.x = element_text(angle = -90, vjust = 0.5))
 
 print(pic_box)
 
 # Plot GBIF
 
-perm.gbif <- tibble_grains %>%  pivot_longer(
-   cols = contains(".Imp.gbif"),
-   names_to = "imp_type",
-   names_prefix = "p",
-   values_to = "imp_value",
-   values_drop_na = TRUE
- ) 
+perm.gbif <- tibble_grains %>% pivot_longer(
+  cols = contains(".Imp.gbif"),
+  names_to = "imp_type",
+  names_prefix = "p",
+  values_to = "imp_value",
+  values_drop_na = TRUE
+)
 pic_box <- perm.gbif %>%
-  ggplot( aes(x=imp_type, y=imp_value, fill=imp_type)) +
-    geom_boxplot() +
-    scale_fill_viridis(discrete = TRUE, alpha=0.9) +
-
-    ggtitle("permutation Importance gbif") +
-    xlab("") + facet_wrap(~ px_size_item)  +
-  theme(text = element_text(size=5),axis.text.x=element_text(angle =- 90, vjust = 0.5))
+  ggplot(aes(x = imp_type, y = imp_value, fill = imp_type)) +
+  geom_boxplot() +
+  scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
+  ggtitle("permutation Importance gbif") +
+  xlab("") +
+  facet_wrap(~px_size_item) +
+  theme(text = element_text(size = 5), axis.text.x = element_text(angle = -90, vjust = 0.5))
 
 print(pic_box)
 
 # Plot ALL
 
-perm.all <- tibble_grains %>%  pivot_longer(
-   cols = contains(".Imp.all"),
-   names_to = "imp_type",
-   names_prefix = "p",
-   values_to = "imp_value",
-   values_drop_na = TRUE
- )
+perm.all <- tibble_grains %>% pivot_longer(
+  cols = contains(".Imp.all"),
+  names_to = "imp_type",
+  names_prefix = "p",
+  values_to = "imp_value",
+  values_drop_na = TRUE
+)
 pic_box <- perm.all %>%
-  ggplot( aes(x=imp_type, y=imp_value, fill=imp_type)) +
-    geom_boxplot() +
-    scale_fill_viridis(discrete = TRUE, alpha=0.9) +
-
-    ggtitle("permutation ImportanceALL") +
-    xlab("") + facet_wrap(~ px_size_item)  +
-  theme(text = element_text(size=5),axis.text.x=element_text(angle =- 90, vjust = 0.5))
+  ggplot(aes(x = imp_type, y = imp_value, fill = imp_type)) +
+  geom_boxplot() +
+  scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
+  ggtitle("permutation ImportanceALL") +
+  xlab("") +
+  facet_wrap(~px_size_item) +
+  theme(text = element_text(size = 5), axis.text.x = element_text(angle = -90, vjust = 0.5))
 
 print(pic_box)
 
 dev.off()
+# # statistika jednotlivé layery
+# p.stats <- tibble_grains %>%  dplyr::select(ends_with(c(".Imp.ndop", ".Imp.gbif")))  %>%
+# get_summary_stats(., show = c("mean", "sd", "median", "iqr"))  %>% filter(median >= 0.03) %>%  arrange(variable)
+# print(p.stats, n = 100)
 
-pxs_size  <- tibble_grains %>% distinct(px_size_item )
 
-pdf(paste0(export_path,"/overall.pdf"))
+
+
+pxs_size <- tibble_grains %>% distinct(px_size_item)
+
+pdf(paste0(export_path, "/", prefix, "overall.pdf"))
 
 # generovat per (filter): px_size, species,
 
@@ -321,7 +344,9 @@ boxplot(x = as.list(as.data.frame(tibble_grains %>% filter(px_size_item == pxs_s
 
 boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains("auc.")) %>% dplyr::select(contains(".te")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 2), rep("green", 2), rep("cyan3", 2)))
 
-boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".boyce")))), las = 2, cex.axis = 0.7)
+boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains("TSS.")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 2), rep("green", 2), rep("cyan3", 2)))
+
+# boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".boyce")))), las = 2, cex.axis = 0.7)
 
 boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".Imp")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 11), rep("cyan3", 11), rep("green", 11)))
 
@@ -329,13 +354,13 @@ boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contai
 
 boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".env.")))), las = 2, cex.axis = 0.7)
 
-boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".rbreath.B1")))), las = 2, cex.axis = 0.7)
+boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".breadth.B1")))), las = 2, cex.axis = 0.7)
 
-boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".rbreath.B2")))), las = 2, cex.axis = 0.7)
+boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".breadth.B2")))), las = 2, cex.axis = 0.7)
 
-# boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".ebreath.B1")))), las = 2, cex.axis = 0.7)
+# boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".ebreadth.B1")))), las = 2, cex.axis = 0.7)
 
-# boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".ebreath.B2")))), las = 2, cex.axis = 0.7)
+# boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".ebreadth.B2")))), las = 2, cex.axis = 0.7)
 dev.off()
 ##  souhrn - hlavně celkový počet nálezů ndop/gbif 1489274/3304575  - mám to filtrované 2010-2020???
 # tibble_grains  %>% filter(px_size_item == 1000) %>% select_if(., is.numeric) %>% summarise(across(everything(), ~ sum(., is.na(.), 0)))
@@ -345,7 +370,7 @@ dev.off()
 
 
 for (pxs in pxs_size$px_size_item) {
-  pdf(paste0(export_path,"/overall_", pxs, ".pdf"))
+  pdf(paste0(export_path, "/", prefix, "overall_", pxs, ".pdf"))
 
   # generovat per (filter): px_size, species,
   print("jedna")
@@ -353,6 +378,8 @@ for (pxs in pxs_size$px_size_item) {
   boxplot(x = as.list(as.data.frame(tibble_grains %>% filter(px_size_item == pxs) %>% select_if(., is.numeric) %>% dplyr::select(contains("_c")))))
 
   boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains("auc.")) %>% dplyr::select(contains(".te")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 2), rep("green", 2), rep("cyan3", 2)))
+
+  boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains("TSS.")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 2), rep("green", 2), rep("cyan3", 2)))
 
   # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".boyce")))), las = 2, cex.axis = 0.7)
 
@@ -362,13 +389,13 @@ for (pxs in pxs_size$px_size_item) {
 
   boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".env.")))), las = 2, cex.axis = 0.7)
 
-  boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".rbreath.B1")))), las = 2, cex.axis = 0.7)
+  boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".breadth.B1")))), las = 2, cex.axis = 0.7)
 
-  boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".rbreath.B2")))), las = 2, cex.axis = 0.7)
+  boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".breadth.B2")))), las = 2, cex.axis = 0.7)
 
-  # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".ebreath.B1")))), las = 2, cex.axis = 0.7)
+  # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".ebreadth.B1")))), las = 2, cex.axis = 0.7)
 
-  # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".ebreath.B2")))), las = 2, cex.axis = 0.7)
+  # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".ebreadth.B2")))), las = 2, cex.axis = 0.7)
 
   dev.off()
 
@@ -381,214 +408,6 @@ for (pxs in pxs_size$px_size_item) {
 # tibble  %>% dplyr::select(species, vip1.gbif)
 # tibble_result %>% dplyr::select(species,  l8_3.5_10000_MNDWI.Importance.gbif) # vip1.gbif    l8_6.8_10000_EVI.Importance_gbif   enm_mxt_gbif.vip_gbif   vip3.gbif_gbif
 
-
-
-
-
-
-
-#
-#
-# pokusy, smazat později
-#
-#
-
-# tibble_ordered %>% dplyr::select(id, species, vip1.all)  %>% arrange(vip1.gbif)
-
-# tibble_ordered %>%dplyr::select(id, species, reps,  vip3.gbif, ndop_c, gbif_c)
-
-# tibble_ordered  %>%  pivot_longer(vip1.all)  %>%  dplyr::select(id, species, name, value$EVI.Importance_all )
-
-
-# tibble_ordered %>% mutate(by_continent = map(by_continent, ~.x %>% group_by(country) %>% nest(.key = by_country)))
-
-# tibble_ordered  %>% flatten_df(tibble_ordered )
-
-
-# tibble_ordered %>%  separate(vip1.all, c("a","b","c","d","e","f","g","h","i","j","k"), convert = TRUE) %>% dplyr::select(species,  a, b, c, d, e, f, g, h, i, j, k)
-# tibble_ordered %>%  separate(vip1.all, c("a","b","c","d","e","f","g","h","i","j","k")) %>% dplyr::select(species,  a, b, c, d, e, f, g, h, i, j, k)
-
-# tibble_ordered %>% summarize(vip1.all)
-
-# #%>%  pivot_longer(vip.all)
-
-# dplyr::select(species, vip.all, ndop_c)
-#   unnest_wider(vip.all)
-
-# # $wc_10000_bio13.Importance
-# gbif_vip <- tibble %>% dplyr::select(vip.all)
-# # takhle se dostanu až na úroveň zanořené tabulky - pak řádky napárovat
-# gbif_vip$vip.all # totéž jen s tibble %>% expand(vip.all)
-
-
-# tibble %<>% mutate(id = row_number())
-# tibble_vip <- tibble %>% expand(vip.all) %>% mutate(id = row_number())
-
-# tibble %>% inner_join(tibble_vip, by = "id")
-
-
-
-
-
-# data_zones <- add_row_numbers(tibble)
-
-
-# tibble_vip <- tibble %>% expand(vip.all) %>% mutate(id = row_number())
-
-# tibble %>% inner_join(tibble_vip, by = "id")
-
-
-# tibble %>% mutate(xxx = expand(vip.all)$wc_10000_bio13.Importance)
-
-# tibble %>% expand(vip.all, species)%>%  dplyr::select(species, wc_10000_bio13.Importance)
-
-
-
-# gbif_vip$vip.all %>%  unnest_wider(l8_3.5_10000_MNDWI.Importance)
-
-# tibble %>% pivot_wider(vip.all)
-# tibble %>% pivot_longer(vip.all) %>% dplyr::select(name)
-
-
-
-# ########
-# tibble %>%  separate(vip.all, c("a","b","c","d","e","f","g","h","i","j","k"), convert = TRUE) %>% dplyr::select(species,  a, b, c, d, e, f, g, h, i, j, k)
-
-# tibble %>%  separate(vip.all, c("a","b","c","d"), convert = TRUE)
-
-# tibble %>% unnest(vip.auc)
-
-
-
-# separate(vip.all, c("a","b","c","d","e","f","g","h","i","j","k"), convert = TRUE) %>% dplyr::select(species,  a, b, c, d, e, f, g, h, i, j, k) %>%
-#   mutate_if(is.numeric, round, 5)
-
-# dplyr::select(vip.all)
-
-# tibble %>% separate(vip.all , c("a","b","c","d","e","f","g","h","i","j","k"), convert = TRUE) %>% dplyr::select(species,  a, b, c, d, e, f, g, h, i, j, k)
-
-
-# tibble %>% mutate(vipN = unlist(vip.all))%>% dplyr::select(vipN)
-
-
-# tibble %>% separate(vip.all, c("a","b","c","d","e","f","g","h","i","j","k"), convert = TRUE) %>%  separate(vip.all, c("a","b","c","d","e","f","g","h","i","j","k"), convert = TRUE)  %>% dplyr::select(species,  a, b, c, d, e, f, g, h, i, j, k)
-# #  %>%  separate(vip.all, c("a","b","c","d","e","f","g","h","i","j","k"))
-
-# dplyr::select(-r) %>%  mutate(auc_csv = map_chr(auc, toString)) %>% dplyr::select(auc_csv)
-#   #filter(species == "Cinclus cinclus") %>%
-#  # dplyr::select(auc)# %>%  unnest_wider(auc )  #%>% extract2(2)   # %>% hoist(auc ) # %>%  unnest_wider(auc )  %>% add_column()# %>%  unnest_wider( auc ) # %>% unnest_wider( auc ) #  %>% unnest(auc) %>% unnest(auc)
-
-# tibble%>%dplyr::select(species, a, b, c, d, e, f, g, h, i, j, k)
-
-# tibble  %>% separate(vip.all, c("a","b","c","d","e","f","g","h","i","j","k"))
-
-# separate(data = tibble, col = vip.all, into = c("a","b","c","d","e","f","g","h","i","j","k"), sep = "_")
-# print(tibble  %>% dplyr::select(vip.all ), width = Inf)
-# tibble <- dfAUCorig_10000[[1]] %>%
-#   map_depth(2, na.omit) %>%
-#   map(as_tibble) %>%
-#   unnest(auc) %>%
-#   group_by(species) %>%
-#   mutate(col = paste0('col', row_number())) %>%
-#   pivot_wider(names_from = col, values_from = auc) %>%
-#   ungroup -> df1
-
-
-# df1 %>% dplyr::select(species, col1, col2, col3, col4, col5)
-
-
-
-# as.data.frame(unlist(tibble))
-
-
-# stop()
-#   # mutate_if(is.list, simplify_all) %>%
-#   # unnest()
-
-
-#   #  mutate(aucTEST = dfAUCorig_10000[[1]][["Cinclus cinclus"]]$auc$ndop[[1]] ) %>% dplyr::select(aucTEST)
-# # flatten_dfr(.id= '', auc)
-#   #  mutate(nauc = map(auc, as_tibble), .name_repair = "minimal") %>%
-# # mutate(aucTEST = unlist(auc))
-
-
-# #unnest_wider(auc, simplify = TRUE, names_sep = "_") %>%
-# #unnest_wider(auc) %>% unnest_wider( values )
-
-
-
-
-#   #mutate(auct = 123) %>%
-#    #unnest_wider(dfAUCorig_10000[[1]] %>% dplyr::select(auc), simplify = TRUE, names_sep = "_")
-# # hoist(auc,first_AUC = list("gbif", 1L))
-
-
-
-# # %>% mutate(
-# #   a = map_dbl(x, "a"),
-# #   b = map_dbl(x, "b", .null = NA_real_)
-# # )
-
-# # dfAUCorig_10000_ <- dfAUCorig_10000
-# # names(dfAUCorig_10000[[1]])
-
-# # for(sp in names(dfAUCorig_10000_[[1]])){
-# #  # nutné odstranit rastery
-# # dfAUCorig_10000_[[1]][[sp]]$r <- NULL
-# # }
-
-# # df <- as.data.frame(do.call(rbind, lapply(dfAUCorig_10000_, as.data.frame)))
-
-# # dfAUCorig_10000_u <- unlist(dfAUCorig_10000_)
-# # stop()
-
-
-
-# rds <- dfAUCorig_10000
-
-# for (pxs in names(rds)) {
-#   # nutné odstranit ra
-#   for (sp in names(rds[[pxs]])) {
-#     print(paste0(pxs, " - ", sp, " **********************************************************************************************"))
-
-# # print(str(rds[[pxs]][[sp]]$vip[[1]]))
-
-# # cnames <- rds[[pxs]][[sp]]$vip[[1]]$Variable
-# # print(purrr::transpose(rds[[pxs]][[sp]]$vip[[1]][,2], cnames))
-
-# # vip1 <- as.data.frame(t(as.matrix(unlist(purrr::transpose(rds[[pxs]][[sp]]$vip[[1]][,2], cnames))))) # .names = rds[[pxs]][[sp]]$vip[[1]]$Variable
-
-# # write_csv(vip1 , paste0(export_path, "t4a.csv"), append = TRUE)
-
-# # vip <- as.data.frame(t(as.matrix(unlist(rds[[pxs]][[sp]]$vip))))
-
-# # # as.data.frame(transpose(rds[[pxs]][[sp]]$vip[[1]][, 2]))
-# # write_csv(vip  , paste0(export_path, "t4b.csv"), append = TRUE)
-# # stop()
-
-# # AUC 15
-
-# auc <- as.data.frame(t(as.matrix(unlist(rds[[pxs]][[sp]]$auc))))
-# print(names(auc))
-# print(as_tibble(auc))
-
-# write_csv(auc  , paste0(export_path, "auc.csv"), append = TRUE) #bind_cols(csvgee_1[1, ], csvgee_2[1, ])
-
-# stop()
-#     # dfAUCorig_10000_[[1]][[sp]]$r <- NULL
-
-#     # str(dfAUCorig_10000[[1]][["Cinclus cinclus"]]$auc, max.level = 2)
-#   }
-# }
-
-
-
-# dfAUCorig_10000
-
-# for (res in dfAUCorig_10000 ) {
-# print(class(res))
-
-# }
 
 
 for (p in pairs) {
@@ -656,6 +475,17 @@ for (p in pairs) {
 
 
 
+  # glimpse(dfAUC) # check data
+
+  # read bird traits table (traits according to Kolecek et al 2010)
+  dftraits <- read_delim(paste0(wd, "/R/export_raster/Rp/birds_traits_K.csv"), delim = ";")
+  glimpse(dftraits) # check data
+
+  # join bird traits to dfAUC
+  joined_traits <- dfAUCfiltr %>%
+    left_join(dftraits, by = c("species" = "species")) %>%
+    filter(!is.na(Habitat))
+
 
   c_orig <- as_tibble(dfAUCorig %>% group_by(px_size_item) %>% count(px_size_item))
   c_filter <- as_tibble(dfAUCfiltr %>% group_by(px_size_item) %>% count(px_size_item))
@@ -665,7 +495,7 @@ for (p in pairs) {
   ### stačí předat jen vektor - nemusím pokaždé specifikovat počet!
   # df %>% gather("key", "value", x, y, z) is equivalent to df %>% pivot_longer(c(x, y, z), names_to = "key", values_to = "value")
 
-  dfAUC <- dfAUCfiltr %>% gather(p[1], p[2], p[3], key = "Question", value = "dAUC")
+  joined_traits_question <- joined_traits %>% gather(p[1], p[2], p[3], key = "Question", value = "dAUC")
 
   cnt.all <- count(dfAUCorig)
   cnt.filtr <- count(dfAUCfiltr)
@@ -681,16 +511,20 @@ for (p in pairs) {
 
 
 
-  glimpse(dfAUC) # check data
+  # glimpse(dfAUC) # check data
 
-  # read bird traits table (traits according to Kolecek et al 2010)
-  dftraits <- read_delim(paste0(wd, "/R/export_raster/Rp/birds_traits_K.csv"), delim = ";")
-  glimpse(dftraits) # check data
+  # # read bird traits table (traits according to Kolecek et al 2010)
+  # dftraits <- read_delim(paste0(wd, "/R/export_raster/Rp/birds_traits_K.csv"), delim = ";")
+  # glimpse(dftraits) # check data
 
-  # join bird traits to dfAUC
-  df1 <- dfAUC %>%
-    left_join(dftraits, by = c("species" = "species")) %>%
-    filter(!is.na(Habitat))
+  # # join bird traits to dfAUC
+  # df1 <- dfAUC %>%
+  #   left_join(dftraits, by = c("species" = "species")) %>%
+  #   filter(!is.na(Habitat))
+
+
+
+
   # df1n <- dfAUC %>%
   #   left_join(dftraits, by = c("species1" = "species")) %>%
   #   filter(is.na(Habitat)) %>%
@@ -698,7 +532,7 @@ for (p in pairs) {
   # df2 <- df1n %>% left_join(dftraits, by = c("species2" = "species"))
 
   # df <- df1 %>% add_row(df2)
-  df <- df1
+  df <- joined_traits_question
   glimpse(df) # check data
 
   # anti1 <- dfAUC %>% anti_join(dftraits, by = c("species1" = "species")) %>% distinct(species1)
@@ -752,7 +586,7 @@ for (p in pairs) {
   labelmigr <- "Migration type: L: long-distance, P: partial, R: resident, S: short-distance"
 
 
-  pdf(paste0(export_path,"/", appendix, "_aucLim-", auc_limit, "_filtr-", typ_filtrace, ".pdf"))
+  pdf(paste0(export_path, "/", appendix, "_aucLim-", auc_limit, "_filtr-", typ_filtrace, ".pdf"))
 
   grid.arrange(top = caption, tableGrob(reduction))
   # grid.table(reduction)
