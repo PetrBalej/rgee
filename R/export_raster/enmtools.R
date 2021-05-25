@@ -460,7 +460,7 @@ for (px_size_item in px_size) {
 
         enm_species <- enmtools.species(
             range = buffer.global, #  raster_stack_b[[1]],
-            species.name = as.character(sp), presence.points = enm_mxt_gbif.pp
+            species.name = as.character(sp), presence.points = enm_mxt_gbif.pp.orig
         )
         # enms[["10000"]][["Buteo rufinus"]][[1]][["o"]]$presence.points$Longitude
 
@@ -603,7 +603,7 @@ for (px_size_item in px_size) {
 
         enm_species <- enmtools.species(
             range = buffer.local, # raster_stack_mask_czechia_b[[1]],
-            species.name = as.character(sp), presence.points = enm_mxt_ndop.pp
+            species.name = as.character(sp), presence.points = enm_mxt_ndop.pp.orig
         )
 
 
@@ -704,7 +704,7 @@ for (px_size_item in px_size) {
 
         enm_species <- enmtools.species(
             range = buffer.global, # raster_stack_b[[1]],
-            species.name = as.character(sp), presence.points = enm_mxt_all.pp
+            species.name = as.character(sp), presence.points = enm_mxt_all.pp.orig
         )
 
         enm_mxt_all.s <- enm_species
