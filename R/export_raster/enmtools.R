@@ -1,3 +1,115 @@
+options(scipen = 999) # výpis čísel v nezkrácené podobě
+options(java.parameters = c("-Xmx20g"))
+# kontrola (do)instalace všech dodatečně potřebných balíčků
+required_packages <-
+    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "dismo", "ENMToolsPB", "spatstat", "purrr", "abind") # "rmaxent", "blockCV", "ggplot2", "MASS", "data.table",
+install.packages(setdiff(required_packages, rownames(installed.packages())))
+# načte všechny požadované knihovny jako dělá jednotlivě library()
+lapply(required_packages, require, character.only = TRUE)
+
+## cesty k souborům, předpoklad je stáhnutí celého repozitáře https://github.com/PetrBalej/rgee/archive/master.zip
+# domovský adresář (nebo jiný), z něhož se odvodí další cesty
+# wd <- path.expand("~")
+wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee" # samsung500ntfs # paste0(path.expand("~"), "/Downloads/rgee2/rgee")
+setwd(wd)
+
+export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
+
+alg <- "glm" # "gml" "maxent"
+px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
+replicates <- 1
+pres <- paste0(alg, "_XXX_", px_size, cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů / OWNPFr
+generate_bias_raster <- FALSE
+trans_coords <- FALSE # když mám předem uložené přetransformované souřadnice, můžu dát FALSE, šetří to čas, musím mít ale vygenerovaný předem celý rozsah druhů (100-70000)
+
+###################################################################################
+# library(devtools)
+# install_local("/home/petr/Documents/github/enmtools/ENMTools", force = TRUE, build=TRUE)
+# install_github("danlwarren/ENMTools", force = TRUE)
+# install_github("PetrBalej/ENMTools", force = TRUE, ref="pb")
+# install_local("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/ENMToolsPB", force = TRUE, build=TRUE)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+#  Rscript "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R" 1
+#  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R", encoding = "UTF-8")
+###################################################################################
+
+cmd_arg <- commandArgs(trailingOnly = TRUE)
+if (is.na(cmd_arg[1])) {
+    limit_min_occurences <- 100 # 100, 10000, 20000,30000
+    limit_max_occurences <- 150
+
+    print(str(cmd_arg[1]))
+    print("nepředán žádný argument")
+    cmd_arg_str <- 0
+} else {
+    print("předán argument")
+    print(cmd_arg[1])
+    cmd_arg_str <- cmd_arg[1]
+    if (alg == "glm") {
+        if (cmd_arg[1] == 1) {
+            limit_min_occurences <- 100 #
+            limit_max_occurences <- 2000
+        }
+        if (cmd_arg[1] == 2) {
+            limit_min_occurences <- 2001 #
+            limit_max_occurences <- 5800
+        }
+        if (cmd_arg[1] == 3) {
+            limit_min_occurences <- 5801 #
+            limit_max_occurences <- 14000
+        }
+        if (cmd_arg[1] == 4) {
+            limit_min_occurences <- 14001 #
+            limit_max_occurences <- 70000
+        }
+    }
+    if (alg == "maxent") {
+        if (cmd_arg[1] == 1) {
+            limit_min_occurences <- 100 #
+            limit_max_occurences <- 1800
+        }
+        if (cmd_arg[1] == 2) {
+            limit_min_occurences <- 1801 #
+            limit_max_occurences <- 5000
+        }
+        if (cmd_arg[1] == 3) {
+            limit_min_occurences <- 5001 #
+            limit_max_occurences <- 10000
+        }
+        if (cmd_arg[1] == 4) {
+            limit_min_occurences <- 10001 #
+            limit_max_occurences <- 70000
+        }
+    }
+}
+
+# pomocné funkce
+source(paste0(wd, "/R/export_raster/functions.R"))
+source(paste0(wd, "/R/export_raster/ndop_top.R"))
+source(paste0(wd, "/R/export_raster/sedi.R"))
+
+# sběrná proměnná pro výsledky
+enmsr <- list()
+
+rcrs <- "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+
+# shapefiles
+# BB (+ČR)
+blocks <- st_read(paste0(wd, "/shp/blocks.shp"))
+# BB - ČR
+blocks_erased_cz <- st_read(paste0(wd, "/shp/blocks_erased_cz.shp"))
+# ČR
+czechia <- st_read(paste0(wd, "/shp/ne_10m_admin_0_countries/czechia/cz_3035.shp"))
+
+# reálně se tím řídit nemusím, neodpovídá to reálnému počtu záznamů použitých do modelů, jen pomocná metrika?
+# ndop_top <- ndop_top(paste0(getwd(), "/rgee/species/ndop/ndop-top-2021-03-21.xlsx"))
+# species <- ndop_top %>%
+#     dplyr::select(species1_, species2_, species1, species2, species1_short, species2_short, Nálezů) %>%
+#     filter(Nálezů < limit_max_occurences_ndop_top)
+
+# plot(enms$`10000`$Anthus_campestris[[2]]$p)
+
+
 synonyms <- list(
     "Spatula clypeata" = "Anas clypeata",
     "Phylloscopus sibilatrix" = "Phylloscopus sibillatrix",
@@ -20,107 +132,6 @@ synonyms <- list(
     "Saxicola rubicola" = "Saxicola torquata",
     "Lyrurus tetrix" = "Tetrao tetrix"
 )
-
-cmd_arg <- commandArgs(trailingOnly = TRUE)
-
-
-options(scipen = 999) # výpis čísel v nezkrácené podobě
-options(java.parameters = c("-Xmx20g"))
-# kontrola (do)instalace všech dodatečně potřebných balíčků
-required_packages <-
-    c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "dismo", "ENMToolsPB", "spatstat", "purrr", "abind") # "rmaxent", "blockCV", "ggplot2", "MASS", "data.table",
-install.packages(setdiff(required_packages, rownames(installed.packages())))
-
-# library(devtools)
-# install_local("/home/petr/Documents/github/enmtools/ENMTools", force = TRUE, build=TRUE)
-# library(devtools)
-# install_github("danlwarren/ENMTools", force = TRUE)
-# install_github("PetrBalej/ENMTools", force = TRUE, ref="pb")
-# install_local("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/ENMToolsPB", force = TRUE, build=TRUE)
-
-# nutná změna ve zdrojáku background.buffer.R   x <- circles(points, d=buffer.width, lonlat=FALSE) # původně TRUE
-
-# načte všechny požadované knihovny jako dělá jednotlivě library()
-lapply(required_packages, require, character.only = TRUE)
-
-## cesty k souborům, předpoklad je stáhnutí celého repozitáře https://github.com/PetrBalej/rgee/archive/master.zip
-
-# domovský adresář (nebo jiný), z něhož se odvodí další cesty
-# wd <- path.expand("~")
-
-
-wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee" # samsung500ntfs # paste0(path.expand("~"), "/Downloads/rgee2/rgee")
-
-setwd(wd)
-
-source(paste0(getwd(), "/R/export_raster/functions.R"))
-source(paste0(getwd(), "/R/export_raster/ndop_top.R"))
-source(paste0(getwd(), "/R/export_raster/sedi.R"))
-
-export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
-# asi nebudu zapisovat do csv, rovnou z proměnných?  (potenciálně špatně přenositelné a vyhodnotitelné někým jiným...)
-# filename_csv <- "gOverlap_3v_10000X.csv"
-# limit_max_occurences_ndop_top <- 10000 # 70000; nepoužívané
-
-rcrs <- "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
-##################################################################################### vv
-#  Rscript "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R" 1
-#  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R", encoding = "UTF-8")
-if (is.na(cmd_arg[1])) {
-    limit_min_occurences <- 100 # 100, 10000, 20000,30000
-    limit_max_occurences <- 150
-
-    print(str(cmd_arg[1]))
-    print("nepředán žádný argument")
-    cmd_arg_str <- 0
-} else {
-    print("předán argument")
-    print(cmd_arg[1])
-    cmd_arg_str <- cmd_arg[1]
-    if (cmd_arg[1] == 1) {
-        limit_min_occurences <- 100 # 100, 10000, 20000,30000
-        limit_max_occurences <- 2000
-    }
-    if (cmd_arg[1] == 2) {
-        limit_min_occurences <- 2001 # 100, 10000, 20000,30000
-        limit_max_occurences <- 5800
-    }
-    if (cmd_arg[1] == 3) {
-        limit_min_occurences <- 5801 # 100, 10000, 20000,30000
-        limit_max_occurences <- 14000
-    }
-    if (cmd_arg[1] == 4) {
-        limit_min_occurences <- 14001 # 100, 10000, 20000,30000
-        limit_max_occurences <- 70000
-    }
-}
-
-alg <- "gml" # "gml" "maxent"
-px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
-replicates <- 1
-pres <- paste0(alg, "XXXXXX", px_size, cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů / OWNPFr
-generate_bias_raster <- FALSE
-trans_coords <- FALSE # když mám předem uložené přetransformované souřadnice, můžu dát FALSE, šetří to čas, musím mít ale vygenerovaný předem celý rozsah druhů (100-70000)
-enmsr <- list()
-
-# shapefiles
-# BB (+ČR)
-blocks <- st_read(paste0(wd, "/shp/blocks.shp"))
-# BB - ČR
-blocks_erased_cz <- st_read(paste0(wd, "/shp/blocks_erased_cz.shp"))
-# ČR
-czechia <- st_read(paste0(wd, "/shp/ne_10m_admin_0_countries/czechia/cz_3035.shp"))
-
-# reálně se tím řídit nemusím, neodpovídá to reálnému počtu záznamů použitých do modelů, jen pomocná metrika?
-# ndop_top <- ndop_top(paste0(getwd(), "/rgee/species/ndop/ndop-top-2021-03-21.xlsx"))
-# species <- ndop_top %>%
-#     dplyr::select(species1_, species2_, species1, species2, species1_short, species2_short, Nálezů) %>%
-#     filter(Nálezů < limit_max_occurences_ndop_top)
-
-# plot(enms$`10000`$Anthus_campestris[[2]]$p)
-
-
-
 
 ### nalezy_start###
 # příprava nálezových dat (další krok)
@@ -449,7 +460,7 @@ for (px_size_item in px_size) {
 
         enm_species <- enmtools.species(
             range = buffer.global, #  raster_stack_b[[1]],
-            species.name = as.character(sp), presence.points = enm_mxt_gbif.pp.orig
+            species.name = as.character(sp), presence.points = enm_mxt_gbif.pp
         )
         # enms[["10000"]][["Buteo rufinus"]][[1]][["o"]]$presence.points$Longitude
 
@@ -592,7 +603,7 @@ for (px_size_item in px_size) {
 
         enm_species <- enmtools.species(
             range = buffer.local, # raster_stack_mask_czechia_b[[1]],
-            species.name = as.character(sp), presence.points = enm_mxt_ndop.pp.orig
+            species.name = as.character(sp), presence.points = enm_mxt_ndop.pp
         )
 
 
@@ -693,7 +704,7 @@ for (px_size_item in px_size) {
 
         enm_species <- enmtools.species(
             range = buffer.global, # raster_stack_b[[1]],
-            species.name = as.character(sp), presence.points = enm_mxt_all.pp.orig
+            species.name = as.character(sp), presence.points = enm_mxt_all.pp
         )
 
         enm_mxt_all.s <- enm_species
