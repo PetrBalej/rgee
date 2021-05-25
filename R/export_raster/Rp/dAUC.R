@@ -41,6 +41,14 @@ pairs <- list(
   # # auc
   c("auc.all.te", "auc.gbif.te", "auc.ndop.te"),
   c("TSS.all", "TSS.gbif", "TSS.ndop"),
+  c("sedi.all", "sedi.gbif", "sedi.ndop"),
+  c("TSS.gbif_ndop", "TSS.all_ndop", "TSS.all_ndop"),
+  c("TSS.all_gbif", "TSS.all_gbif_erase", "TSS.all_gbif_erase"),
+
+  c("Sensitivity.gbif_ndop", "Sensitivity.all_ndop", "Sensitivity.all_ndop"),
+  c("Sensitivity.all_gbif", "Sensitivity.all_gbif_erase", "Sensitivity.all_gbif_erase"),
+  c("Specificity.gbif_ndop", "Specificity.all_ndop", "Specificity.all_ndop"),
+  c("Specificity.all_gbif", "Specificity.all_gbif_erase", "Specificity.all_gbif_erase"),
   #  c("auc.all.boyce", "auc.gbif.boyce", "auc.ndop.boyce"), # boyce je k ničemu, kritizovali hi jako neschopný rozlišit rozdíly v jednom článku - yru3it enmtools.calibrate? nebo udělat recalibrate?
   # # geogr. overlap
   c("gbif_all.geo.D", "gbif_all_erase.geo.D", "gbif_ndop.geo.D"),
@@ -51,11 +59,22 @@ pairs <- list(
   c("gbif_all.env.I", "gbif_ndop.env.I", "all_ndop.env.I"),
   c("gbif_all.env.cor", "gbif_ndop.env.cor", "all_ndop.env.cor"),
   # # geogr šířka niky
-  c("gbif.breadth.B1", "ndop.breadth.B1", "all.breadth.B1"),
-  c("gbif.breadth.B2", "ndop.breadth.B2", "all.breadth.B2"),
+  c("gbif.breadth.B1", "all.breadth.B1", "ndop.breadth.B1"),
+  c("gbif.breadth.B2", "all.breadth.B2", "ndop.breadth.B2"),
+
+  c("gbif.breadth.B1", "all.breadth.B1", "all.breadth.B1"),
+  c("gbif.breadth.B2", "all.breadth.B2", "all.breadth.B2"),
+
+  c("gbif_erase.breadth.B1", "all_erase.breadth.B1", "all_erase.breadth.B1"),
+  c("gbif_erase.breadth.B2", "all_erase.breadth.B2", "all_erase.breadth.B2"),
+
+  c("gbif_crop.breadth.B1", "all_crop.breadth.B1", "ndop.breadth.B1"),
+  c("gbif_crop.breadth.B2", "all_crop.breadth.B2", "ndop.breadth.B2"),
+
   # # env šířka niky
 
   c("gbif.ebreadth.B2", "ndop.ebreadth.B2", "all.ebreadth.B2"),
+
   # # permut. performance prediktorů - poměr WB : L8
   c("wcl8.gbif", "wcl8.all", "wcl8.ndop")
   # c("wcl8_perc.gbif", "wcl8_perc.all", "wcl8_perc.ndop") # cca 30% prišpívají, ale je třeba to rozdělit na samostatné 3 modely (stejný treshold): WC, L8 a WC+L8
@@ -183,9 +202,22 @@ for (i in seq_along(names(rds_append))) {
 
 
 
-
-
-
+  tibble.gbif_ndop.pa <- tibble %>%
+    summarize(gbif_ndop.pa, .groups = "keep") %>%
+    rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+    rename_all(paste0, ".gbif_ndop")
+  tibble.all_ndop.pa <- tibble %>%
+    summarize(all_ndop.pa, .groups = "keep") %>%
+    rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+    rename_all(paste0, ".all_ndop")
+  tibble.all_gbif.pa <- tibble %>%
+    summarize(all_gbif.pa, .groups = "keep") %>%
+    rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+    rename_all(paste0, ".all_gbif")
+  tibble.all_gbif_erase.pa <- tibble %>%
+    summarize(all_gbif_erase.pa, .groups = "keep") %>%
+    rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+    rename_all(paste0, ".all_gbif_erase")
 
 
   tibble_result <- tibble %>%
@@ -195,9 +227,14 @@ for (i in seq_along(names(rds_append))) {
     left_join(tibble_gbif_p, by = c("species" = "species.gbif")) %>%
     left_join(tibble_all_p, by = c("species" = "species.all")) %>%
     left_join(tibble_ndop_p, by = c("species" = "species.ndop")) %>%
+    left_join(tibble.gbif_ndop.pa, by = c("species" = "species.gbif_ndop")) %>%
+    left_join(tibble.all_ndop.pa, by = c("species" = "species.all_ndop")) %>%
+    left_join(tibble.all_gbif.pa, by = c("species" = "species.all_gbif")) %>%
+    left_join(tibble.all_gbif_erase.pa, by = c("species" = "species.all_gbif_erase")) %>%
     ungroup() %>%
     dplyr::select(-contains("vip")) %>%
     dplyr::select(-contains("perf.")) %>%
+    dplyr::select(-contains(".pa")) %>%
     rename_all(gsub, pattern = ".Importance.", replacement = ".Imp.")
 
 
@@ -586,10 +623,17 @@ for (p in pairs) {
   labelmigr <- "Migration type: L: long-distance, P: partial, R: resident, S: short-distance"
 
 
-  pdf(paste0(export_path, "/", appendix, "_aucLim-", auc_limit, "_filtr-", typ_filtrace, ".pdf"))
+  pdf(paste0(export_path, "/", prefix, "_", appendix, "_aucLim-", auc_limit, "_filtr-", typ_filtrace, ".pdf"))
 
   grid.arrange(top = caption, tableGrob(reduction))
   # grid.table(reduction)
+
+
+  pic_lm <- ggplot(df, aes(x = Question, y = as.numeric(dAUC), group = Question)) +
+    geom_boxplot(aes(fill = Question)) +
+    facet_wrap(~px_size_item, ncol = 4) +
+    labs(title = appendix, subtitle = "st", x = paste0(" grain size"), y = appendix, caption = caption) # + scale_y_continuous(trans = 'log2')
+  print(pic_lm)
 
 
 
@@ -778,152 +822,3 @@ for (p in pairs) {
 # # https://www.datanovia.com/en/lessons/kruskal-wallis-test-in-r/
 # # print(adata %>% kruskal_test(Q1 ~ Habitat))
 # # print(adata %>% kruskal_effsize(Q1 ~ Habitat))
-
-
-
-
-
-
-
-# > names(tibble_result )
-#   [1] "reps"
-#   [2] "px_size_item"
-#   [3] "species"
-#   [4] "ndop_c"
-#   [5] "gbif_c"
-#   [6] "auc.gbif.tr"
-#   [7] "auc.gbif.te"
-#   [8] "auc.gbif.tr.env"
-#   [9] "auc.gbif.te.env"
-#  [10] "auc.gbif.boyce"
-#  [11] "auc.ndop.tr"
-#  [12] "auc.ndop.te"
-#  [13] "auc.ndop.tr.env"
-#  [14] "auc.ndop.te.env"
-#  [15] "auc.ndop.boyce"
-#  [16] "auc.all.tr"
-#  [17] "auc.all.te"
-#  [18] "auc.all.tr.env"
-#  [19] "auc.all.te.env"
-#  [20] "auc.all.boyce"
-#  [21] "vip1.gbif"
-#  [22] "vip1.ndop"
-#  [23] "vip1.all"
-#  [24] "vip2.gbif"
-#  [25] "vip2.ndop"
-#  [26] "vip2.all"
-#  [27] "vip3.gbif"
-#  [28] "vip3.ndop"
-#  [29] "vip3.all"
-#  [30] "gbif_ndop.geo.D"
-#  [31] "gbif_ndop.geo.I"
-#  [32] "gbif_ndop.geo.cor"
-#  [33] "gbif_all.geo.D"
-#  [34] "gbif_all.geo.I"
-#  [35] "gbif_all.geo.cor"
-#  [36] "gbif_all_erase.geo.D"
-#  [37] "gbif_all_erase.geo.I"
-#  [38] "gbif_all_erase.geo.cor"
-#  [39] "gbif_all.env.D"
-#  [40] "gbif_all.env.I"
-#  [41] "gbif_all.env.cor"
-#  [42] "sp"
-#  [43] "l8_3.5_5000_MNDWI.Importance.gbif"
-#  [44] "l8_6.8_5000_EVI.Importance.gbif"
-#  [45] "l8_6.8_5000_MNDWI.Importance.gbif"
-#  [46] "l8_9.11_5000_B5.Importance.gbif"
-#  [47] "l8_9.11_5000_EVI.Importance.gbif"
-#  [48] "l8_9.11_5000_MNDWI.Importance.gbif"
-#  [49] "wc_5000_bio02.Importance.gbif"
-#  [50] "wc_5000_bio03.Importance.gbif"
-#  [51] "wc_5000_bio09.Importance.gbif"
-#  [52] "wc_5000_bio13.Importance.gbif"
-#  [53] "wc_5000_bio15.Importance.gbif"
-#  [54] "l8_3.5_10000_MNDWI.Importance.gbif"
-#  [55] "l8_6.8_10000_EVI.Importance.gbif"
-#  [56] "l8_6.8_10000_MNDWI.Importance.gbif"
-#  [57] "l8_9.11_10000_B5.Importance.gbif"
-#  [58] "l8_9.11_10000_EVI.Importance.gbif"
-#  [59] "l8_9.11_10000_MNDWI.Importance.gbif"
-#  [60] "wc_10000_bio02.Importance.gbif"
-#  [61] "wc_10000_bio03.Importance.gbif"
-#  [62] "wc_10000_bio09.Importance.gbif"
-#  [63] "wc_10000_bio13.Importance.gbif"
-#  [64] "wc_10000_bio15.Importance.gbif"
-#  [65] "l8_3.5_1000_MNDWI.Importance.gbif"
-#  [66] "l8_6.8_1000_EVI.Importance.gbif"
-#  [67] "l8_6.8_1000_MNDWI.Importance.gbif"
-#  [68] "l8_9.11_1000_B5.Importance.gbif"
-#  [69] "l8_9.11_1000_EVI.Importance.gbif"
-#  [70] "l8_9.11_1000_MNDWI.Importance.gbif"
-#  [71] "wc_1000_bio02.Importance.gbif"
-#  [72] "wc_1000_bio03.Importance.gbif"
-#  [73] "wc_1000_bio09.Importance.gbif"
-#  [74] "wc_1000_bio13.Importance.gbif"
-#  [75] "wc_1000_bio15.Importance.gbif"
-#  [76] "l8_3.5_5000_MNDWI.Importance.all"
-#  [77] "l8_6.8_5000_EVI.Importance.all"
-#  [78] "l8_6.8_5000_MNDWI.Importance.all"
-#  [79] "l8_9.11_5000_B5.Importance.all"
-#  [80] "l8_9.11_5000_EVI.Importance.all"
-#  [81] "l8_9.11_5000_MNDWI.Importance.all"
-#  [82] "wc_5000_bio02.Importance.all"
-#  [83] "wc_5000_bio03.Importance.all"
-#  [84] "wc_5000_bio09.Importance.all"
-#  [85] "wc_5000_bio13.Importance.all"
-#  [86] "wc_5000_bio15.Importance.all"
-#  [87] "l8_3.5_10000_MNDWI.Importance.all"
-#  [88] "l8_6.8_10000_EVI.Importance.all"
-#  [89] "l8_6.8_10000_MNDWI.Importance.all"
-#  [90] "l8_9.11_10000_B5.Importance.all"
-#  [91] "l8_9.11_10000_EVI.Importance.all"
-#  [92] "l8_9.11_10000_MNDWI.Importance.all"
-#  [93] "wc_10000_bio02.Importance.all"
-#  [94] "wc_10000_bio03.Importance.all"
-#  [95] "wc_10000_bio09.Importance.all"
-#  [96] "wc_10000_bio13.Importance.all"
-#  [97] "wc_10000_bio15.Importance.all"
-#  [98] "l8_3.5_1000_MNDWI.Importance.all"
-#  [99] "l8_6.8_1000_EVI.Importance.all"
-# [100] "l8_6.8_1000_MNDWI.Importance.all"
-# [101] "l8_9.11_1000_B5.Importance.all"
-# [102] "l8_9.11_1000_EVI.Importance.all"
-# [103] "l8_9.11_1000_MNDWI.Importance.all"
-# [104] "wc_1000_bio02.Importance.all"
-# [105] "wc_1000_bio03.Importance.all"
-# [106] "wc_1000_bio09.Importance.all"
-# [107] "wc_1000_bio13.Importance.all"
-# [108] "wc_1000_bio15.Importance.all"
-# [109] "l8_3.5_5000_MNDWI.Importance.ndop"
-# [110] "l8_6.8_5000_EVI.Importance.ndop"
-# [111] "l8_6.8_5000_MNDWI.Importance.ndop"
-# [112] "l8_9.11_5000_B5.Importance.ndop"
-# [113] "l8_9.11_5000_EVI.Importance.ndop"
-# [114] "l8_9.11_5000_MNDWI.Importance.ndop"
-# [115] "wc_5000_bio02.Importance.ndop"
-# [116] "wc_5000_bio03.Importance.ndop"
-# [117] "wc_5000_bio09.Importance.ndop"
-# [118] "wc_5000_bio13.Importance.ndop"
-# [119] "wc_5000_bio15.Importance.ndop"
-# [120] "l8_3.5_10000_MNDWI.Importance.ndop"
-# [121] "l8_6.8_10000_EVI.Importance.ndop"
-# [122] "l8_6.8_10000_MNDWI.Importance.ndop"
-# [123] "l8_9.11_10000_B5.Importance.ndop"
-# [124] "l8_9.11_10000_EVI.Importance.ndop"
-# [125] "l8_9.11_10000_MNDWI.Importance.ndop"
-# [126] "wc_10000_bio02.Importance.ndop"
-# [127] "wc_10000_bio03.Importance.ndop"
-# [128] "wc_10000_bio09.Importance.ndop"
-# [129] "wc_10000_bio13.Importance.ndop"
-# [130] "wc_10000_bio15.Importance.ndop"
-# [131] "l8_3.5_1000_MNDWI.Importance.ndop"
-# [132] "l8_6.8_1000_EVI.Importance.ndop"
-# [133] "l8_6.8_1000_MNDWI.Importance.ndop"
-# [134] "l8_9.11_1000_B5.Importance.ndop"
-# [135] "l8_9.11_1000_EVI.Importance.ndop"
-# [136] "l8_9.11_1000_MNDWI.Importance.ndop"
-# [137] "wc_1000_bio02.Importance.ndop"
-# [138] "wc_1000_bio03.Importance.ndop"
-# [139] "wc_1000_bio09.Importance.ndop"
-# [140] "wc_1000_bio13.Importance.ndop"
-# [141] "wc_1000_bio15.Importance.ndop"

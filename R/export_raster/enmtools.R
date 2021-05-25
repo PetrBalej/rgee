@@ -95,10 +95,10 @@ if (is.na(cmd_arg[1])) {
     }
 }
 
-
+alg <- "gml" # "gml" "maxent"
 px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
 replicates <- 1
-pres <- paste0("XXXXXX", px_size, cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů / OWNPFr
+pres <- paste0(alg, "XXXXXX", px_size, cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů / OWNPFr
 generate_bias_raster <- FALSE
 trans_coords <- FALSE # když mám předem uložené přetransformované souřadnice, můžu dát FALSE, šetří to čas, musím mít ale vygenerovaný předem celý rozsah druhů (100-70000)
 enmsr <- list()
@@ -247,7 +247,6 @@ for (px_size_item in px_size) {
         paste0("wc_", px_size_item, "_bio09"),
         paste0("wc_", px_size_item, "_bio13"),
         paste0("wc_", px_size_item, "_bio15")
-
     )
 
     vif5sapply <- lapply(vif5, function(x, rasters_path) {
@@ -358,12 +357,12 @@ for (px_size_item in px_size) {
         ndop_f <- cci_ndop_3035 %>% filter(species == as.character(sp))
         all_f <- cci_all_3035 %>% filter(species == as.character(sp))
 
-        sp_gbif_count <- ptaci_gbif_distinct %>%
-            filter(species == as.character(sp)) %>%
-            dplyr::select(count)
-        sp_ndop_count <- ptaci_ndop_distinct %>%
-            filter(species == as.character(sp)) %>%
-            dplyr::select(count)
+        # sp_gbif_count <- ptaci_gbif_distinct %>%
+        #     filter(species == as.character(sp)) %>%
+        #     dplyr::select(count)
+        # sp_ndop_count <- ptaci_ndop_distinct %>%
+        #     filter(species == as.character(sp)) %>%
+        #     dplyr::select(count)
 
         # preventivní ořezy a spojení obou datasetů
         # cci_gbif_3035 <- st_intersection(cc_gbif_3035, blocks_3035)
@@ -476,21 +475,34 @@ for (px_size_item in px_size) {
         # stop()
 
         enm_mxt_gbif.s <- enm_species
-
-        enm_mxt_gbif <- replicate(replicates, enmtools.glm(
-            enm_species,
-            raster_stack_b,
-            test.prop = 0.3,
-            bg.source = "range",
-            verbose = TRUE,
-            bias = bias_gbif,
-            # args = c("removeDuplicates=FALSE"), # maxent - zákaz groupování dle pixelů
-            nback = 10000
-            # args = c("threads=4")
-        ),
-        simplify = FALSE
-        )
-
+        if (alg == "glm") {
+            enm_mxt_gbif <- replicate(replicates, enmtools.glm(
+                enm_species,
+                raster_stack_b,
+                test.prop = 0.3,
+                bg.source = "range",
+                verbose = TRUE,
+                bias = bias_gbif,
+                nback = 10000
+            ),
+            simplify = FALSE
+            )
+        }
+        if (alg == "maxent") {
+            enm_mxt_gbif <- replicate(replicates, enmtools.maxent(
+                enm_species,
+                raster_stack_b,
+                test.prop = 0.3,
+                bg.source = "range",
+                verbose = TRUE,
+                bias = bias_gbif,
+                args = c("removeDuplicates=FALSE", "outputFormat=raw"), # maxent - zákaz groupování dle pixelů
+                nback = 10000
+                # args = c("threads=4")
+            ),
+            simplify = FALSE
+            )
+        }
         cm <- lapply(enm_mxt_gbif, function(x) performance(x$conf))
         enm_mxt_gbif.matrix <- abind(cm, along = 3)
         enm_mxt_gbif.perf <- apply(enm_mxt_gbif.matrix, c(1, 2), mean)
@@ -545,9 +557,14 @@ for (px_size_item in px_size) {
         # použít https://rdrr.io/github/johnbaums/rmaxent/man/to_logistic.html to_logistic(x = thr.gbif.mss, from = "cloglog")
         # https://rpubs.com/mlibxmda/GEOG70922_Week5
         # back-transform these values to approximate probabilities (i.e. values ranging from 0 to 1) using the plogis()
-        thr.gbif.mss <- plogis(mean(sapply(enm_mxt_gbif, function(x) {
+        # The threshold values for the maxnet model relate to the raw outputs (prior to transformation). We can achieve our presence/absence map simply by applying our threshold to these raw values. To do so, we map the raw results of the model (i.e, this time we do not opt for a ‘cloglog’ or other transform) and then remove all values below our threshold.
+        # Protože se v ENMTools u maxentu používá predict() bez
+        thr.gbif.mss <- mean(sapply(enm_mxt_gbif, function(x) {
             x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
-        })))
+        }))
+        if (alg == "glm") {
+            thr.gbif.mss <- plogis(thr.gbif.mss)
+        }
 
         raster.gbif <- enm_mxt_gbif.r.m
         raster.gbif[raster.gbif < thr.gbif.mss] <- 0
@@ -580,21 +597,34 @@ for (px_size_item in px_size) {
 
 
         enm_mxt_ndop.s <- enm_species
-
-        enm_mxt_ndop <- replicate(replicates, enmtools.glm(
-            enm_species,
-            raster_stack_mask_czechia_b,
-            test.prop = 0.3,
-            bg.source = "range",
-            verbose = TRUE,
-            bias = bias_ndop,
-            # args = c("removeDuplicates=FALSE"), # maxent - zákaz groupování dle pixelů
-            nback = 10000
-            # args = c("threads=4")
-        ),
-        simplify = FALSE
-        )
-
+        if (alg == "glm") {
+            enm_mxt_ndop <- replicate(replicates, enmtools.glm(
+                enm_species,
+                raster_stack_mask_czechia_b,
+                test.prop = 0.3,
+                bg.source = "range",
+                verbose = TRUE,
+                bias = bias_ndop,
+                nback = 10000
+            ),
+            simplify = FALSE
+            )
+        }
+        if (alg == "maxent") {
+            enm_mxt_ndop <- replicate(replicates, enmtools.maxent(
+                enm_species,
+                raster_stack_mask_czechia_b,
+                test.prop = 0.3,
+                bg.source = "range",
+                verbose = TRUE,
+                bias = bias_ndop,
+                args = c("removeDuplicates=FALSE", "outputFormat=raw"), # maxent - zákaz groupování dle pixelů
+                nback = 10000
+                # args = c("threads=4")
+            ),
+            simplify = FALSE
+            )
+        }
         cm <- lapply(enm_mxt_ndop, function(x) performance(x$conf))
         enm_mxt_ndop.matrix <- abind(cm, along = 3)
         enm_mxt_ndop.perf <- apply(enm_mxt_ndop.matrix, c(1, 2), mean)
@@ -637,10 +667,12 @@ for (px_size_item in px_size) {
 
 
         # Maximum test sensitivity plus specificity
-        thr.ndop.mss <- plogis(mean(sapply(enm_mxt_ndop, function(x) {
+        thr.ndop.mss <- mean(sapply(enm_mxt_ndop, function(x) {
             x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
-        })))
-
+        }))
+        if (alg == "glm") {
+            thr.ndop.mss <- plogis(thr.ndop.mss)
+        }
         raster.ndop <- enm_mxt_ndop.r.m
         raster.ndop[raster.ndop < thr.ndop.mss] <- 0
         raster.ndop[raster.ndop >= thr.ndop.mss] <- 1
@@ -666,19 +698,34 @@ for (px_size_item in px_size) {
 
         enm_mxt_all.s <- enm_species
 
-        enm_mxt_all <- replicate(replicates, enmtools.glm(
-            enm_species,
-            raster_stack_b,
-            test.prop = 0.3,
-            bg.source = "range",
-            verbose = TRUE,
-            bias = bias_all,
-            # args = c("removeDuplicates=FALSE"), # maxent - zákaz groupování dle pixelů
-            nback = 10000
-            # args = c("threads=4")
-        ),
-        simplify = FALSE
-        )
+        if (alg == "glm") {
+            enm_mxt_all <- replicate(replicates, enmtools.glm(
+                enm_species,
+                raster_stack_b,
+                test.prop = 0.3,
+                bg.source = "range",
+                verbose = TRUE,
+                bias = bias_all,
+                nback = 10000
+            ),
+            simplify = FALSE
+            )
+        }
+        if (alg == "maxent") {
+            enm_mxt_all <- replicate(replicates, enmtools.maxent(
+                enm_species,
+                raster_stack_b,
+                test.prop = 0.3,
+                bg.source = "range",
+                verbose = TRUE,
+                bias = bias_all,
+                args = c("removeDuplicates=FALSE", "outputFormat=raw"), # maxent - zákaz groupování dle pixelů
+                nback = 10000
+                # args = c("threads=4")
+            ),
+            simplify = FALSE
+            )
+        }
 
         cm <- lapply(enm_mxt_all, function(x) performance(x$conf))
         enm_mxt_all.matrix <- abind(cm, along = 3)
@@ -721,10 +768,12 @@ for (px_size_item in px_size) {
         dev.off()
 
         # Maximum test sensitivity plus specificity
-        thr.all.mss <- plogis(mean(sapply(enm_mxt_all, function(x) {
+        thr.all.mss <- mean(sapply(enm_mxt_all, function(x) {
             x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
-        })))
-
+        }))
+        if (alg == "glm") {
+            thr.all.mss <- plogis(thr.all.mss)
+        }
         raster.all <- enm_mxt_all.r.m
         raster.all[raster.all < thr.all.mss] <- 0
         raster.all[raster.all >= thr.all.mss] <- 1

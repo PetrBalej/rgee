@@ -308,3 +308,11 @@ stack_NA_repair <- function(raster_stack) {
   
   return(raster_stack)
 }
+
+
+round_df <- function(x, digits) {
+  # pro optimalizaci tvorby bufferů, použít?
+    numcols <- sapply(x, mode) == 'numeric'
+    x[numcols] <-  round(x[numcols], digits)
+    x
+}
