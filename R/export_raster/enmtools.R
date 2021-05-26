@@ -15,10 +15,10 @@ setwd(wd)
 
 export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
 
-alg <- "glm" # "gml" "maxent"
+alg <- "glm" # "glm" "maxent"
 px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
 replicates <- 1
-pres <- paste0(alg, "_XXX_", px_size, cmd_arg_str) # předpona png obrázků s predikcí a dalších outputů / OWNPFr
+pres <- "_XXX_" # předpona png obrázků s predikcí a dalších outputů / OWNPFr
 generate_bias_raster <- FALSE
 trans_coords <- FALSE # když mám předem uložené přetransformované souřadnice, můžu dát FALSE, šetří to čas, musím mít ale vygenerovaný předem celý rozsah druhů (100-70000)
 
@@ -70,10 +70,10 @@ if (is.na(cmd_arg[1])) {
         }
         if (cmd_arg[1] == 2) {
             limit_min_occurences <- 1801 #
-            limit_max_occurences <- 5000
+            limit_max_occurences <- 4500
         }
         if (cmd_arg[1] == 3) {
-            limit_min_occurences <- 5001 #
+            limit_min_occurences <- 4501 #
             limit_max_occurences <- 10000
         }
         if (cmd_arg[1] == 4) {
@@ -82,6 +82,7 @@ if (is.na(cmd_arg[1])) {
         }
     }
 }
+pres <- paste0(alg, pres, px_size, cmd_arg_str)
 
 # pomocné funkce
 source(paste0(wd, "/R/export_raster/functions.R"))
@@ -394,31 +395,48 @@ for (px_size_item in px_size) {
         # příprava occurences
         # per pixel
         enm_mxt_gbif.pp.orig <- as.data.frame(st_coordinates(gbif_f))
-        enm_mxt_gbif.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(gbif_f), raster_stack), spatial = TRUE))))
+        # enm_mxt_gbif.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(gbif_f), raster_stack), spatial = TRUE))))
         colnames(enm_mxt_gbif.pp.orig)[1] <- "Longitude"
         colnames(enm_mxt_gbif.pp.orig)[2] <- "Latitude"
-        colnames(enm_mxt_gbif.pp)[1] <- "Longitude"
-        colnames(enm_mxt_gbif.pp)[2] <- "Latitude"
+        # colnames(enm_mxt_gbif.pp)[1] <- "Longitude"
+        # colnames(enm_mxt_gbif.pp)[2] <- "Latitude"
+        # zaokrouhlení (optimalizace), aby se vytvářelo méně bufferů
+        enm_mxt_gbif.pp <- unique(round_df(enm_mxt_gbif.pp.orig, -4)[c("Longitude", "Latitude")])
+
 
         enm_mxt_ndop.pp.orig <- as.data.frame(st_coordinates(ndop_f))
-        enm_mxt_ndop.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(ndop_f), raster_stack_mask_czechia), spatial = TRUE))))
+        # enm_mxt_ndop.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(ndop_f), raster_stack_mask_czechia), spatial = TRUE))))
         colnames(enm_mxt_ndop.pp.orig)[1] <- "Longitude"
         colnames(enm_mxt_ndop.pp.orig)[2] <- "Latitude"
-        colnames(enm_mxt_ndop.pp)[1] <- "Longitude"
-        colnames(enm_mxt_ndop.pp)[2] <- "Latitude"
+        # colnames(enm_mxt_ndop.pp)[1] <- "Longitude"
+        # colnames(enm_mxt_ndop.pp)[2] <- "Latitude"
+        # zaokrouhlení (optimalizace), aby se vytvářelo méně bufferů
+        enm_mxt_ndop.pp <- unique(round_df(enm_mxt_ndop.pp.orig, -4)[c("Longitude", "Latitude")])
+
+
+
 
         enm_mxt_all.pp.orig <- as.data.frame(st_coordinates(all_f))
-        enm_mxt_all.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(all_f), raster_stack), spatial = TRUE))))
+        # enm_mxt_all.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(all_f), raster_stack), spatial = TRUE))))
         colnames(enm_mxt_all.pp.orig)[1] <- "Longitude"
         colnames(enm_mxt_all.pp.orig)[2] <- "Latitude"
-        colnames(enm_mxt_all.pp)[1] <- "Longitude"
-        colnames(enm_mxt_all.pp)[2] <- "Latitude"
+        # colnames(enm_mxt_all.pp)[1] <- "Longitude"
+        # colnames(enm_mxt_all.pp)[2] <- "Latitude"
+        # zaokrouhlení (optimalizace), aby se vytvářelo méně bufferů
+        enm_mxt_all.pp <- unique(round_df(enm_mxt_all.pp.orig, -4)[c("Longitude", "Latitude")])
+
+
 
         # jen ČR NDOP i GBIF
         # st_coordinates(st_intersection(all_f, czechia_3035))
-        local.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(st_intersection(all_f, st_transform(czechia_3035, st_crs(all_f)))), raster_stack_mask_czechia), spatial = TRUE))))
-        colnames(local.pp)[1] <- "Longitude"
-        colnames(local.pp)[2] <- "Latitude"
+        # local.pp <- as.data.frame(st_coordinates(st_as_sf(rasterToPoints(rasterize(st_coordinates(st_intersection(all_f, st_transform(czechia_3035, st_crs(all_f)))), raster_stack_mask_czechia), spatial = TRUE))))
+        local.pp.orig <- as.data.frame(st_coordinates(st_intersection(all_f, st_transform(czechia_3035, st_crs(all_f)))))
+
+        colnames(local.pp.orig)[1] <- "Longitude"
+        colnames(local.pp.orig)[2] <- "Latitude"
+        # zaokrouhlení (optimalizace), aby se vytvářelo méně bufferů
+        local.pp <- unique(round_df(local.pp.orig, -4)[c("Longitude", "Latitude")])
+
 
         # background.buffer(points = enm_mxt_all.pp, buffer.width = 50000, buffer.type = "circles", return.type = "polygon", n = 10000)
         # - nefunguje ani v cran veryi ani y githubu> could not find function "background.buffer"
