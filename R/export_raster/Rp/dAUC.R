@@ -41,9 +41,15 @@ pairs <- list(
   # # auc
   c("auc.all.te", "auc.gbif.te", "auc.ndop.te"),
   c("TSS.all", "TSS.gbif", "TSS.ndop"),
+  c("F_measure.all", "F_measure.gbif", "F_measure.ndop"),
+  c("Jaccard.all", "Jaccard.gbif", "Jaccard.ndop"),
   c("sedi.all", "sedi.gbif", "sedi.ndop"),
   c("TSS.gbif_ndop", "TSS.all_ndop", "TSS.all_ndop"),
   c("TSS.all_gbif", "TSS.all_gbif_erase", "TSS.all_gbif_erase"),
+  c("F_measure.gbif_ndop", "F_measure.all_ndop", "F_measure.all_ndop"),
+  c("F_measure.all_gbif", "F_measure.all_gbif_erase", "F_measure.all_gbif_erase"),
+  c("Jaccard.gbif_ndop", "Jaccard.all_ndop", "Jaccard.all_ndop"),
+  c("Jaccard.all_gbif", "Jaccard.all_gbif_erase", "Jaccard.all_gbif_erase"),
 
   c("Sensitivity.gbif_ndop", "Sensitivity.all_ndop", "Sensitivity.all_ndop"),
   c("Sensitivity.all_gbif", "Sensitivity.all_gbif_erase", "Sensitivity.all_gbif_erase"),
@@ -114,7 +120,7 @@ pairs <- list(
 
 # enmsr_glmE1_1000_1_1621239440.03447.rds
 
-prefix <- "OWNPFr"
+prefix <- "glm_GB_" # "OWNPFr" "maxent_thr" "glm_GB_"
 
 rds_list <-
   list.files(
@@ -142,14 +148,45 @@ for (i in seq_along(rds_list)) {
 
 # dfAUCorig_10000 <- dfe[["10000"]]
 
+# https://cs.wikipedia.org/wiki/Seznam_pt%C3%A1k%C5%AF_%C4%8Ceska
+nepuvodni <- c(
+  # C
+  "Phasianus colchicus",
+  "Syrmaticus reevesi",
+  "Branta canadensis",
+  "Columba livia",
+  "Alopochen aegyptiacus",
+  "Threskiornis aethiopicus",
+  "Aix galericulata",
+  "Oxyura jamaicensis",
+  # D
+  "Bucephala albeola",
+  "Bucephala islandica",
+  "Lophodytes cucullatus",
+  "Histrionicus histrionicus",
+  "Gypaetus barbatus",
+  # E
+  "Phylloscopus sibilatrix",
+  "Aix sponsa",
+  "Platalea leucorodia"
+)
 
+problematicke <- c(
+  "Turdus merula", # lesní vs. městské populace
+  "Luscinia svecica", # dva poddruhy s odlišnými nároky, nejsem schopný je jednoduše odlišit...
+  "Luscinia luscinia" # problematické nálezy zejména z Červenohorského sedla (>1000mnm, ikdyž jsou vícekrát a dlouhodobě nezávisle potvrzené, možná jde jen o oblíbenou zastávku při průtahu (kam?) nebo záměny s L. mega.? Raději vyloučit.
+)
+
+"%notin%" <- Negate("%in%")
 for (i in seq_along(names(rds_append))) {
   tibble <- rds_append[[i]] %>% # ttemp
     map_depth(1, na.omit) %>%
     map(as_tibble) %>%
     bind_rows(.id = "species") %>%
     # group_by(species) %>% dplyr::select(-r)
-    distinct(species, .keep_all = TRUE)
+    distinct(species, .keep_all = TRUE) %>%
+    filter(species %notin% nepuvodni) %>%
+    filter(species %notin% problematicke)
 
 
 
@@ -274,6 +311,7 @@ tibble_grains %<>% mutate(wcl8_perc.ndop = ((l8.ndop * 100) / wc.ndop))
 
 pdf(paste0(export_path, "/", prefix, "auc_variable_permutation_importance.pdf"))
 
+### AUC
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 auc <- tibble_grains %>% pivot_longer(
   cols = c("auc.ndop.te", "auc.gbif.te", "auc.all.te"),
@@ -284,6 +322,7 @@ auc <- tibble_grains %>% pivot_longer(
 )
 
 pic_box <- ggplot(auc, aes(x = auc_type, y = auc_value, fill = auc_type)) +
+  ylim(0.3, 1) + # porovnatelnost mezi glm a maxent +
   geom_violin() +
   facet_grid(~px_size_item)
 print(pic_box)
@@ -291,16 +330,49 @@ print(pic_box)
 # Plot
 pic_box <- auc %>%
   ggplot(aes(x = auc_type, y = auc_value, fill = auc_type)) +
+  ylim(0.3, 1) + # porovnatelnost mezi glm a maxent
   geom_boxplot() +
   scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
   geom_jitter(color = "red", size = 0.3, alpha = 0.3) +
   ggtitle("AUC") +
   xlab("") +
-  facet_wrap(~px_size_item)
+  facet_grid(~px_size_item) # _wrap
 
 print(pic_box)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+
+
+
+### Jaccard (F_measuse je totéž jen 2*Jaccard), Jaccard se lépe interpretuje, podobnost je v procentech!
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+Jaccard <- tibble_grains %>% pivot_longer(
+  cols = c("Jaccard.all", "Jaccard.gbif", "Jaccard.ndop"),
+  names_to = "Jaccard_type",
+  names_prefix = "F",
+  values_to = "Jaccard_value",
+  values_drop_na = TRUE
+)
+
+pic_box <- ggplot(Jaccard, aes(x = Jaccard_type, y = Jaccard_value, fill = Jaccard_type)) +
+  ylim(0, 1) + # porovnatelnost mezi glm a maxent +
+  geom_violin() +
+  facet_grid(~px_size_item)
+print(pic_box)
+
+# Plot
+pic_box <- Jaccard %>%
+  ggplot(aes(x = Jaccard_type, y = Jaccard_value, fill = Jaccard_type)) +
+  ylim(0, 1) + # porovnatelnost mezi glm a maxent
+  geom_boxplot() +
+  scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
+  geom_jitter(color = "red", size = 0.3, alpha = 0.3) +
+  ggtitle("Jaccard") +
+  xlab("") +
+  facet_grid(~px_size_item) # _wrap
+
+print(pic_box)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 
 # Plot NDOP
