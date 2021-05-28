@@ -305,14 +305,21 @@ stack_NA_repair <- function(raster_stack) {
 
   #  znovu určí minMax hodnoty
   raster_stack <- raster::setMinMax(raster_stack)
-  
+
   return(raster_stack)
 }
 
 
 round_df <- function(x, digits) {
   # pro optimalizaci tvorby bufferů, použít?
-    numcols <- sapply(x, mode) == 'numeric'
-    x[numcols] <-  round(x[numcols], digits)
-    x
+  numcols <- sapply(x, mode) == "numeric"
+  x[numcols] <- round(x[numcols], digits)
+  return(x)
+}
+
+
+normalize <- function(x) {
+  min <- raster::minValue(x)
+  max <- raster::maxValue(x)
+  return((x - min) / (max - min))
 }

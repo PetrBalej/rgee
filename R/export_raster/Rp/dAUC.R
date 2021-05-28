@@ -703,7 +703,7 @@ for (p in pairs) {
 
   pic_lm <- ggplot(df, aes(x = Question, y = as.numeric(dAUC), group = Question)) +
     geom_boxplot(aes(fill = Question)) +
-    facet_wrap(~px_size_item, ncol = 4) +
+    facet_wrap(~px_size_item) + # !!! XXX - pokud chci v jednom řádku tak: ncol = 5
     labs(title = appendix, subtitle = "st", x = paste0(" grain size"), y = appendix, caption = caption) # + scale_y_continuous(trans = 'log2')
   print(pic_lm)
 

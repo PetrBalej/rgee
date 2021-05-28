@@ -60,7 +60,7 @@ tag_name <- scale # "" # gsub('[^0-9-]', '-', Sys.time())
 
 # adresář pro exportované soubory (v rámci wd) + další tag_name
 export_path <-
-  paste0(getwd(), "/../export/raster/schuzka_rastery/", scale)
+  paste0(getwd(), "/../export/raster-delete-new-indices/", scale)
 
 
 # GIT project directory (kompletní repozitář rgee z github.com: po rozbalení zipu v rgee-master/rgee-master)
@@ -98,7 +98,7 @@ str_evropa2 <-
   )
 
 # výběr konkrétního území
-bb <- sz_cechy
+bb <- str_evropa2
 # bb <- paste0(git_project_path, "/shp/ne_50m_admin_0_countries/czechia/cz_4326.shp")
 
 

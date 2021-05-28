@@ -17,8 +17,9 @@ export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
 
 alg <- "glm" # "glm" "maxent"
 px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
-replicates <- 1
-pres <- "_XXX_" # předpona png obrázků s predikcí a dalších outputů / OWNPFr
+replicates <- 4 # 4 pro checkerboard2 (4foldy)
+pres <- "_checkerboard2_" # předpona png obrázků s predikcí a dalších outputů / OWNPFr
+test.prop <- 0.3 # "block" "checkerboard2" "perc"
 generate_bias_raster <- FALSE
 trans_coords <- FALSE # když mám předem uložené přetransformované souřadnice, můžu dát FALSE, šetří to čas, musím mít ale vygenerovaný předem celý rozsah druhů (100-70000)
 export_suitability_raster <- FALSE
@@ -34,6 +35,9 @@ use_bias <- TRUE
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #  Rscript "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R" 1
 #  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R", encoding = "UTF-8")
+
+# install_github("jamiemkass/ENMeval", force = TRUE, ref="Version-0.3.1") ### nutná tato verze pro funkčnost v ENMToolsPB!!!!!
+
 ###################################################################################
 
 cmd_arg <- commandArgs(trailingOnly = TRUE)
@@ -513,17 +517,32 @@ for (px_size_item in px_size) {
 
         enm_mxt_gbif.s <- enm_species
         if (alg == "glm") {
-            enm_mxt_gbif <- replicate(replicates, enmtools.glm(
-                enm_species,
-                raster_stack_b,
-                test.prop = 0.3,
-                bg.source = "range",
-                verbose = TRUE,
-                bias = bias_gbif,
-                nback = 10000
-            ),
-            simplify = FALSE
-            )
+            enm_mxt_gbif <- list()
+            for (r in 1:replicates) {
+                enm_mxt_gbif[[r]] <- enmtools.glm(
+                    enm_species,
+                    raster_stack_b,
+                    test.prop = "block",
+                    bg.source = "range",
+                    verbose = TRUE,
+                    bias = bias_gbif,
+                    nback = 10000,
+                    corner = r
+                )
+            }
+
+
+            # enm_mxt_gbif <- replicate(replicates, enmtools.glm(
+            #     enm_species,
+            #     raster_stack_b,
+            #     test.prop = 0.3,
+            #     bg.source = "range",
+            #     verbose = TRUE,
+            #     bias = bias_gbif,
+            #     nback = 10000
+            # ),
+            # simplify = FALSE
+            # )
         }
         if (alg == "maxent") {
             enm_mxt_gbif <- replicate(replicates, enmtools.maxent(
@@ -638,17 +657,34 @@ for (px_size_item in px_size) {
 
         enm_mxt_ndop.s <- enm_species
         if (alg == "glm") {
-            enm_mxt_ndop <- replicate(replicates, enmtools.glm(
-                enm_species,
-                raster_stack_mask_czechia_b,
-                test.prop = 0.3,
-                bg.source = "range",
-                verbose = TRUE,
-                bias = bias_ndop,
-                nback = 10000
-            ),
-            simplify = FALSE
-            )
+            enm_mxt_ndop <- list()
+            for (r in 1:replicates) {
+                enm_mxt_ndop[[r]] <- enmtools.glm(
+                    enm_species,
+                    raster_stack_mask_czechia_b,
+                    test.prop = "block",
+                    bg.source = "range",
+                    verbose = TRUE,
+                    bias = bias_ndop,
+                    nback = 10000,
+                    corner = r
+                )
+            }
+
+
+
+
+            # enm_mxt_ndop <- replicate(replicates, enmtools.glm(
+            #     enm_species,
+            #     raster_stack_mask_czechia_b,
+            #     test.prop = 0.3,
+            #     bg.source = "range",
+            #     verbose = TRUE,
+            #     bias = bias_ndop,
+            #     nback = 10000
+            # ),
+            # simplify = FALSE
+            # )
         }
         if (alg == "maxent") {
             enm_mxt_ndop <- replicate(replicates, enmtools.maxent(
@@ -741,17 +777,32 @@ for (px_size_item in px_size) {
         enm_mxt_all.s <- enm_species
 
         if (alg == "glm") {
-            enm_mxt_all <- replicate(replicates, enmtools.glm(
-                enm_species,
-                raster_stack_b,
-                test.prop = 0.3,
-                bg.source = "range",
-                verbose = TRUE,
-                bias = bias_all,
-                nback = 10000
-            ),
-            simplify = FALSE
-            )
+            enm_mxt_all <- list()
+            for (r in 1:replicates) {
+                enm_mxt_all[[r]] <- enmtools.glm(
+                    enm_species,
+                    raster_stack_b,
+                    test.prop = "block",
+                    bg.source = "range",
+                    verbose = TRUE,
+                    bias = bias_all,
+                    nback = 10000,
+                    corner = r
+                )
+            }
+
+
+            # enm_mxt_all <- replicate(replicates, enmtools.glm(
+            #     enm_species,
+            #     raster_stack_b,
+            #     test.prop = 0.3,
+            #     bg.source = "range",
+            #     verbose = TRUE,
+            #     bias = bias_all,
+            #     nback = 10000
+            # ),
+            # simplify = FALSE
+            # )
         }
         if (alg == "maxent") {
             enm_mxt_all <- replicate(replicates, enmtools.maxent(

@@ -44,32 +44,33 @@ raster_stack <- dropLayer(raster_stack,  grep("srtm|clc|count", names(raster_sta
  rcrs <- crs(raster_stack)
     raster_stack <- raster::mask(raster_stack, sum(raster_stack))
 
+raster_stack <- stack_NA_repair(raster_stack)
 
-# czechia <- st_read(paste0(wd, "/shp/ne_10m_admin_0_countries/czechia/cz_3035.shp"))
-#     czechia_3035 <- czechia %>% st_transform(rcrs)
-#     # ořez původního raster_stack na ČR pro lokální SDM
-#     raster_stack_crop <- crop(raster_stack, extent(czechia_3035))
-#     raster_stack_mask_czechia <- mask(raster_stack_crop, czechia_3035)
-#     raster_stack_mask_czechia <- setMinMax(raster_stack_mask_czechia)
+czechia <- st_read(paste0(wd, "/shp/ne_10m_admin_0_countries/czechia/cz_3035.shp"))
+    czechia_3035 <- czechia %>% st_transform(rcrs)
+    # ořez původního raster_stack na ČR pro lokální SDM
+    raster_stack_crop <- crop(raster_stack, extent(czechia_3035))
+    raster_stack_mask_czechia <- mask(raster_stack_crop, czechia_3035)
+    raster_stack_mask_czechia <- setMinMax(raster_stack_mask_czechia)
 # print(names(raster_stack_mask_czechia))
 
 
 
-calc <-  vif(raster_stack, maxobservations=100000)
+calc <-  vif(raster_stack_mask_czechia, maxobservations=100000)
 # print(calc)
-print("EU hlavní výběr")
-v2 <- vifcor(raster_stack, th = 0.7, maxobservations=100000)
+print("CZ/EV hlavní výběr")
+v2 <- vifcor(raster_stack_mask_czechia, th = 0.5, maxobservations=100000)
 print(v2)
 
-
+stop()
 # 2)))
-raster_stack <-
-  rasters_dir_stack(
-    paste0(
-      "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/export/seasons/", px_size_item, "/"
-    ),
-    "tif"
-  )
+# raster_stack <-
+#   rasters_dir_stack(
+#     paste0(
+#       "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/export/seasons/", px_size_item, "/"
+#     ),
+#     "tif"
+#   )
 
 
 
@@ -81,29 +82,32 @@ raster_stack <-
 #     raster_stack_vif <-raster_stack <- raster::mask(raster_stack, sum(raster_stack))
 
 
-    rasters_path <- paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/export/seasons/", px_size_item, "/")
-vif5 <- str_replace(v2@results$Variables, "\\.", "-")
+#     rasters_path <- paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/export/seasons/", px_size_item, "/")
+# vif5 <- str_replace(v2@results$Variables, "\\.", "-")
 
-    vif5sapply <- lapply(vif5, function(x, rasters_path) {
-        return(paste0(rasters_path, x, ".tif"))
-    }, rasters_path = rasters_path)
-    raster_stack_vif <- stack(lapply(vif5sapply, raster::raster))
-    # propíše všude jednotně NA - nutné, asi dříve problém s predikcemi nad většími oblastmi s NA nad Alpami?
+#     vif5sapply <- lapply(vif5, function(x, rasters_path) {
+#         return(paste0(rasters_path, x, ".tif"))
+#     }, rasters_path = rasters_path)
+#     raster_stack_vif <- stack(lapply(vif5sapply, raster::raster))
+#     # propíše všude jednotně NA - nutné, asi dříve problém s predikcemi nad většími oblastmi s NA nad Alpami?
 
 
+raster_stack_vifed<- subset(raster_stack, v2@results$Variables)
+
+print(raster_stack_vifed)
 
 czechia <- st_read(paste0(wd, "/shp/ne_10m_admin_0_countries/czechia/cz_3035.shp"))
     czechia_3035 <- czechia %>% st_transform(rcrs)
     # ořez původního raster_stack na ČR pro lokální SDM
-    raster_stack_crop <- crop(raster_stack_vif, extent(czechia_3035))
+    raster_stack_crop <- crop(raster_stack_vifed, extent(czechia_3035))
     raster_stack_mask_czechia <- mask(raster_stack_crop, czechia_3035)
     raster_stack_mask_czechia <- setMinMax(raster_stack_mask_czechia)
 print(names(raster_stack_mask_czechia))
 
-calc2 <-  vif(raster_stack_mask_czechia, maxobservations=100000)
+calc2 <-  vif(raster_stack_mask_czechia , maxobservations=100000)
 print(calc2)
-print("EV")
-v22 <- vifcor(raster_stack_mask_czechia, th = 0.7, maxobservations=100000)
+print("CZ")
+v22 <- vifcor(raster_stack_mask_czechia , th = 0.5, maxobservations=100000)
 print(v22)
 
 
@@ -211,7 +215,7 @@ print(names(raster_stack))
 # # VIF
 # # https://rdrr.io/rforge/usdm/man/vif.html
 # # https://rdrr.io/rforge/usdm/man/exclude.html
-
+raster_stack <- stack_NA_repair(raster_stack)
 calc <-  vif(raster_stack)
 print(calc)
 
