@@ -16,7 +16,7 @@ setwd(wd)
 export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
 
 alg <- "glm" # "glm" "maxent" "gam"
-px_size <- c(500, 1000, 2000, 5000, 10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
+px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
 replicates <- 1 # 4 pro checkerboard2 (4foldy)
 pref <- "_ZZZ_" # předpona png obrázků s predikcí a dalších outputů / OWNPFr /// _OF-ps80_
 test.prop <- 0.3 # "block" "checkerboard2" 0.3
@@ -562,7 +562,7 @@ for (px_size_item in px_size) {
         print("GBIF")
 
 
-        enm_species <- enmtools.species(
+        enm_mxt_gbif.s <- enmtools.species(
             range = buffer.global, #  raster_stack_b[[1]],
             species.name = as.character(sp), presence.points = enm_mxt_gbif.pp.orig
         )
@@ -572,7 +572,7 @@ for (px_size_item in px_size) {
 
 
         ### test co se děje při zjišťování env.test/training.evaluation
-        # species <- check.bg(enm_species, raster_stack_b, verbose = TRUE)
+        # species <- check.bg(enm_mxt_gbif.s, raster_stack_b, verbose = TRUE)
         # presence <- species$presence.points[, 1:2]
         # background <- species$background.points[, 1:2]
         # allpoints <- rbind(presence, background)
@@ -589,12 +589,12 @@ for (px_size_item in px_size) {
         # env.evaluation <- dismo::evaluate(pred.p, pred.bg)
         # stop()
 
-        enm_mxt_gbif.s <- enm_species
+
         enm_mxt_gbif <- list()
         if (alg == "glm") {
             for (r in 1:replicates) {
                 enm_mxt_gbif[[r]] <- enmtools.glm(
-                    enm_species,
+                    enm_mxt_gbif.s,
                     raster_stack_b,
                     test.prop = test.prop,
                     bg.source = "range",
@@ -608,7 +608,7 @@ for (px_size_item in px_size) {
         if (alg == "gam") {
             for (r in 1:replicates) {
                 enm_mxt_gbif[[r]] <- enmtools.gam(
-                    enm_species,
+                    enm_mxt_gbif.s,
                     raster_stack_b,
                     test.prop = test.prop,
                     bg.source = "range",
@@ -622,7 +622,7 @@ for (px_size_item in px_size) {
         if (alg == "maxent") {
             for (r in 1:replicates) {
                 enm_mxt_gbif[[r]] <- enmtools.maxent(
-                    enm_species,
+                    enm_mxt_gbif.s,
                     raster_stack_b,
                     test.prop = test.prop,
                     bg.source = "range",
@@ -725,18 +725,18 @@ for (px_size_item in px_size) {
 
         print("NDOP")
 
-        enm_species <- enmtools.species(
+        enm_mxt_ndop.s <- enmtools.species(
             range = buffer.local, # raster_stack_mask_czechia_b[[1]],
             species.name = as.character(sp), presence.points = enm_mxt_ndop.pp.orig
         )
 
 
-        enm_mxt_ndop.s <- enm_species
+
         enm_mxt_ndop <- list()
         if (alg == "glm") {
             for (r in 1:replicates) {
                 enm_mxt_ndop[[r]] <- enmtools.glm(
-                    enm_species,
+                    enm_mxt_ndop.s,
                     raster_stack_mask_czechia_b,
                     test.prop = test.prop,
                     bg.source = "range",
@@ -750,7 +750,7 @@ for (px_size_item in px_size) {
         if (alg == "gam") {
             for (r in 1:replicates) {
                 enm_mxt_ndop[[r]] <- enmtools.gam(
-                    enm_species,
+                    enm_mxt_ndop.s,
                     raster_stack_mask_czechia_b,
                     test.prop = test.prop,
                     bg.source = "range",
@@ -764,7 +764,7 @@ for (px_size_item in px_size) {
         if (alg == "maxent") {
             for (r in 1:replicates) {
                 enm_mxt_ndop[[r]] <- enmtools.maxent(
-                    enm_species,
+                    enm_mxt_ndop.s,
                     raster_stack_mask_czechia_b,
                     test.prop = test.prop,
                     bg.source = "range",
@@ -845,17 +845,17 @@ for (px_size_item in px_size) {
         ###
         print("ALL")
 
-        enm_species <- enmtools.species(
+        enm_mxt_all.s <- enmtools.species(
             range = buffer.global, # raster_stack_b[[1]],
             species.name = as.character(sp), presence.points = enm_mxt_all.pp.orig
         )
 
-        enm_mxt_all.s <- enm_species
+
         enm_mxt_all <- list()
         if (alg == "glm") {
             for (r in 1:replicates) {
                 enm_mxt_all[[r]] <- enmtools.glm(
-                    enm_species,
+                    enm_mxt_all.s,
                     raster_stack_b,
                     test.prop = test.prop,
                     bg.source = "range",
@@ -869,7 +869,7 @@ for (px_size_item in px_size) {
         if (alg == "gam") {
             for (r in 1:replicates) {
                 enm_mxt_all[[r]] <- enmtools.gam(
-                    enm_species,
+                    enm_mxt_all.s,
                     raster_stack_b,
                     test.prop = test.prop,
                     bg.source = "range",
@@ -883,7 +883,7 @@ for (px_size_item in px_size) {
         if (alg == "maxent") {
             for (r in 1:replicates) {
                 enm_mxt_all[[r]] <- enmtools.maxent(
-                    enm_species,
+                    enm_mxt_all.s,
                     raster_stack_b,
                     test.prop = test.prop,
                     bg.source = "range",
