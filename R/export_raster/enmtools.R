@@ -16,18 +16,20 @@ setwd(wd)
 export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
 
 alg <- "glm" # "glm" "maxent" "gam"
-px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
+px_size <- c(1000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
 replicates <- 1 # 4 pro checkerboard2 (4foldy)
 pref <- "_ZZZ_" # předpona png obrázků s predikcí a dalších outputů / OWNPFr /// _OF-ps80_
 test.prop <- 0.3 # "block" "checkerboard2" 0.3
 generate_predictor_raster <- FALSE
 generate_bias_raster <- FALSE
-adjust <- 2.15
+adjust <- 0.65
 generate_bias_raster_version <- paste0("scottIso-adj-", format(round(adjust, 2), nsmall = 2)) # "scottIso-adj0.1"
 use_bias <- TRUE
 trans_coords <- FALSE # když mám předem uložené přetransformované souřadnice, můžu dát FALSE, šetří to čas, musím mít ale vygenerovaný předem celý rozsah druhů (100-70000)
 export_suitability_raster <- FALSE
 export_pa_raster <- FALSE
+eval <- TRUE # 1) bez evaluace si fituji bias rastery, 2) s evaluací dělám konečné modely
+use_fitted_bias <- TRUE
 
 ###################################################################################
 # library(devtools)
@@ -101,6 +103,10 @@ source(paste0(wd, "/R/export_raster/sedi.R"))
 
 # sběrná proměnná pro výsledky
 enmsr <- list()
+# sběrné proměnné pro ideální biasy
+fm_gbif_f_i_c <- list()
+fm_ndop_f_i_c <- list()
+fm_all_f_i_c <- list()
 
 rcrs <- "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 
@@ -251,6 +257,13 @@ if (trans_coords == TRUE) {
 start_time <- Sys.time()
 for (px_size_item in px_size) {
     pres <- paste0(alg, pref, px_size_item, cmd_arg_str)
+
+    if (eval == TRUE & use_fitted_bias == TRUE) {
+        fm_gbif_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/fm_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
+        fm_ndop_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/fm_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
+        fm_all_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/fm_all_", px_size_item, "-", cmd_arg_str, ".rds"))
+    }
+
     # # původní načítání rasterů prediktorů, dočasná optimalizace aby se nemusel pokaždé skrz propisovat NA hodnoty
     if (generate_predictor_raster == TRUE) {
         rasters_path <- paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/export/seasons/", px_size_item, "/")
@@ -301,12 +314,12 @@ for (px_size_item in px_size) {
     nback_all <- round(ncell(raster_stack[[1]]) / 10)
     nback_ndop <- round(ncell(raster_stack_mask_czechia[[1]]) / 10)
     if (px_size_item > 1000 & px_size_item <= 5000) {
-        nback_all <- round(ncell(raster_stack[[1]]) / 30)
-        nback_ndop <- round(ncell(raster_stack_mask_czechia[[1]]) / 30)
-    }
-    if (px_size_item > 5000) {
         nback_all <- round(ncell(raster_stack[[1]]) / 50)
         nback_ndop <- round(ncell(raster_stack_mask_czechia[[1]]) / 50)
+    }
+    if (px_size_item > 5000) {
+        nback_all <- round(ncell(raster_stack[[1]]))
+        nback_ndop <- round(ncell(raster_stack_mask_czechia[[1]]))
     }
 
     if (use_bias == TRUE) {
@@ -432,7 +445,8 @@ for (px_size_item in px_size) {
     # obrácení pořadí druhů, od nejméně početných pro urychlení prvních výsledků
 
     ptaci_intersect_distinct <- ptaci_ndop_distinct %>%
-        filter(species %in% ptaci_gbif_distinct$species) %>% filter(species == "Lanius collurio") # %>% filter(species == "Aquila chrysaetos")
+        filter(species %in% ptaci_gbif_distinct$species) # %>% filter(species == "Lanius collurio")
+    # %>% filter(species == "Lanius collurio") # %>% filter(species == "Aquila chrysaetos")
 
     species <- rev(ptaci_intersect_distinct$species) # přepisuju původní seznam z ndop_top
 
@@ -556,685 +570,653 @@ for (px_size_item in px_size) {
         # st_write(st_as_sf(buf), paste0(export_path, "delete-buffery.shp"))
         # buf <- buffer(as_Spatial(st_intersection(all_f, czechia_3035)), width=50000, dissolve=TRUE)
 
-        ###
-        ### gbif
-        ###
-        print("GBIF")
 
-
+        ### příprava druhů
         enm_mxt_gbif.s <- enmtools.species(
-            range = buffer.global, #  raster_stack_b[[1]],
+            range = buffer.global, # raster_stack_b[[1]],
             species.name = as.character(sp), presence.points = enm_mxt_gbif.pp.orig
         )
-        # enms[["10000"]][["Buteo rufinus"]][[1]][["o"]]$presence.points$Longitude
-
-        # bias2 <- raster("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/i/bias_tg_Chlidonias-hybrida_2_gbif.tif") # 100000 10000 - totožné pro všešchny rozlišení rasterů?
-
-
-        ### test co se děje při zjišťování env.test/training.evaluation
-        # species <- check.bg(enm_mxt_gbif.s, raster_stack_b, verbose = TRUE)
-        # presence <- species$presence.points[, 1:2]
-        # background <- species$background.points[, 1:2]
-        # allpoints <- rbind(presence, background)
-        # values <- extract(raster_stack_b, allpoints)
-        # maxes <- apply(values, 2, function(x) max(x, na.rm = TRUE))
-        # mins <- apply(values, 2, function(x) min(x, na.rm = TRUE))
-        # library(lhs)
-        # this.lhs <- randomLHS(n.background, length(names(raster_stack_b)))
-        # bg.table <- t(t(this.lhs) * (maxes - mins) + mins)
-        # colnames(bg.table) <- names(raster_stack_b)
-        # p.table <- extract(raster_stack_b, presence)
-        # pred.p <- as.numeric(predict(model, newdata = data.frame(p.table), x = data.frame(p.table), type = "response"))
-        # pred.bg <- as.numeric(predict(model, newdata = data.frame(bg.table), x = data.frame(bg.table), type = "response"))
-        # env.evaluation <- dismo::evaluate(pred.p, pred.bg)
-        # stop()
-
-
-        enm_mxt_gbif <- list()
-        if (alg == "glm") {
-            for (r in 1:replicates) {
-                enm_mxt_gbif[[r]] <- enmtools.glm(
-                    enm_mxt_gbif.s,
-                    raster_stack_b,
-                    test.prop = test.prop,
-                    bg.source = "range",
-                    verbose = TRUE,
-                    bias = bias_gbif,
-                    nback = nback_all,
-                    corner = ifelse(r == 4, r, NA)
-                )
-            }
-        }
-        if (alg == "gam") {
-            for (r in 1:replicates) {
-                enm_mxt_gbif[[r]] <- enmtools.gam(
-                    enm_mxt_gbif.s,
-                    raster_stack_b,
-                    test.prop = test.prop,
-                    bg.source = "range",
-                    verbose = TRUE,
-                    bias = bias_gbif,
-                    nback = nback_all,
-                    corner = ifelse(r == 4, r, NA)
-                )
-            }
-        }
-        if (alg == "maxent") {
-            for (r in 1:replicates) {
-                enm_mxt_gbif[[r]] <- enmtools.maxent(
-                    enm_mxt_gbif.s,
-                    raster_stack_b,
-                    test.prop = test.prop,
-                    bg.source = "range",
-                    verbose = TRUE,
-                    bias = bias_gbif,
-                    args = c("removeDuplicates=FALSE", "outputFormat=raw"), # maxent - zákaz groupování dle pixelů
-                    nback = nback_all,
-                    corner = ifelse(r == 4, r, NA)
-                    # args = c("threads=4")
-                )
-            }
-        }
-        cm_gbif <- lapply(enm_mxt_gbif, function(x) performance(x$conf))
-        enm_mxt_gbif.matrix <- abind(cm_gbif, along = 3)
-        enm_mxt_gbif.perf <- apply(enm_mxt_gbif.matrix, c(1, 2), mean)
-
-        # thr.gbif <- mean(sapply(enm_mxt_gbif, function(x) x$thr$spec_sens))
-
-        thr.gbif <- sapply(enm_mxt_gbif, function(x) x$thr)
-
-        sedi.gbif.p <- lapply(enm_mxt_gbif, function(x) sedi(x$conf))
-        sedi.gbif <- mean(sapply(sedi.gbif.p, function(x) {
-            if (x[[1]] == "SEDI equal to") {
-                x[[2]]
-            } else {
-                NA
-            }
-        }))
-
-        # str(enm_mxt_gbif[[1]]$test.evaluation@auc)
-        # str(enms[["10000"]][["Buteo rufinus"]][[1]][["m"]][[1]]$test.evaluation@auc)
-        # enm_mxt_gbif.auc <- mean(sapply(enms[["10000"]][["Buteo rufinus"]][[1]][["m"]], function(x) x$test.evaluation@auc))
-
-
-        enm_mxt_gbif.breadth <- lapply(enm_mxt_gbif, raster.breadth)
-        enm_mxt_gbif.breadth.B1 <- mean(sapply(enm_mxt_gbif.breadth, function(x) x$B1))
-        enm_mxt_gbif.breadth.B2 <- mean(sapply(enm_mxt_gbif.breadth, function(x) x$B2))
-
-        enm_mxt_gbif.ebreadth <- lapply(enm_mxt_gbif, env.breadth, env = raster_stack_b)
-        enm_mxt_gbif.ebreadth.B2 <- mean(sapply(enm_mxt_gbif.ebreadth, function(x) x$env.B2))
-
-        enm_mxt_gbif.auc <- mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@auc))
-        enm_mxt_gbif.np.tr <- mean(sapply(enm_mxt_gbif, function(x) x$training.evaluation@np))
-        enm_mxt_gbif.np.te <- mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@np))
-        # plot(enms[["10000"]][["Buteo rufinus"]][[1]][["m"]][[1]]$suitability)
-        # names(enm_mxt_gbif) <- paste0("rep", 1:repl)
-        enm_mxt_gbif.r <- stack(sapply(enm_mxt_gbif, function(x) x$suitability))
-        enm_mxt_gbif.r.m <- calc(enm_mxt_gbif.r, fun = mean)
-        if (export_suitability_raster) {
-            writeRaster(enm_mxt_gbif.r.m, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.tif"), format = "GTiff", overwrite = TRUE)
-        }
-        png(paste0(export_path, "/outputs/png/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.png"))
-        plot(enm_mxt_gbif.r.m,
-            main = paste0(sp, " | GBIF, AUC=", round(enm_mxt_gbif.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
-            sub = paste0("GBIF: ", gbif_f_n)
-        )
-        par(bg = NA)
-        plot(czechia_3035$geometry, add = TRUE)
-        par()
-        points(enm_mxt_gbif.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
-        dev.off()
-
-
-        # Maximum test sensitivity plus specificity
-        # pro Maxent nemůže být plogis, při cloglog ýýstupu (nebo raději dát předtím do args RAW? - je ale k dispozici v rmaxent::project(), případně v původní???)
-        # použít https://rdrr.io/github/johnbaums/rmaxent/man/to_logistic.html to_logistic(x = thr.gbif.mss, from = "cloglog")
-        # https://rpubs.com/mlibxmda/GEOG70922_Week5
-        # back-transform these values to approximate probabilities (i.e. values ranging from 0 to 1) using the plogis()
-        # The threshold values for the maxnet model relate to the raw outputs (prior to transformation). We can achieve our presence/absence map simply by applying our threshold to these raw values. To do so, we map the raw results of the model (i.e, this time we do not opt for a ‘cloglog’ or other transform) and then remove all values below our threshold.
-        # Protože se v ENMTools u maxentu používá predict() bez
-        thr.gbif.mss <- mean(sapply(enm_mxt_gbif, function(x) {
-            x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
-        }))
-        if (alg == "glm") {
-            thr.gbif.mss <- plogis(thr.gbif.mss)
-        }
-
-        raster.gbif <- enm_mxt_gbif.r.m
-        raster.gbif[raster.gbif < thr.gbif.mss] <- 0
-        raster.gbif[raster.gbif >= thr.gbif.mss] <- 1
-        pa.gbif.freq <- freq(raster.gbif)
-        if (export_pa_raster) {
-            writeRaster(raster.gbif, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.pa.tif"), format = "GTiff", overwrite = TRUE, datatype = "INT1U")
-        }
-        # raster::predict()  pro GLM https://rdrr.io/cran/raster/man/predict.html
-        # dismo::predict() pro Maxent https://www.rdocumentation.org/packages/dismo/versions/1.3-3/topics/predict
-        # ne, teď už můžu použít rovnou suitability raster...
-
-        enm_mxt_gbif.vip <- sapply(enm_mxt_gbif, enmtools.vip)
-
-        # calculates Continuous Boyce Index
-        # str(enms[["10000"]][["Buteo rufinus"]][[4]]
-        ### enm_mxt_gbif.cal <- lapply(enm_mxt_gbif, enmtools.calibrate, env = raster_stack_b, n.background = 10000)
-
-
-
-        ###
-        ### ndop
-        ###
-
-        print("NDOP")
-
         enm_mxt_ndop.s <- enmtools.species(
             range = buffer.local, # raster_stack_mask_czechia_b[[1]],
             species.name = as.character(sp), presence.points = enm_mxt_ndop.pp.orig
         )
-
-
-
-        enm_mxt_ndop <- list()
-        if (alg == "glm") {
-            for (r in 1:replicates) {
-                enm_mxt_ndop[[r]] <- enmtools.glm(
-                    enm_mxt_ndop.s,
-                    raster_stack_mask_czechia_b,
-                    test.prop = test.prop,
-                    bg.source = "range",
-                    verbose = TRUE,
-                    bias = bias_ndop,
-                    nback = nback_ndop,
-                    corner = ifelse(r == 4, r, NA)
-                )
-            }
-        }
-        if (alg == "gam") {
-            for (r in 1:replicates) {
-                enm_mxt_ndop[[r]] <- enmtools.gam(
-                    enm_mxt_ndop.s,
-                    raster_stack_mask_czechia_b,
-                    test.prop = test.prop,
-                    bg.source = "range",
-                    verbose = TRUE,
-                    bias = bias_ndop,
-                    nback = nback_ndop,
-                    corner = ifelse(r == 4, r, NA)
-                )
-            }
-        }
-        if (alg == "maxent") {
-            for (r in 1:replicates) {
-                enm_mxt_ndop[[r]] <- enmtools.maxent(
-                    enm_mxt_ndop.s,
-                    raster_stack_mask_czechia_b,
-                    test.prop = test.prop,
-                    bg.source = "range",
-                    verbose = TRUE,
-                    bias = bias_ndop,
-                    args = c("removeDuplicates=FALSE", "outputFormat=raw"), # maxent - zákaz groupování dle pixelů
-                    nback = nback_ndop,
-                    corner = ifelse(r == 4, r, NA)
-                    # args = c("threads=4")
-                )
-            }
-        }
-        cm_ndop <- lapply(enm_mxt_ndop, function(x) performance(x$conf))
-        enm_mxt_ndop.matrix <- abind(cm_ndop, along = 3)
-        enm_mxt_ndop.perf <- apply(enm_mxt_ndop.matrix, c(1, 2), mean)
-
-        thr.ndop <- sapply(enm_mxt_ndop, function(x) x$thr)
-
-        sedi.ndop.p <- lapply(enm_mxt_ndop, function(x) sedi(x$conf))
-        sedi.ndop <- mean(sapply(sedi.ndop.p, function(x) {
-            if (x[[1]] == "SEDI equal to") {
-                x[[2]]
-            } else {
-                NA
-            }
-        }))
-
-        enm_mxt_ndop.breadth <- lapply(enm_mxt_ndop, raster.breadth)
-        enm_mxt_ndop.breadth.B1 <- mean(sapply(enm_mxt_ndop.breadth, function(x) x$B1))
-        enm_mxt_ndop.breadth.B2 <- mean(sapply(enm_mxt_ndop.breadth, function(x) x$B2))
-
-        enm_mxt_ndop.ebreadth <- lapply(enm_mxt_ndop, env.breadth, env = raster_stack_mask_czechia_b)
-        enm_mxt_ndop.ebreadth.B2 <- mean(sapply(enm_mxt_ndop.ebreadth, function(x) x$env.B2))
-
-        enm_mxt_ndop.auc <- mean(sapply(enm_mxt_ndop, function(x) x$test.evaluation@auc))
-        enm_mxt_ndop.np.tr <- mean(sapply(enm_mxt_ndop, function(x) x$training.evaluation@np))
-        enm_mxt_ndop.np.te <- mean(sapply(enm_mxt_ndop, function(x) x$test.evaluation@np))
-        enm_mxt_ndop.r <- stack(sapply(enm_mxt_ndop, function(x) x$suitability))
-        enm_mxt_ndop.r.m <- calc(enm_mxt_ndop.r, fun = mean)
-        if (export_suitability_raster) {
-            writeRaster(enm_mxt_ndop.r.m, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.tif"), format = "GTiff", overwrite = TRUE)
-        }
-        png(paste0(export_path, "/outputs/png/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.png"))
-        plot(enm_mxt_ndop.r.m,
-            main = paste0(sp, " | NDOP, AUC=", round(enm_mxt_ndop.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
-            sub = paste0("NDOP: ", ndop_f_n)
-        )
-        par(bg = NA)
-        plot(czechia_3035$geometry, add = TRUE)
-        par()
-        points(enm_mxt_ndop.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
-        dev.off()
-
-
-        # Maximum test sensitivity plus specificity
-        thr.ndop.mss <- mean(sapply(enm_mxt_ndop, function(x) {
-            x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
-        }))
-        if (alg == "glm") {
-            thr.ndop.mss <- plogis(thr.ndop.mss)
-        }
-        raster.ndop <- enm_mxt_ndop.r.m
-        raster.ndop[raster.ndop < thr.ndop.mss] <- 0
-        raster.ndop[raster.ndop >= thr.ndop.mss] <- 1
-
-        pa.ndop.freq <- freq(raster.ndop)
-        if (export_pa_raster) {
-            writeRaster(raster.ndop, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.pa.tif"), format = "GTiff", overwrite = TRUE, datatype = "LOG1S")
-        }
-        enm_mxt_ndop.vip <- sapply(enm_mxt_ndop, enmtools.vip)
-
-        ### enm_mxt_ndop.cal <- lapply(enm_mxt_ndop, enmtools.calibrate, env = raster_stack_mask_czechia_b, n.background = 10000)
-
-
-
-        ###
-        ### all (ndpop+gbif)
-        ###
-        print("ALL")
-
         enm_mxt_all.s <- enmtools.species(
             range = buffer.global, # raster_stack_b[[1]],
             species.name = as.character(sp), presence.points = enm_mxt_all.pp.orig
         )
 
 
-        enm_mxt_all <- list()
-        if (alg == "glm") {
-            for (r in 1:replicates) {
-                enm_mxt_all[[r]] <- enmtools.glm(
-                    enm_mxt_all.s,
-                    raster_stack_b,
-                    test.prop = test.prop,
-                    bg.source = "range",
-                    verbose = TRUE,
-                    bias = bias_all,
-                    nback = nback_all,
-                    corner = ifelse(r == 4, r, NA)
-                )
+        if (eval == FALSE) {
+            # výběr ideální raster.breadth, vygenerování seznamu ideálních bias rasterů pro každý druh a pixel size
+            by <- 0.20
+            fm <- list()
+            for (s in seq(0.05, 1.05, by = by)[2:5]) {
+                # počítám pouze neokrajové hodnoty
+                print(paste0("scottIso-adj-", format(round(s, 2), nsmall = 2)))
+
+                bvn <- format(round(s, 2), nsmall = 2)
+                bv <- paste0("scottIso-adj-", bvn)
+                ### volání / fitování modelů
+                bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"))
+                bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_ndop-density-", bv, "-", px_size_item, ".tif"))
+                bias_all <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_all-density-", bv, "-", px_size_item, ".tif"))
+
+                fm[[bvn]] <- fit_models(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE)
+
+                # enm_mxt_gbif <- fm$enm_mxt_gbif
+                # enm_mxt_ndop <- fm$enm_mxt_ndop
+                # enm_mxt_all <- fm$enm_mxt_all
+                # enm_mxt_gbif.breadth.B1 <- fm$enm_mxt_gbif.breadth.B1
+                # enm_mxt_gbif.breadth.B2 <- fm$enm_mxt_gbif.breadth.B2
+                # enm_mxt_ndop.breadth.B1 <- fm$enm_mxt_ndop.breadth.B1
+                # enm_mxt_ndop.breadth.B2 <- fm$enm_mxt_ndop.breadth.B2
+                # enm_mxt_all.breadth.B1 <- fm$enm_mxt_all.breadth.B1
+                # enm_mxt_all.breadth.B2 <- fm$enm_mxt_all.breadth.B2
             }
-        }
-        if (alg == "gam") {
-            for (r in 1:replicates) {
-                enm_mxt_all[[r]] <- enmtools.gam(
-                    enm_mxt_all.s,
-                    raster_stack_b,
-                    test.prop = test.prop,
-                    bg.source = "range",
-                    verbose = TRUE,
-                    bias = bias_all,
-                    nback = nback_all,
-                    corner = ifelse(r == 4, r, NA)
-                )
+
+            fm_all <- list()
+            fm_gbif <- list()
+            fm_ndop <- list()
+            for (i in names(fm)) {
+                fm_all[[i]] <- fm[[i]]$enm_mxt_all.breadth.B2
+                fm_gbif[[i]] <- fm[[i]]$enm_mxt_gbif.breadth.B2
+                fm_ndop[[i]] <- fm[[i]]$enm_mxt_ndop.breadth.B2
             }
-        }
-        if (alg == "maxent") {
-            for (r in 1:replicates) {
-                enm_mxt_all[[r]] <- enmtools.maxent(
-                    enm_mxt_all.s,
-                    raster_stack_b,
-                    test.prop = test.prop,
-                    bg.source = "range",
-                    verbose = TRUE,
-                    bias = bias_all,
-                    args = c("removeDuplicates=FALSE", "outputFormat=raw"), # maxent - zákaz groupování dle pixelů
-                    nback = nback_all,
-                    corner = ifelse(r == 4, r, NA)
-                    # args = c("threads=4")
-                )
+
+            fm_gbif_c <- as.numeric(names(fm_gbif[which.max(unlist(fm_gbif))]))
+            fm_ndop_c <- as.numeric(names(fm_ndop[which.max(unlist(fm_ndop))]))
+            fm_all_c <- as.numeric(names(fm_all[which.max(unlist(fm_all))]))
+
+
+            fm_gbif_f <- list()
+            for (s in seq(fm_gbif_c - by, fm_gbif_c + by, by = 0.05)) {
+                bvn <- format(round(s, 2), nsmall = 2)
+                bv <- paste0("scottIso-adj-", bvn)
+                ### volání / fitování modelů
+                bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"))
+                fm_gbif_f[[bvn]] <- fit_models(alg, replicates, eval, test.prop, enm_mxt_gbif.s, NA, NA, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE)
             }
-        }
 
-        cm_all <- lapply(enm_mxt_all, function(x) performance(x$conf))
-        enm_mxt_all.matrix <- abind(cm_all, along = 3)
-        enm_mxt_all.perf <- apply(enm_mxt_all.matrix, c(1, 2), mean)
-
-        thr.all <- sapply(enm_mxt_all, function(x) x$thr)
-
-        sedi.all.p <- lapply(enm_mxt_all, function(x) sedi(x$conf))
-        sedi.all <- mean(sapply(sedi.all.p, function(x) {
-            if (x[[1]] == "SEDI equal to") {
-                x[[2]]
-            } else {
-                NA
+            fm_ndop_f <- list()
+            for (s in seq(fm_ndop_c - by, fm_ndop_c + by, by = 0.05)) {
+                bvn <- format(round(s, 2), nsmall = 2)
+                bv <- paste0("scottIso-adj-", bvn)
+                ### volání / fitování modelů
+                bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_ndop-density-", bv, "-", px_size_item, ".tif"))
+                fm_ndop_f[[bvn]] <- fit_models(alg, replicates, eval, test.prop, NA, enm_mxt_ndop.s, NA, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE)
             }
-        }))
 
-        enm_mxt_all.breadth <- lapply(enm_mxt_all, raster.breadth)
-        enm_mxt_all.breadth.B1 <- mean(sapply(enm_mxt_all.breadth, function(x) x$B1))
-        enm_mxt_all.breadth.B2 <- mean(sapply(enm_mxt_all.breadth, function(x) x$B2))
+            fm_all_f <- list()
+            for (s in seq(fm_all_c - by, fm_all_c + by, by = 0.05)) {
+                bvn <- format(round(s, 2), nsmall = 2)
+                bv <- paste0("scottIso-adj-", bvn)
+                ### volání / fitování modelů
+                bias_all <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_all-density-", bv, "-", px_size_item, ".tif"))
+                fm_all_f[[bvn]] <- fit_models(alg, replicates, eval, test.prop, NA, NA, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE)
+            }
 
-        enm_mxt_all.ebreadth <- lapply(enm_mxt_all, env.breadth, env = raster_stack_b)
-        enm_mxt_all.ebreadth.B2 <- mean(sapply(enm_mxt_all.ebreadth, function(x) x$env.B2))
 
-        enm_mxt_all.auc <- mean(sapply(enm_mxt_all, function(x) x$test.evaluation@auc))
-        enm_mxt_all.np.tr <- mean(sapply(enm_mxt_all, function(x) x$training.evaluation@np))
-        enm_mxt_all.np.te <- mean(sapply(enm_mxt_all, function(x) x$test.evaluation@np))
-        enm_mxt_all.r <- stack(sapply(enm_mxt_all, function(x) x$suitability))
-        enm_mxt_all.r.m <- calc(enm_mxt_all.r, fun = mean)
-        if (export_suitability_raster) {
-            writeRaster(enm_mxt_all.r.m, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.tif"), format = "GTiff", overwrite = TRUE)
-        }
-        png(paste0(export_path, "/outputs/png/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.png"))
-        plot(enm_mxt_all.r.m,
-            main = paste0(sp, " | GBIF+NDOP, AUC=", round(enm_mxt_all.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
-            sub = paste0("(NDOP/GBIF: ", ndop_f_n, "/", gbif_f_n, " = ", round(f_n), "%")
-        )
-        par(bg = NA)
-        plot(czechia_3035$geometry, add = TRUE)
-        par()
-        points(enm_mxt_all.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
-        dev.off()
+            fm_all_f_i <- list()
+            fm_gbif_f_i <- list()
+            fm_ndop_f_i <- list()
+            for (i in names(fm_gbif_f)) {
+                fm_gbif_f_i[[i]] <- fm_gbif_f[[i]]$enm_mxt_gbif.breadth.B2
+            }
+            for (i in names(fm_ndop_f)) {
+                fm_ndop_f_i[[i]] <- fm_ndop_f[[i]]$enm_mxt_ndop.breadth.B2
+            }
+            for (i in names(fm_all_f)) {
+                fm_all_f_i[[i]] <- fm_all_f[[i]]$enm_mxt_all.breadth.B2
+            }
 
-        # Maximum test sensitivity plus specificity
-        thr.all.mss <- mean(sapply(enm_mxt_all, function(x) {
-            x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
-        }))
-        if (alg == "glm") {
-            thr.all.mss <- plogis(thr.all.mss)
-        }
-        raster.all <- enm_mxt_all.r.m
-        raster.all[raster.all < thr.all.mss] <- 0
-        raster.all[raster.all >= thr.all.mss] <- 1
-        pa.all.freq <- freq(raster.all)
-        if (export_pa_raster) {
-            writeRaster(raster.all, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.pa.tif"), format = "GTiff", overwrite = TRUE, datatype = "LOG1S")
-        }
+            fm_gbif_f_i_c[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(names(fm_gbif_f_i[which.max(unlist(fm_gbif_f_i))]))
+            fm_ndop_f_i_c[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(names(fm_ndop_f_i[which.max(unlist(fm_ndop_f_i))]))
+            fm_all_f_i_c[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(names(fm_all_f_i[which.max(unlist(fm_all_f_i))]))
 
 
 
-        enm_mxt_all.vip <- sapply(enm_mxt_all, enmtools.vip)
-
-        ### enm_mxt_all.cal <- lapply(enm_mxt_all, enmtools.calibrate, env = raster_stack_b, n.background = 10000)
-
-
-        # # # # # # # # ořezy # # # # # # # # # #
-
-
-        # po ořezu nenínutné znormalizovat nově vzniklé rastery - dělá se v raster.breadth a raster.overlap automaticky přes raster.standardize (ten ale standardizuje čistě sumou všech pixelů...?!)
-
-        # # ořez výsledné predikce
-        # ořez GBIF ČR
-        enm_mxt_gbif.r.m.crop <- crop(enm_mxt_gbif.r.m, extent(czechia_3035))
-        enm_mxt_gbif.r.m.crop.czechia <- mask(enm_mxt_gbif.r.m.crop, czechia_3035)
-        # binární
-        raster.gbif.crop <- crop(raster.gbif, extent(czechia_3035))
-        raster.gbif.crop.czechia <- mask(raster.gbif.crop, czechia_3035)
-        # # binární korekce
-        # enm_mxt_gbif.r.m.crop.czechia.n <- normalize(enm_mxt_gbif.r.m.crop.czechia)
-        # raster.gbif.crop.czechia.n <- enm_mxt_gbif.r.m.crop.czechia.n
-        # raster.gbif.crop.czechia.n[raster.gbif.crop.czechia.n < thr.gbif.mss] <- 0
-        # raster.gbif.crop.czechia.n[raster.gbif.crop.czechia.n >= thr.gbif.mss] <- 1
-        # pa.gbif.freq.n <- freq(raster.gbif.crop.czechia.n)
-        # if (export_pa_raster) {
-        #     writeRaster(raster.gbif.crop.czechia.n, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.n.pa.tif"), format = "GTiff", overwrite = TRUE, datatype = "INT1U")
-        # }
-
-        # ořez ALL ČR
-        enm_mxt_all.r.m.crop <- crop(enm_mxt_all.r.m, extent(czechia_3035))
-        enm_mxt_all.r.m.crop.czechia <- mask(enm_mxt_all.r.m.crop, czechia_3035)
-        # binární
-        raster.all.crop <- crop(raster.all, extent(czechia_3035))
-        raster.all.crop.czechia <- mask(raster.all.crop, czechia_3035)
-        # # binární korekce
-        # enm_mxt_all.r.m.crop.czechia.n <- normalize(enm_mxt_all.r.m.crop.czechia)
-        # raster.all.crop.czechia.n <- enm_mxt_all.r.m.crop.czechia.n
-        # raster.all.crop.czechia.n[raster.all.crop.czechia.n < thr.all.mss] <- 0
-        # raster.all.crop.czechia.n[raster.all.crop.czechia.n >= thr.all.mss] <- 1
-        # pa.all.freq.n <- freq(raster.all.crop.czechia.n)
-        # if (export_pa_raster) {
-        #     writeRaster(raster.all.crop.czechia.n, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.n.pa.tif"), format = "GTiff", overwrite = TRUE, datatype = "INT1U")
-        # }
-
-
-
-        # výřez ČR z GBIF
-        enm_mxt_gbif.r.m.erase <- crop(enm_mxt_gbif.r.m, extent(blocks_erased_cz_3035))
-        enm_mxt_gbif.r.m.erase.czechia <- mask(enm_mxt_gbif.r.m.erase, blocks_erased_cz_3035)
-        # binární
-        raster.gbif.erase <- crop(raster.gbif, extent(blocks_erased_cz_3035))
-        raster.gbif.erase.czechia <- mask(raster.gbif.erase, blocks_erased_cz_3035)
-
-        # výřez ČR z ALL
-        enm_mxt_all.r.m.erase <- crop(enm_mxt_all.r.m, extent(blocks_erased_cz_3035))
-        enm_mxt_all.r.m.erase.czechia <- mask(enm_mxt_all.r.m.erase, blocks_erased_cz_3035)
-        # binární
-        raster.all.erase <- crop(raster.all, extent(blocks_erased_cz_3035))
-        raster.all.erase.czechia <- mask(raster.all.erase, blocks_erased_cz_3035)
-
-
-        # dodatečné raster breadth
-        # cropnutá ČR
-        gbif_crop.breadth <- raster.breadth(enm_mxt_gbif.r.m.crop.czechia)
-        all_crop.breadth <- raster.breadth(enm_mxt_all.r.m.crop.czechia)
-
-        # erasnutá ČR
-        gbif_erase.breadth <- raster.breadth(enm_mxt_gbif.r.m.crop.czechia)
-        all_erase.breadth <- raster.breadth(enm_mxt_all.r.m.crop.czechia)
-
-
-
-
-        eos.gbif_all <- list()
-        for (r in 1:replicates) {
-            eos.gbif_all[[r]] <- env.overlap(enm_mxt_all[[r]], enm_mxt_gbif[[r]], env = raster_stack_b)[1:3]
-        }
-
-        eos.gbif_ndop <- list() # má smysl, když jsou odlišné extenty?
-        for (r in 1:replicates) {
-            eos.gbif_ndop[[r]] <- env.overlap(enm_mxt_gbif[[r]], enm_mxt_ndop[[r]], env = raster_stack_b)[1:3]
-        }
-
-        eos.all_ndop <- list() # má smysl, když jsou odlišné extenty?
-        for (r in 1:replicates) {
-            eos.all_ndop[[r]] <- env.overlap(enm_mxt_all[[r]], enm_mxt_ndop[[r]], env = raster_stack_b)[1:3]
-        }
-
-        #
-        ## # # # #  niche identity, zatím ne, není jak to jednoznačně strojově interpretovat dle jedné hodnoty - asi se musí vztáhnout jednotlivá opakování k empirické hodnotě?
-        #
-        # ni.gbif_ndop <- identity.test(species.1 = enm_mxt_gbif.s, species.2 = enm_mxt_ndop.s, env = raster_stack_b, type = "glm", nreps = replicates)
-        # ni.gbif_all <- identity.test(species.1 = enm_mxt_all.s, species.2 = enm_mxt_gbif.s, env = raster_stack_b, type = "glm", nreps = replicates)
-        # #jak vypadá srovnání dvou stejných modelů?
-        # ni.gbif_gbif <- identity.test(species.1 = enm_mxt_gbif.s, species.2 = enm_mxt_gbif.s, env = raster_stack_b, type = "glm", nreps = replicates)
-
-
-        enm_mxt_gbif.vip.t <- lapply(enm_mxt_gbif.vip[seq(1, replicates * 2, 2)], function(x) {
-            as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
-        })
-
-        enm_mxt_ndop.vip.t <- lapply(enm_mxt_ndop.vip[seq(1, replicates * 2, 2)], function(x) {
-            as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
-        })
-
-        enm_mxt_all.vip.t <- lapply(enm_mxt_all.vip[seq(1, replicates * 2, 2)], function(x) {
-            as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
-        })
-
-        if (replicates == 1) {
-            enm_mxt_gbif.vip.s <- enm_mxt_gbif.vip.t[[1]]
-            enm_mxt_ndop.vip.s <- enm_mxt_ndop.vip.t[[1]]
-            enm_mxt_all.vip.s <- enm_mxt_all.vip.t[[1]]
+            ## pokud generuju bias rastery, tak si je jen připravuji a přeskočím modelování
+            # next
         } else {
-            b_g <- enm_mxt_gbif.vip.t[[1]]
-            b_n <- enm_mxt_ndop.vip.t[[1]]
-            b_a <- enm_mxt_all.vip.t[[1]]
-            for (n in 1:replicates) {
-                if (n > 1) {
-                    b_g %<>% add_row(enm_mxt_gbif.vip.t[[n]])
-                    b_n %<>% add_row(enm_mxt_ndop.vip.t[[n]])
-                    b_a %<>% add_row(enm_mxt_all.vip.t[[n]])
+            ###############
+            ###
+            ###
+            ### start už nafitovaných modelů
+            ###
+            ###
+            ###############
+            print("start fitted models")
+
+            bvn_gbif <- format(round(fm_gbif_f_i_c[[as.character(px_size_item)]][[as.character(sp)]], 2), nsmall = 2)
+            bv_gbif <- paste0("scottIso-adj-", bvn_gbif)
+            bvn_ndop <- format(round(fm_ndop_f_i_c[[as.character(px_size_item)]][[as.character(sp)]], 2), nsmall = 2)
+            bv_ndop <- paste0("scottIso-adj-", bvn_ndop)
+            bvn_all <- format(round(fm_all_f_i_c[[as.character(px_size_item)]][[as.character(sp)]], 2), nsmall = 2)
+            bv_all <- paste0("scottIso-adj-", bvn_all)
+            # výběr ideálních variant bias rasterů
+            bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_gbif-density-", bv_gbif, "-", px_size_item, ".tif"))
+            bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_ndop-density-", bv_ndop, "-", px_size_item, ".tif"))
+            bias_all <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_all-density-", bv_all, "-", px_size_item, ".tif"))
+
+            ### volání fitovaných modelů
+            fm <- fit_models(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop)
+
+            enm_mxt_gbif <- fm$enm_mxt_gbif
+            enm_mxt_ndop <- fm$enm_mxt_ndop
+            enm_mxt_all <- fm$enm_mxt_all
+            enm_mxt_gbif.breadth.B1 <- fm$enm_mxt_gbif.breadth.B1
+            enm_mxt_gbif.breadth.B2 <- fm$enm_mxt_gbif.breadth.B2
+            enm_mxt_ndop.breadth.B1 <- fm$enm_mxt_ndop.breadth.B1
+            enm_mxt_ndop.breadth.B2 <- fm$enm_mxt_ndop.breadth.B2
+            enm_mxt_all.breadth.B1 <- fm$enm_mxt_all.breadth.B1
+            enm_mxt_all.breadth.B2 <- fm$enm_mxt_all.breadth.B2
+
+
+            ###
+            ### gbif
+            ###
+            print("GBIF")
+            cm_gbif <- lapply(enm_mxt_gbif, function(x) performance(x$conf))
+            enm_mxt_gbif.matrix <- abind(cm_gbif, along = 3)
+            enm_mxt_gbif.perf <- apply(enm_mxt_gbif.matrix, c(1, 2), mean)
+
+            # thr.gbif <- mean(sapply(enm_mxt_gbif, function(x) x$thr$spec_sens))
+
+            thr.gbif <- sapply(enm_mxt_gbif, function(x) x$thr)
+
+            sedi.gbif.p <- lapply(enm_mxt_gbif, function(x) sedi(x$conf))
+            sedi.gbif <- mean(sapply(sedi.gbif.p, function(x) {
+                if (x[[1]] == "SEDI equal to") {
+                    x[[2]]
+                } else {
+                    NA
                 }
+            }))
+
+            # str(enm_mxt_gbif[[1]]$test.evaluation@auc)
+            # str(enms[["10000"]][["Buteo rufinus"]][[1]][["m"]][[1]]$test.evaluation@auc)
+            # enm_mxt_gbif.auc <- mean(sapply(enms[["10000"]][["Buteo rufinus"]][[1]][["m"]], function(x) x$test.evaluation@auc))
+
+
+
+
+            enm_mxt_gbif.ebreadth <- lapply(enm_mxt_gbif, env.breadth, env = raster_stack_b)
+            enm_mxt_gbif.ebreadth.B2 <- mean(sapply(enm_mxt_gbif.ebreadth, function(x) x$env.B2))
+
+            enm_mxt_gbif.auc <- mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@auc))
+            enm_mxt_gbif.np.tr <- mean(sapply(enm_mxt_gbif, function(x) x$training.evaluation@np))
+            enm_mxt_gbif.np.te <- mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@np))
+            # plot(enms[["10000"]][["Buteo rufinus"]][[1]][["m"]][[1]]$suitability)
+            # names(enm_mxt_gbif) <- paste0("rep", 1:repl)
+            enm_mxt_gbif.r <- stack(sapply(enm_mxt_gbif, function(x) x$suitability))
+            enm_mxt_gbif.r.m <- calc(enm_mxt_gbif.r, fun = mean)
+            if (export_suitability_raster) {
+                writeRaster(enm_mxt_gbif.r.m, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.tif"), format = "GTiff", overwrite = TRUE)
             }
-            enm_mxt_gbif.vip.s <- b_g %>%
-                summarise_if(is.numeric, mean, na.rm = TRUE)
+            png(paste0(export_path, "/outputs/png/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.png"))
+            plot(enm_mxt_gbif.r.m,
+                main = paste0(sp, " | GBIF, AUC=", round(enm_mxt_gbif.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
+                sub = paste0("GBIF: ", gbif_f_n)
+            )
+            par(bg = NA)
+            plot(czechia_3035$geometry, add = TRUE)
+            par()
+            points(enm_mxt_gbif.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
+            dev.off()
 
-            enm_mxt_ndop.vip.s <- b_n %>%
-                summarise_if(is.numeric, mean, na.rm = TRUE)
 
-            enm_mxt_all.vip.s <- b_a %>%
-                summarise_if(is.numeric, mean, na.rm = TRUE)
+            # Maximum test sensitivity plus specificity
+            # pro Maxent nemůže být plogis, při cloglog ýýstupu (nebo raději dát předtím do args RAW? - je ale k dispozici v rmaxent::project(), případně v původní???)
+            # použít https://rdrr.io/github/johnbaums/rmaxent/man/to_logistic.html to_logistic(x = thr.gbif.mss, from = "cloglog")
+            # https://rpubs.com/mlibxmda/GEOG70922_Week5
+            # back-transform these values to approximate probabilities (i.e. values ranging from 0 to 1) using the plogis()
+            # The threshold values for the maxnet model relate to the raw outputs (prior to transformation). We can achieve our presence/absence map simply by applying our threshold to these raw values. To do so, we map the raw results of the model (i.e, this time we do not opt for a ‘cloglog’ or other transform) and then remove all values below our threshold.
+            # Protože se v ENMTools u maxentu používá predict() bez
+            thr.gbif.mss <- mean(sapply(enm_mxt_gbif, function(x) {
+                x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
+            }))
+            if (alg == "glm") {
+                thr.gbif.mss <- plogis(thr.gbif.mss)
+            }
+
+            raster.gbif <- enm_mxt_gbif.r.m
+            raster.gbif[raster.gbif < thr.gbif.mss] <- 0
+            raster.gbif[raster.gbif >= thr.gbif.mss] <- 1
+            pa.gbif.freq <- freq(raster.gbif)
+            if (export_pa_raster) {
+                writeRaster(raster.gbif, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.pa.tif"), format = "GTiff", overwrite = TRUE, datatype = "INT1U")
+            }
+            # raster::predict()  pro GLM https://rdrr.io/cran/raster/man/predict.html
+            # dismo::predict() pro Maxent https://www.rdocumentation.org/packages/dismo/versions/1.3-3/topics/predict
+            # ne, teď už můžu použít rovnou suitability raster...
+
+            enm_mxt_gbif.vip <- sapply(enm_mxt_gbif, enmtools.vip)
+
+            # calculates Continuous Boyce Index
+            # str(enms[["10000"]][["Buteo rufinus"]][[4]]
+            ### enm_mxt_gbif.cal <- lapply(enm_mxt_gbif, enmtools.calibrate, env = raster_stack_b, n.background = 10000)
+
+
+
+            ###
+            ### ndop
+            ###
+
+            print("NDOP")
+
+            cm_ndop <- lapply(enm_mxt_ndop, function(x) performance(x$conf))
+            enm_mxt_ndop.matrix <- abind(cm_ndop, along = 3)
+            enm_mxt_ndop.perf <- apply(enm_mxt_ndop.matrix, c(1, 2), mean)
+
+            thr.ndop <- sapply(enm_mxt_ndop, function(x) x$thr)
+
+            sedi.ndop.p <- lapply(enm_mxt_ndop, function(x) sedi(x$conf))
+            sedi.ndop <- mean(sapply(sedi.ndop.p, function(x) {
+                if (x[[1]] == "SEDI equal to") {
+                    x[[2]]
+                } else {
+                    NA
+                }
+            }))
+
+
+
+            enm_mxt_ndop.ebreadth <- lapply(enm_mxt_ndop, env.breadth, env = raster_stack_mask_czechia_b)
+            enm_mxt_ndop.ebreadth.B2 <- mean(sapply(enm_mxt_ndop.ebreadth, function(x) x$env.B2))
+
+            enm_mxt_ndop.auc <- mean(sapply(enm_mxt_ndop, function(x) x$test.evaluation@auc))
+            enm_mxt_ndop.np.tr <- mean(sapply(enm_mxt_ndop, function(x) x$training.evaluation@np))
+            enm_mxt_ndop.np.te <- mean(sapply(enm_mxt_ndop, function(x) x$test.evaluation@np))
+            enm_mxt_ndop.r <- stack(sapply(enm_mxt_ndop, function(x) x$suitability))
+            enm_mxt_ndop.r.m <- calc(enm_mxt_ndop.r, fun = mean)
+            if (export_suitability_raster) {
+                writeRaster(enm_mxt_ndop.r.m, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.tif"), format = "GTiff", overwrite = TRUE)
+            }
+            png(paste0(export_path, "/outputs/png/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.png"))
+            plot(enm_mxt_ndop.r.m,
+                main = paste0(sp, " | NDOP, AUC=", round(enm_mxt_ndop.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
+                sub = paste0("NDOP: ", ndop_f_n)
+            )
+            par(bg = NA)
+            plot(czechia_3035$geometry, add = TRUE)
+            par()
+            points(enm_mxt_ndop.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
+            dev.off()
+
+
+            # Maximum test sensitivity plus specificity
+            thr.ndop.mss <- mean(sapply(enm_mxt_ndop, function(x) {
+                x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
+            }))
+            if (alg == "glm") {
+                thr.ndop.mss <- plogis(thr.ndop.mss)
+            }
+            raster.ndop <- enm_mxt_ndop.r.m
+            raster.ndop[raster.ndop < thr.ndop.mss] <- 0
+            raster.ndop[raster.ndop >= thr.ndop.mss] <- 1
+
+            pa.ndop.freq <- freq(raster.ndop)
+            if (export_pa_raster) {
+                writeRaster(raster.ndop, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.pa.tif"), format = "GTiff", overwrite = TRUE, datatype = "LOG1S")
+            }
+            enm_mxt_ndop.vip <- sapply(enm_mxt_ndop, enmtools.vip)
+
+            ### enm_mxt_ndop.cal <- lapply(enm_mxt_ndop, enmtools.calibrate, env = raster_stack_mask_czechia_b, n.background = 10000)
+
+
+
+            ###
+            ### all (ndpop+gbif)
+            ###
+            print("ALL")
+
+            cm_all <- lapply(enm_mxt_all, function(x) performance(x$conf))
+            enm_mxt_all.matrix <- abind(cm_all, along = 3)
+            enm_mxt_all.perf <- apply(enm_mxt_all.matrix, c(1, 2), mean)
+
+            thr.all <- sapply(enm_mxt_all, function(x) x$thr)
+
+            sedi.all.p <- lapply(enm_mxt_all, function(x) sedi(x$conf))
+            sedi.all <- mean(sapply(sedi.all.p, function(x) {
+                if (x[[1]] == "SEDI equal to") {
+                    x[[2]]
+                } else {
+                    NA
+                }
+            }))
+
+
+            enm_mxt_all.ebreadth <- lapply(enm_mxt_all, env.breadth, env = raster_stack_b)
+            enm_mxt_all.ebreadth.B2 <- mean(sapply(enm_mxt_all.ebreadth, function(x) x$env.B2))
+
+            enm_mxt_all.auc <- mean(sapply(enm_mxt_all, function(x) x$test.evaluation@auc))
+            enm_mxt_all.np.tr <- mean(sapply(enm_mxt_all, function(x) x$training.evaluation@np))
+            enm_mxt_all.np.te <- mean(sapply(enm_mxt_all, function(x) x$test.evaluation@np))
+            enm_mxt_all.r <- stack(sapply(enm_mxt_all, function(x) x$suitability))
+            enm_mxt_all.r.m <- calc(enm_mxt_all.r, fun = mean)
+            if (export_suitability_raster) {
+                writeRaster(enm_mxt_all.r.m, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.tif"), format = "GTiff", overwrite = TRUE)
+            }
+            png(paste0(export_path, "/outputs/png/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.png"))
+            plot(enm_mxt_all.r.m,
+                main = paste0(sp, " | GBIF+NDOP, AUC=", round(enm_mxt_all.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
+                sub = paste0("(NDOP/GBIF: ", ndop_f_n, "/", gbif_f_n, " = ", round(f_n), "%")
+            )
+            par(bg = NA)
+            plot(czechia_3035$geometry, add = TRUE)
+            par()
+            points(enm_mxt_all.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
+            dev.off()
+
+            # Maximum test sensitivity plus specificity
+            thr.all.mss <- mean(sapply(enm_mxt_all, function(x) {
+                x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
+            }))
+            if (alg == "glm") {
+                thr.all.mss <- plogis(thr.all.mss)
+            }
+            raster.all <- enm_mxt_all.r.m
+            raster.all[raster.all < thr.all.mss] <- 0
+            raster.all[raster.all >= thr.all.mss] <- 1
+            pa.all.freq <- freq(raster.all)
+            if (export_pa_raster) {
+                writeRaster(raster.all, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.pa.tif"), format = "GTiff", overwrite = TRUE, datatype = "LOG1S")
+            }
+
+
+
+            enm_mxt_all.vip <- sapply(enm_mxt_all, enmtools.vip)
+
+            ### enm_mxt_all.cal <- lapply(enm_mxt_all, enmtools.calibrate, env = raster_stack_b, n.background = 10000)
+
+
+            # # # # # # # # ořezy # # # # # # # # # #
+
+
+            # po ořezu nenínutné znormalizovat nově vzniklé rastery - dělá se v raster.breadth a raster.overlap automaticky přes raster.standardize (ten ale standardizuje čistě sumou všech pixelů...?!)
+
+            # # ořez výsledné predikce
+            # ořez GBIF ČR
+            enm_mxt_gbif.r.m.crop <- crop(enm_mxt_gbif.r.m, extent(czechia_3035))
+            enm_mxt_gbif.r.m.crop.czechia <- mask(enm_mxt_gbif.r.m.crop, czechia_3035)
+            # binární
+            raster.gbif.crop <- crop(raster.gbif, extent(czechia_3035))
+            raster.gbif.crop.czechia <- mask(raster.gbif.crop, czechia_3035)
+            # # binární korekce
+            # enm_mxt_gbif.r.m.crop.czechia.n <- normalize(enm_mxt_gbif.r.m.crop.czechia)
+            # raster.gbif.crop.czechia.n <- enm_mxt_gbif.r.m.crop.czechia.n
+            # raster.gbif.crop.czechia.n[raster.gbif.crop.czechia.n < thr.gbif.mss] <- 0
+            # raster.gbif.crop.czechia.n[raster.gbif.crop.czechia.n >= thr.gbif.mss] <- 1
+            # pa.gbif.freq.n <- freq(raster.gbif.crop.czechia.n)
+            # if (export_pa_raster) {
+            #     writeRaster(raster.gbif.crop.czechia.n, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.n.pa.tif"), format = "GTiff", overwrite = TRUE, datatype = "INT1U")
+            # }
+
+            # ořez ALL ČR
+            enm_mxt_all.r.m.crop <- crop(enm_mxt_all.r.m, extent(czechia_3035))
+            enm_mxt_all.r.m.crop.czechia <- mask(enm_mxt_all.r.m.crop, czechia_3035)
+            # binární
+            raster.all.crop <- crop(raster.all, extent(czechia_3035))
+            raster.all.crop.czechia <- mask(raster.all.crop, czechia_3035)
+            # # binární korekce
+            # enm_mxt_all.r.m.crop.czechia.n <- normalize(enm_mxt_all.r.m.crop.czechia)
+            # raster.all.crop.czechia.n <- enm_mxt_all.r.m.crop.czechia.n
+            # raster.all.crop.czechia.n[raster.all.crop.czechia.n < thr.all.mss] <- 0
+            # raster.all.crop.czechia.n[raster.all.crop.czechia.n >= thr.all.mss] <- 1
+            # pa.all.freq.n <- freq(raster.all.crop.czechia.n)
+            # if (export_pa_raster) {
+            #     writeRaster(raster.all.crop.czechia.n, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.n.pa.tif"), format = "GTiff", overwrite = TRUE, datatype = "INT1U")
+            # }
+
+
+
+            # výřez ČR z GBIF
+            enm_mxt_gbif.r.m.erase <- crop(enm_mxt_gbif.r.m, extent(blocks_erased_cz_3035))
+            enm_mxt_gbif.r.m.erase.czechia <- mask(enm_mxt_gbif.r.m.erase, blocks_erased_cz_3035)
+            # binární
+            raster.gbif.erase <- crop(raster.gbif, extent(blocks_erased_cz_3035))
+            raster.gbif.erase.czechia <- mask(raster.gbif.erase, blocks_erased_cz_3035)
+
+            # výřez ČR z ALL
+            enm_mxt_all.r.m.erase <- crop(enm_mxt_all.r.m, extent(blocks_erased_cz_3035))
+            enm_mxt_all.r.m.erase.czechia <- mask(enm_mxt_all.r.m.erase, blocks_erased_cz_3035)
+            # binární
+            raster.all.erase <- crop(raster.all, extent(blocks_erased_cz_3035))
+            raster.all.erase.czechia <- mask(raster.all.erase, blocks_erased_cz_3035)
+
+
+            # dodatečné raster breadth
+            # cropnutá ČR
+            gbif_crop.breadth <- raster.breadth(enm_mxt_gbif.r.m.crop.czechia)
+            all_crop.breadth <- raster.breadth(enm_mxt_all.r.m.crop.czechia)
+
+            # erasnutá ČR
+            gbif_erase.breadth <- raster.breadth(enm_mxt_gbif.r.m.crop.czechia)
+            all_erase.breadth <- raster.breadth(enm_mxt_all.r.m.crop.czechia)
+
+
+
+
+            eos.gbif_all <- list()
+            for (r in 1:replicates) {
+                eos.gbif_all[[r]] <- env.overlap(enm_mxt_all[[r]], enm_mxt_gbif[[r]], env = raster_stack_b)[1:3]
+            }
+
+            eos.gbif_ndop <- list() # má smysl, když jsou odlišné extenty?
+            for (r in 1:replicates) {
+                eos.gbif_ndop[[r]] <- env.overlap(enm_mxt_gbif[[r]], enm_mxt_ndop[[r]], env = raster_stack_b)[1:3]
+            }
+
+            eos.all_ndop <- list() # má smysl, když jsou odlišné extenty?
+            for (r in 1:replicates) {
+                eos.all_ndop[[r]] <- env.overlap(enm_mxt_all[[r]], enm_mxt_ndop[[r]], env = raster_stack_b)[1:3]
+            }
+
+            #
+            ## # # # #  niche identity, zatím ne, není jak to jednoznačně strojově interpretovat dle jedné hodnoty - asi se musí vztáhnout jednotlivá opakování k empirické hodnotě?
+            #
+            # ni.gbif_ndop <- identity.test(species.1 = enm_mxt_gbif.s, species.2 = enm_mxt_ndop.s, env = raster_stack_b, type = "glm", nreps = replicates)
+            # ni.gbif_all <- identity.test(species.1 = enm_mxt_all.s, species.2 = enm_mxt_gbif.s, env = raster_stack_b, type = "glm", nreps = replicates)
+            # #jak vypadá srovnání dvou stejných modelů?
+            # ni.gbif_gbif <- identity.test(species.1 = enm_mxt_gbif.s, species.2 = enm_mxt_gbif.s, env = raster_stack_b, type = "glm", nreps = replicates)
+
+
+            enm_mxt_gbif.vip.t <- lapply(enm_mxt_gbif.vip[seq(1, replicates * 2, 2)], function(x) {
+                as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+            })
+
+            enm_mxt_ndop.vip.t <- lapply(enm_mxt_ndop.vip[seq(1, replicates * 2, 2)], function(x) {
+                as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+            })
+
+            enm_mxt_all.vip.t <- lapply(enm_mxt_all.vip[seq(1, replicates * 2, 2)], function(x) {
+                as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+            })
+
+            if (replicates == 1) {
+                enm_mxt_gbif.vip.s <- enm_mxt_gbif.vip.t[[1]]
+                enm_mxt_ndop.vip.s <- enm_mxt_ndop.vip.t[[1]]
+                enm_mxt_all.vip.s <- enm_mxt_all.vip.t[[1]]
+            } else {
+                b_g <- enm_mxt_gbif.vip.t[[1]]
+                b_n <- enm_mxt_ndop.vip.t[[1]]
+                b_a <- enm_mxt_all.vip.t[[1]]
+                for (n in 1:replicates) {
+                    if (n > 1) {
+                        b_g %<>% add_row(enm_mxt_gbif.vip.t[[n]])
+                        b_n %<>% add_row(enm_mxt_ndop.vip.t[[n]])
+                        b_a %<>% add_row(enm_mxt_all.vip.t[[n]])
+                    }
+                }
+                enm_mxt_gbif.vip.s <- b_g %>%
+                    summarise_if(is.numeric, mean, na.rm = TRUE)
+
+                enm_mxt_ndop.vip.s <- b_n %>%
+                    summarise_if(is.numeric, mean, na.rm = TRUE)
+
+                enm_mxt_all.vip.s <- b_a %>%
+                    summarise_if(is.numeric, mean, na.rm = TRUE)
+            }
+            enm_mxt_gbif.vip.s.z <- enm_mxt_gbif.vip.s %>% unite("enm_mxt_gbif.vip", names(enm_mxt_gbif.vip.t[[1]])) # separate(xy, c("x", "y"))
+            enm_mxt_ndop.vip.s.z <- enm_mxt_ndop.vip.s %>% unite("enm_mxt_ndop.vip", names(enm_mxt_ndop.vip.t[[1]])) # separate(xy, c("x", "y"))
+            enm_mxt_all.vip.s.z <- enm_mxt_all.vip.s %>% unite("enm_mxt_all.vip", names(enm_mxt_all.vip.t[[1]])) # separate(xy, c("x", "y"))
+
+
+            gbif_ndop.geo.m <- raster.overlap(enm_mxt_gbif.r.m.crop.czechia, enm_mxt_ndop.r.m)
+            gbif_all.geo.m <- raster.overlap(enm_mxt_all.r.m, enm_mxt_gbif.r.m)
+            gbif_all_erase.geo.m <- raster.overlap(enm_mxt_all.r.m.erase.czechia, enm_mxt_gbif.r.m.erase.czechia)
+
+
+            #     gbif <- calc(stack(sapply(enm_mxt_gbif, function(x) x$suitability)), fun = mean),
+            #     ndop <- calc(stack(sapply(enm_mxt_ndop, function(x) x$suitability)), fun = mean),
+            #     all <- calc(stack(sapply(enm_mxt_all, function(x) x$suitability)), fun = mean)
+            #
+            #
+            #  přidat sensitivitu, specificitu a TSS!!!
+            #
+            #
+            enmsr[[as.character(px_size_item)]][[as.character(sp)]] <- list(
+                reps = replicates,
+                px_size_item = px_size_item,
+                species = as.character(sp),
+                ndop_c = ndop_f_n,
+                gbif_c = gbif_f_n,
+                gbif.np.tr = enm_mxt_gbif.np.tr,
+                gbif.np.te = enm_mxt_gbif.np.te,
+                all.np.tr = enm_mxt_all.np.tr,
+                all.np.te = enm_mxt_all.np.te,
+                ndop.np.tr = enm_mxt_ndop.np.tr,
+                ndop.np.te = enm_mxt_ndop.np.te,
+                # rbreadth
+                gbif.breadth.B1 = enm_mxt_gbif.breadth.B1,
+                gbif.breadth.B2 = enm_mxt_gbif.breadth.B2,
+                ndop.breadth.B1 = enm_mxt_ndop.breadth.B1,
+                ndop.breadth.B2 = enm_mxt_ndop.breadth.B2,
+                all.breadth.B1 = enm_mxt_all.breadth.B1,
+                all.breadth.B2 = enm_mxt_all.breadth.B2,
+                # rbreadth dodatečné po cropu a erasu
+                gbif_crop.breadth.B1 = gbif_crop.breadth$B1,
+                gbif_crop.breadth.B2 = gbif_crop.breadth$B2,
+                all_crop.breadth.B1 = all_crop.breadth$B1,
+                all_crop.breadth.B2 = all_crop.breadth$B2,
+                gbif_erase.breadth.B1 = gbif_erase.breadth$B1,
+                gbif_erase.breadth.B2 = gbif_erase.breadth$B2,
+                all_erase.breadth.B1 = all_erase.breadth$B1,
+                all_erase.breadth.B2 = all_erase.breadth$B2,
+
+                # ebreath
+                gbif.ebreadth.B2 = enm_mxt_gbif.ebreadth.B2,
+                ndop.ebreadth.B2 = enm_mxt_ndop.ebreadth.B2,
+                all.ebreadth.B2 = enm_mxt_all.ebreadth.B2,
+
+                # AUC
+                auc.gbif.tr = mean(sapply(enm_mxt_gbif, function(x) x$training.evaluation@auc)),
+                auc.gbif.te = mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@auc)),
+                auc.gbif.tr.env = mean(sapply(enm_mxt_gbif, function(x) x$env.training.evaluation@auc)),
+                auc.gbif.te.env = mean(sapply(enm_mxt_gbif, function(x) x$env.test.evaluation@auc)),
+                # auc.gbif.boyce = mean(sapply(enm_mxt_gbif.cal, function(x) x$continuous.boyce$Spearman.cor)),
+
+                auc.ndop.tr = mean(sapply(enm_mxt_ndop, function(x) x$training.evaluation@auc)),
+                auc.ndop.te = mean(sapply(enm_mxt_ndop, function(x) x$test.evaluation@auc)),
+                auc.ndop.tr.env = mean(sapply(enm_mxt_ndop, function(x) x$env.training.evaluation@auc)),
+                auc.ndop.te.env = mean(sapply(enm_mxt_ndop, function(x) x$env.test.evaluation@auc)),
+                # auc.ndop.boyce = mean(sapply(enm_mxt_ndop.cal, function(x) x$continuous.boyce$Spearman.cor)),
+
+                auc.all.tr = mean(sapply(enm_mxt_all, function(x) x$training.evaluation@auc)),
+                auc.all.te = mean(sapply(enm_mxt_all, function(x) x$test.evaluation@auc)),
+                auc.all.tr.env = mean(sapply(enm_mxt_all, function(x) x$env.training.evaluation@auc)),
+                auc.all.te.env = mean(sapply(enm_mxt_all, function(x) x$env.test.evaluation@auc)),
+                # auc.all.boyce = mean(sapply(enm_mxt_all.cal, function(x) x$continuous.boyce$Spearman.cor)),
+
+                # sedi
+                sedi.gbif = sedi.gbif,
+                sedi.all = sedi.all,
+                sedi.ndop = sedi.ndop,
+
+                # thr
+                thr.gbif = as_tibble(thr.gbif),
+                thr.all = as_tibble(thr.all),
+                thr.ndop = as_tibble(thr.ndop),
+
+                # PA
+                pa.gbif.sum.p = get_freq_by_cat(pa.gbif.freq, 1),
+                pa.gbif.sum.a = get_freq_by_cat(pa.gbif.freq, 0),
+                pa.all.sum.p = get_freq_by_cat(pa.all.freq, 1),
+                pa.all.sum.a = get_freq_by_cat(pa.all.freq, 0),
+                pa.ndop.sum.p = get_freq_by_cat(pa.ndop.freq, 1),
+                pa.ndop.sum.a = get_freq_by_cat(pa.ndop.freq, 0),
+                # pa.gbif.sum.p.n = get_freq_by_cat(pa.gbif.freq.n, 1),
+                # pa.gbif.sum.a.n = get_freq_by_cat(pa.gbif.freq.n, 0),
+                # pa.all.sum.p.n = get_freq_by_cat(pa.all.freq.n, 1),
+                # pa.all.sum.a.n = get_freq_by_cat(pa.all.freq.n, 0),
+
+                # překryvy PA map
+                gbif_ndop.pa = as_tibble(rasters_confusion(raster.gbif.crop.czechia, raster.ndop)),
+                ndop_gbif.pa = as_tibble(rasters_confusion(raster.ndop, raster.gbif.crop.czechia)),
+                all_ndop.pa = as_tibble(rasters_confusion(raster.all.crop.czechia, raster.ndop)),
+                ndop_all.pa = as_tibble(rasters_confusion(raster.ndop, raster.all.crop.czechia)),
+                all_gbif.pa = as_tibble(rasters_confusion(raster.all, raster.gbif)),
+                gbif_all.pa = as_tibble(rasters_confusion(raster.gbif, raster.all)),
+                all_gbif_erase.pa = as_tibble(rasters_confusion(raster.all.erase.czechia, raster.gbif.erase.czechia)),
+                gbif_all_erase.pa = as_tibble(rasters_confusion(raster.gbif.erase.czechia, raster.all.erase.czechia)),
+                # gbif_ndop.pa = as_tibble(rasters_confusion(raster.ndop, raster.gbif.crop.czechia.n)),
+                # all_ndop.pa = as_tibble(rasters_confusion(raster.ndop, raster.all.crop.czechia.n)),
+
+                # performance indexy, treshold maxSSS (dismo: spec_sens)
+                perf.gbif = as_tibble(enm_mxt_gbif.perf),
+                perf.all = as_tibble(enm_mxt_all.perf),
+                perf.ndop = as_tibble(enm_mxt_ndop.perf),
+
+                # variable permutation importance - tibble
+                vip1.gbif = enm_mxt_gbif.vip.s,
+                vip1.ndop = enm_mxt_ndop.vip.s,
+                vip1.all = enm_mxt_all.vip.s,
+
+                # geogr. overlap
+                gbif_ndop.geo.D = gbif_ndop.geo.m$D,
+                gbif_ndop.geo.I = gbif_ndop.geo.m$I,
+                gbif_ndop.geo.cor = gbif_ndop.geo.m$rank.cor,
+
+                gbif_all.geo.D = gbif_all.geo.m$D,
+                gbif_all.geo.I = gbif_all.geo.m$I,
+                gbif_all.geo.cor = gbif_all.geo.m$rank.cor,
+
+                gbif_all_erase.geo.D = gbif_all_erase.geo.m$D,
+                gbif_all_erase.geo.I = gbif_all_erase.geo.m$I,
+                gbif_all_erase.geo.cor = gbif_all_erase.geo.m$rank.cor,
+
+                # niche overlap
+                gbif_all.env.D = mean(map_dbl(eos.gbif_all, ~ (.$env.D))),
+                gbif_all.env.I = mean(map_dbl(eos.gbif_all, ~ (.$env.I))),
+                gbif_all.env.cor = mean(map_dbl(eos.gbif_all, ~ (.$env.cor))),
+
+                gbif_ndop.env.D = mean(map_dbl(eos.gbif_ndop, ~ (.$env.D))),
+                gbif_ndop.env.I = mean(map_dbl(eos.gbif_ndop, ~ (.$env.I))),
+                gbif_ndop.env.cor = mean(map_dbl(eos.gbif_ndop, ~ (.$env.cor))),
+
+                all_ndop.env.D = mean(map_dbl(eos.all_ndop, ~ (.$env.D))),
+                all_ndop.env.I = mean(map_dbl(eos.all_ndop, ~ (.$env.I))),
+                all_ndop.env.cor = mean(map_dbl(eos.all_ndop, ~ (.$env.cor)))
+            )
         }
-        enm_mxt_gbif.vip.s.z <- enm_mxt_gbif.vip.s %>% unite("enm_mxt_gbif.vip", names(enm_mxt_gbif.vip.t[[1]])) # separate(xy, c("x", "y"))
-        enm_mxt_ndop.vip.s.z <- enm_mxt_ndop.vip.s %>% unite("enm_mxt_ndop.vip", names(enm_mxt_ndop.vip.t[[1]])) # separate(xy, c("x", "y"))
-        enm_mxt_all.vip.s.z <- enm_mxt_all.vip.s %>% unite("enm_mxt_all.vip", names(enm_mxt_all.vip.t[[1]])) # separate(xy, c("x", "y"))
-
-
-        gbif_ndop.geo.m <- raster.overlap(enm_mxt_gbif.r.m.crop.czechia, enm_mxt_ndop.r.m)
-        gbif_all.geo.m <- raster.overlap(enm_mxt_all.r.m, enm_mxt_gbif.r.m)
-        gbif_all_erase.geo.m <- raster.overlap(enm_mxt_all.r.m.erase.czechia, enm_mxt_gbif.r.m.erase.czechia)
-
-
-        #     gbif <- calc(stack(sapply(enm_mxt_gbif, function(x) x$suitability)), fun = mean),
-        #     ndop <- calc(stack(sapply(enm_mxt_ndop, function(x) x$suitability)), fun = mean),
-        #     all <- calc(stack(sapply(enm_mxt_all, function(x) x$suitability)), fun = mean)
-        #
-        #
-        #  přidat sensitivitu, specificitu a TSS!!!
-        #
-        #
-        enmsr[[as.character(px_size_item)]][[as.character(sp)]] <- list(
-            reps = replicates,
-            px_size_item = px_size_item,
-            species = as.character(sp),
-            ndop_c = ndop_f_n,
-            gbif_c = gbif_f_n,
-            gbif.np.tr = enm_mxt_gbif.np.tr,
-            gbif.np.te = enm_mxt_gbif.np.te,
-            all.np.tr = enm_mxt_all.np.tr,
-            all.np.te = enm_mxt_all.np.te,
-            ndop.np.tr = enm_mxt_ndop.np.tr,
-            ndop.np.te = enm_mxt_ndop.np.te,
-            # rbreadth
-            gbif.breadth.B1 = enm_mxt_gbif.breadth.B1,
-            gbif.breadth.B2 = enm_mxt_gbif.breadth.B2,
-            ndop.breadth.B1 = enm_mxt_ndop.breadth.B1,
-            ndop.breadth.B2 = enm_mxt_ndop.breadth.B2,
-            all.breadth.B1 = enm_mxt_all.breadth.B1,
-            all.breadth.B2 = enm_mxt_all.breadth.B2,
-            # rbreadth dodatečné po cropu a erasu
-            gbif_crop.breadth.B1 = gbif_crop.breadth$B1,
-            gbif_crop.breadth.B2 = gbif_crop.breadth$B2,
-            all_crop.breadth.B1 = all_crop.breadth$B1,
-            all_crop.breadth.B2 = all_crop.breadth$B2,
-            gbif_erase.breadth.B1 = gbif_erase.breadth$B1,
-            gbif_erase.breadth.B2 = gbif_erase.breadth$B2,
-            all_erase.breadth.B1 = all_erase.breadth$B1,
-            all_erase.breadth.B2 = all_erase.breadth$B2,
-
-            # ebreath
-            gbif.ebreadth.B2 = enm_mxt_gbif.ebreadth.B2,
-            ndop.ebreadth.B2 = enm_mxt_ndop.ebreadth.B2,
-            all.ebreadth.B2 = enm_mxt_all.ebreadth.B2,
-
-            # AUC
-            auc.gbif.tr = mean(sapply(enm_mxt_gbif, function(x) x$training.evaluation@auc)),
-            auc.gbif.te = mean(sapply(enm_mxt_gbif, function(x) x$test.evaluation@auc)),
-            auc.gbif.tr.env = mean(sapply(enm_mxt_gbif, function(x) x$env.training.evaluation@auc)),
-            auc.gbif.te.env = mean(sapply(enm_mxt_gbif, function(x) x$env.test.evaluation@auc)),
-            # auc.gbif.boyce = mean(sapply(enm_mxt_gbif.cal, function(x) x$continuous.boyce$Spearman.cor)),
-
-            auc.ndop.tr = mean(sapply(enm_mxt_ndop, function(x) x$training.evaluation@auc)),
-            auc.ndop.te = mean(sapply(enm_mxt_ndop, function(x) x$test.evaluation@auc)),
-            auc.ndop.tr.env = mean(sapply(enm_mxt_ndop, function(x) x$env.training.evaluation@auc)),
-            auc.ndop.te.env = mean(sapply(enm_mxt_ndop, function(x) x$env.test.evaluation@auc)),
-            # auc.ndop.boyce = mean(sapply(enm_mxt_ndop.cal, function(x) x$continuous.boyce$Spearman.cor)),
-
-            auc.all.tr = mean(sapply(enm_mxt_all, function(x) x$training.evaluation@auc)),
-            auc.all.te = mean(sapply(enm_mxt_all, function(x) x$test.evaluation@auc)),
-            auc.all.tr.env = mean(sapply(enm_mxt_all, function(x) x$env.training.evaluation@auc)),
-            auc.all.te.env = mean(sapply(enm_mxt_all, function(x) x$env.test.evaluation@auc)),
-            # auc.all.boyce = mean(sapply(enm_mxt_all.cal, function(x) x$continuous.boyce$Spearman.cor)),
-
-            # sedi
-            sedi.gbif = sedi.gbif,
-            sedi.all = sedi.all,
-            sedi.ndop = sedi.ndop,
-
-            # thr
-            thr.gbif = as_tibble(thr.gbif),
-            thr.all = as_tibble(thr.all),
-            thr.ndop = as_tibble(thr.ndop),
-
-            # PA
-            pa.gbif.sum.p = get_freq_by_cat(pa.gbif.freq, 1),
-            pa.gbif.sum.a = get_freq_by_cat(pa.gbif.freq, 0),
-            pa.all.sum.p = get_freq_by_cat(pa.all.freq, 1),
-            pa.all.sum.a = get_freq_by_cat(pa.all.freq, 0),
-            pa.ndop.sum.p = get_freq_by_cat(pa.ndop.freq, 1),
-            pa.ndop.sum.a = get_freq_by_cat(pa.ndop.freq, 0),
-            # pa.gbif.sum.p.n = get_freq_by_cat(pa.gbif.freq.n, 1),
-            # pa.gbif.sum.a.n = get_freq_by_cat(pa.gbif.freq.n, 0),
-            # pa.all.sum.p.n = get_freq_by_cat(pa.all.freq.n, 1),
-            # pa.all.sum.a.n = get_freq_by_cat(pa.all.freq.n, 0),
-
-            # překryvy PA map
-            gbif_ndop.pa = as_tibble(rasters_confusion(raster.gbif.crop.czechia, raster.ndop)),
-            ndop_gbif.pa = as_tibble(rasters_confusion(raster.ndop, raster.gbif.crop.czechia)),
-            all_ndop.pa = as_tibble(rasters_confusion(raster.all.crop.czechia, raster.ndop)),
-            ndop_all.pa = as_tibble(rasters_confusion(raster.ndop, raster.all.crop.czechia)),
-            all_gbif.pa = as_tibble(rasters_confusion(raster.all, raster.gbif)),
-            gbif_all.pa = as_tibble(rasters_confusion(raster.gbif, raster.all)),
-            all_gbif_erase.pa = as_tibble(rasters_confusion(raster.all.erase.czechia, raster.gbif.erase.czechia)),
-            gbif_all_erase.pa = as_tibble(rasters_confusion(raster.gbif.erase.czechia, raster.all.erase.czechia)),
-            # gbif_ndop.pa = as_tibble(rasters_confusion(raster.ndop, raster.gbif.crop.czechia.n)),
-            # all_ndop.pa = as_tibble(rasters_confusion(raster.ndop, raster.all.crop.czechia.n)),
-
-            # performance indexy, treshold maxSSS (dismo: spec_sens)
-            perf.gbif = as_tibble(enm_mxt_gbif.perf),
-            perf.all = as_tibble(enm_mxt_all.perf),
-            perf.ndop = as_tibble(enm_mxt_ndop.perf),
-
-            # variable permutation importance - tibble
-            vip1.gbif = enm_mxt_gbif.vip.s,
-            vip1.ndop = enm_mxt_ndop.vip.s,
-            vip1.all = enm_mxt_all.vip.s,
-
-            # geogr. overlap
-            gbif_ndop.geo.D = gbif_ndop.geo.m$D,
-            gbif_ndop.geo.I = gbif_ndop.geo.m$I,
-            gbif_ndop.geo.cor = gbif_ndop.geo.m$rank.cor,
-
-            gbif_all.geo.D = gbif_all.geo.m$D,
-            gbif_all.geo.I = gbif_all.geo.m$I,
-            gbif_all.geo.cor = gbif_all.geo.m$rank.cor,
-
-            gbif_all_erase.geo.D = gbif_all_erase.geo.m$D,
-            gbif_all_erase.geo.I = gbif_all_erase.geo.m$I,
-            gbif_all_erase.geo.cor = gbif_all_erase.geo.m$rank.cor,
-
-            # niche overlap
-            gbif_all.env.D = mean(map_dbl(eos.gbif_all, ~ (.$env.D))),
-            gbif_all.env.I = mean(map_dbl(eos.gbif_all, ~ (.$env.I))),
-            gbif_all.env.cor = mean(map_dbl(eos.gbif_all, ~ (.$env.cor))),
-
-            gbif_ndop.env.D = mean(map_dbl(eos.gbif_ndop, ~ (.$env.D))),
-            gbif_ndop.env.I = mean(map_dbl(eos.gbif_ndop, ~ (.$env.I))),
-            gbif_ndop.env.cor = mean(map_dbl(eos.gbif_ndop, ~ (.$env.cor))),
-
-            all_ndop.env.D = mean(map_dbl(eos.all_ndop, ~ (.$env.D))),
-            all_ndop.env.I = mean(map_dbl(eos.all_ndop, ~ (.$env.I))),
-            all_ndop.env.cor = mean(map_dbl(eos.all_ndop, ~ (.$env.cor)))
-        )
         gc()
     }
 
     #  dev.off()
     timestamp <- round(unclass(as.POSIXct(Sys.time())))
-    saveRDS(enmsr, file = paste0(export_path, "/outputs/rds/enmsr_", pres, "_", px_size_item, "_", replicates, "_", timestamp, "_", generate_bias_raster_version, ".rds"))
-    enmsr <- list()
+
+    if (eval) {
+        saveRDS(enmsr, file = paste0(export_path, "/outputs/rds/enmsr_", pres, "_", px_size_item, "_", replicates, "_", timestamp, "_", generate_bias_raster_version, ".rds"))
+        enmsr <- list()
+    } else {
+        # uložení ideálních adjustovaných raster biasů podle pixel size a druhu
+        saveRDS(fm_gbif_f_i_c, file = paste0(export_path, "/inputs/occurrences/fm_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(fm_ndop_f_i_c, file = paste0(export_path, "/inputs/occurrences/fm_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(fm_all_f_i_c, file = paste0(export_path, "/inputs/occurrences/fm_all_", px_size_item, "-", cmd_arg_str, ".rds"))
+        fm_gbif_f_i_c <- list()
+        fm_ndop_f_i_c <- list()
+        fm_all_f_i_c <- list()
+    }
 }
 
 end_time <- Sys.time()

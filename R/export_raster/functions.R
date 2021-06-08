@@ -323,3 +323,213 @@ normalize <- function(x) {
   max <- raster::maxValue(x)
   return((x - min) / (max - min))
 }
+
+
+
+fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = FALSE) {
+
+
+
+  ###
+  ### gbifM
+  ###
+  print("GBIFM")
+  enm_mxt_gbif.breadth.B1 <- NA
+  enm_mxt_gbif.breadth.B2 <- NA
+  enm_mxt_gbif <- list()
+  if (!is.na(enm_mxt_gbif.s)) {
+    if (alg == "glm") {
+      for (r in 1:replicates) {
+        enm_mxt_gbif[[r]] <- enmtools.glm(
+          enm_mxt_gbif.s,
+          eval = eval,
+          raster_stack_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_gbif,
+          nback = nback_all,
+          corner = ifelse(r == 4, r, NA)
+        )
+      }
+    }
+    if (alg == "gam") {
+      for (r in 1:replicates) {
+        enm_mxt_gbif[[r]] <- enmtools.gam(
+          enm_mxt_gbif.s,
+          eval = eval,
+          raster_stack_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_gbif,
+          nback = nback_all,
+          corner = ifelse(r == 4, r, NA)
+        )
+      }
+    }
+    if (alg == "maxent") {
+      for (r in 1:replicates) {
+        enm_mxt_gbif[[r]] <- enmtools.maxent(
+          enm_mxt_gbif.s,
+          eval = eval,
+          raster_stack_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_gbif,
+          args = c("removeDuplicates=FALSE", "outputFormat=raw"), # maxent - zákaz groupování dle pixelů
+          nback = nback_all,
+          corner = ifelse(r == 4, r, NA)
+          # args = c("threads=4")
+        )
+      }
+    }
+    ### GBIF .breadth
+    enm_mxt_gbif.breadth <- lapply(enm_mxt_gbif, raster.breadth)
+    enm_mxt_gbif.breadth.B1 <- mean(sapply(enm_mxt_gbif.breadth, function(x) x$B1))
+    enm_mxt_gbif.breadth.B2 <- mean(sapply(enm_mxt_gbif.breadth, function(x) x$B2))
+  }
+
+  ###
+  ### ndopM
+  ###
+
+  print("NDOPM")
+
+
+  enm_mxt_ndop.breadth.B1 <- NA
+  enm_mxt_ndop.breadth.B2 <- NA
+  enm_mxt_ndop <- list()
+  if (!is.na(enm_mxt_ndop.s)) {
+    if (alg == "glm") {
+      for (r in 1:replicates) {
+        enm_mxt_ndop[[r]] <- enmtools.glm(
+          enm_mxt_ndop.s,
+          eval = eval,
+          raster_stack_mask_czechia_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_ndop,
+          nback = nback_ndop,
+          corner = ifelse(r == 4, r, NA)
+        )
+      }
+    }
+    if (alg == "gam") {
+      for (r in 1:replicates) {
+        enm_mxt_ndop[[r]] <- enmtools.gam(
+          enm_mxt_ndop.s,
+          eval = eval,
+          raster_stack_mask_czechia_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_ndop,
+          nback = nback_ndop,
+          corner = ifelse(r == 4, r, NA)
+        )
+      }
+    }
+    if (alg == "maxent") {
+      for (r in 1:replicates) {
+        enm_mxt_ndop[[r]] <- enmtools.maxent(
+          enm_mxt_ndop.s,
+          eval = eval,
+          raster_stack_mask_czechia_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_ndop,
+          args = c("removeDuplicates=FALSE", "outputFormat=raw"), # maxent - zákaz groupování dle pixelů
+          nback = nback_ndop,
+          corner = ifelse(r == 4, r, NA)
+          # args = c("threads=4")
+        )
+      }
+    }
+    ### NDOP .breadth
+    enm_mxt_ndop.breadth <- lapply(enm_mxt_ndop, raster.breadth)
+    enm_mxt_ndop.breadth.B1 <- mean(sapply(enm_mxt_ndop.breadth, function(x) x$B1))
+    enm_mxt_ndop.breadth.B2 <- mean(sapply(enm_mxt_ndop.breadth, function(x) x$B2))
+  }
+
+  ###
+  ### allM (ndpop+gbif)
+  ###
+  print("ALLM")
+
+  enm_mxt_all.breadth.B1 <- NA
+  enm_mxt_all.breadth.B2 <- NA
+  enm_mxt_all <- list()
+  if (!is.na(enm_mxt_all.s)) {
+    if (alg == "glm") {
+      for (r in 1:replicates) {
+        enm_mxt_all[[r]] <- enmtools.glm(
+          enm_mxt_all.s,
+          eval = eval,
+          raster_stack_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_all,
+          nback = nback_all,
+          corner = ifelse(r == 4, r, NA)
+        )
+      }
+    }
+    if (alg == "gam") {
+      for (r in 1:replicates) {
+        enm_mxt_all[[r]] <- enmtools.gam(
+          enm_mxt_all.s,
+          eval = eval,
+          raster_stack_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_all,
+          nback = nback_all,
+          corner = ifelse(r == 4, r, NA)
+        )
+      }
+    }
+    if (alg == "maxent") {
+      for (r in 1:replicates) {
+        enm_mxt_all[[r]] <- enmtools.maxent(
+          enm_mxt_all.s,
+          eval = eval,
+          raster_stack_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_all,
+          args = c("removeDuplicates=FALSE", "outputFormat=raw"), # maxent - zákaz groupování dle pixelů
+          nback = nback_all,
+          corner = ifelse(r == 4, r, NA)
+          # args = c("threads=4")
+        )
+      }
+    }
+
+    ### ALL .breadth
+    enm_mxt_all.breadth <- lapply(enm_mxt_all, raster.breadth)
+    enm_mxt_all.breadth.B1 <- mean(sapply(enm_mxt_all.breadth, function(x) x$B1))
+    enm_mxt_all.breadth.B2 <- mean(sapply(enm_mxt_all.breadth, function(x) x$B2))
+  }
+
+  if (breadth_only) {
+    return(list(
+      enm_mxt_gbif.breadth.B1 = enm_mxt_gbif.breadth.B1, enm_mxt_gbif.breadth.B2 = enm_mxt_gbif.breadth.B2,
+      enm_mxt_ndop.breadth.B1 = enm_mxt_ndop.breadth.B1, enm_mxt_ndop.breadth.B2 = enm_mxt_ndop.breadth.B2,
+      enm_mxt_all.breadth.B1 = enm_mxt_all.breadth.B1, enm_mxt_all.breadth.B2 = enm_mxt_all.breadth.B2
+    ))
+  } else {
+    return(list(
+      enm_mxt_gbif = enm_mxt_gbif, enm_mxt_ndop = enm_mxt_ndop, enm_mxt_all = enm_mxt_all,
+      enm_mxt_gbif.breadth.B1 = enm_mxt_gbif.breadth.B1, enm_mxt_gbif.breadth.B2 = enm_mxt_gbif.breadth.B2,
+      enm_mxt_ndop.breadth.B1 = enm_mxt_ndop.breadth.B1, enm_mxt_ndop.breadth.B2 = enm_mxt_ndop.breadth.B2,
+      enm_mxt_all.breadth.B1 = enm_mxt_all.breadth.B1, enm_mxt_all.breadth.B2 = enm_mxt_all.breadth.B2
+    ))
+  }
+}
