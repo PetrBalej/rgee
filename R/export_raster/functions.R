@@ -533,3 +533,31 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
     ))
   }
 }
+
+
+# # # # #  manuální kontrola použitých koeficientů pro adjust pro jednotlivé druhy
+# required_packages <-
+#     c("raster", "tidyverse", "sf", "sp", "lubridate", "magrittr", "dplyr", "spatialEco", "dismo", "ENMToolsPB", "spatstat", "purrr", "abind") # "rmaxent", "blockCV", "ggplot2", "MASS", "data.table", "virtualspecies" (convertToPA - problematické definovat parametry v reálném světě...)
+# install.packages(setdiff(required_packages, rownames(installed.packages())))
+# # načte všechny požadované knihovny jako dělá jednotlivě library()
+# lapply(required_packages, require, character.only = TRUE)
+
+
+
+# px_size_item <- 5000
+# cmd_arg_str  <- 4
+# export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
+#         fm_gbif_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/fm_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
+#         fm_ndop_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/fm_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
+#         fm_all_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/fm_all_", px_size_item, "-", cmd_arg_str, ".rds"))
+
+#       ndop_df <- as_tibble(fm_ndop_f_i_c$`5000`) 
+#        print(as_tibble(cbind(nms = names(ndop_df ), t(ndop_df ))) %>% mutate(across(V2, as.numeric)) %>% arrange(V2), n = 100)
+
+
+#       all_df <- as_tibble(fm_all_f_i_c$`5000`) 
+#         print(as_tibble(cbind(nms = names(all_df ), t(all_df )))  %>% mutate(across(V2, as.numeric)) %>% arrange(V2), n = 100)
+
+
+#       gbif_df <- as_tibble(fm_gbif_f_i_c$`5000`) 
+#         print(as_tibble(cbind(nms = names(gbif_df ), t(gbif_df)))  %>% mutate(across(V2, as.numeric)) %>% arrange(V2), n = 100)
