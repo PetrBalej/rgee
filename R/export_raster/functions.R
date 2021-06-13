@@ -467,7 +467,7 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
     if (alg == "glm") {
       for (r in 1:replicates) {
         enm_mxt_all[[r]] <- enmtools.glm(
-          enm_mxt_all.s,
+          enm_mxt_all.s[[r]],
           eval = eval,
           raster_stack_b,
           test.prop = test.prop,
@@ -482,7 +482,7 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
     if (alg == "gam") {
       for (r in 1:replicates) {
         enm_mxt_all[[r]] <- enmtools.gam(
-          enm_mxt_all.s,
+          enm_mxt_all.s[[r]],
           eval = eval,
           raster_stack_b,
           test.prop = test.prop,
@@ -497,7 +497,7 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
     if (alg == "maxent") {
       for (r in 1:replicates) {
         enm_mxt_all[[r]] <- enmtools.maxent(
-          enm_mxt_all.s,
+          enm_mxt_all.s[[r]],
           eval = eval,
           raster_stack_b,
           test.prop = test.prop,
