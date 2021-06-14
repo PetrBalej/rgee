@@ -10,9 +10,11 @@ lapply(required_packages, require, character.only = TRUE)
 ## cesty k souborům, předpoklad je stáhnutí celého repozitáře https://github.com/PetrBalej/rgee/archive/master.zip
 # domovský adresář (nebo jiný), z něhož se odvodí další cesty
 # wd <- path.expand("~")
+# wd <- "G:/balej/iga/rgee"
 wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee" # samsung500ntfs # paste0(path.expand("~"), "/Downloads/rgee2/rgee")
 setwd(wd)
 
+# export_path <- "G:/balej/iga/vse-v-jednom"
 export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
 
 alg <- "glm" # "glm" "maxent" "gam"
@@ -40,6 +42,7 @@ use_fitted_bias <- TRUE
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #  Rscript "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R" 1
 #  "C:\Program Files\R\R-3.6.0\bin\Rscript.exe" "C:\Users\petr\Documents\iga\rgee\R\export_raster\enmtools.R" 1
+#  "C:\Program Files\R\R-4.0.5\bin\Rscript.exe" "G:\balej\iga\rgee\R\export_raster\enmtools.R" 1
 #  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R", encoding = "UTF-8")
 
 # install_github("jamiemkass/ENMeval", force = TRUE, ref="Version-0.3.1") ### nutná tato verze pro funkčnost v ENMToolsPB!!!!!
@@ -58,6 +61,13 @@ if (is.na(cmd_arg[1])) {
     print("nepředán žádný argument")
     cmd_arg_str <- 0
 } else {
+    #  s12 <- ptaci_intersect_distinct$count
+    #  intervals <- unique(cut(s12, breaks = quantile(s12, seq(0, 1, l=13)), include.lowest = TRUE,dig.lab=5))
+    #  intervals.l <- c(substring(str_extract(intervals, regex("[\\(|\\[]\\d+")),2), 70000)
+    #  sort( as.numeric(intervals.l))
+    # 123   341   649   1161  2013  2686  3551  4655  6265  8346  11697 18360 70000
+    # 123   204   341   512   649   901  1161  1432  2013  2350  2686  3207  3551  4165  4655  5597  6265  7096  8346  9509 11697 14828 18360 22399 70000
+
     print("předán argument")
     print(cmd_arg[1])
     cmd_arg_str <- cmd_arg[1]
@@ -78,6 +88,155 @@ if (is.na(cmd_arg[1])) {
             limit_min_occurences <- 11001 #
             limit_max_occurences <- 70000
         }
+
+        # # 123   341   649   1161  2013  2686  3551  4655  6265  8346  11697 18360 70000
+        # if (cmd_arg[1] == 1) {
+        #     limit_min_occurences <- 100 #
+        #     limit_max_occurences <- 341
+        # }
+        # if (cmd_arg[1] == 2) {
+        #     limit_min_occurences <- 342 #
+        #     limit_max_occurences <- 649
+        # }
+        # if (cmd_arg[1] == 3) {
+        #     limit_min_occurences <- 650 #
+        #     limit_max_occurences <- 1161
+        # }
+        # if (cmd_arg[1] == 4) {
+        #     limit_min_occurences <- 1162 #
+        #     limit_max_occurences <- 2013
+        # }
+        # if (cmd_arg[1] == 5) {
+        #     limit_min_occurences <- 2014 #
+        #     limit_max_occurences <- 2686
+        # }
+        # if (cmd_arg[1] == 6) {
+        #     limit_min_occurences <- 2687 #
+        #     limit_max_occurences <- 3551
+        # }
+        # if (cmd_arg[1] == 7) {
+        #     limit_min_occurences <- 3552 #
+        #     limit_max_occurences <- 4655
+        # }
+        # if (cmd_arg[1] == 8) {
+        #     limit_min_occurences <- 4656 #
+        #     limit_max_occurences <- 6265
+        # }
+        # if (cmd_arg[1] == 9) {
+        #     limit_min_occurences <- 6266 #
+        #     limit_max_occurences <- 8346
+        # }
+        # if (cmd_arg[1] == 10) {
+        #     limit_min_occurences <- 8347 #
+        #     limit_max_occurences <- 11697
+        # }
+        # if (cmd_arg[1] == 11) {
+        #     limit_min_occurences <- 11698 #
+        #     limit_max_occurences <- 18360
+        # }
+        # if (cmd_arg[1] == 12) {
+        #     limit_min_occurences <- 18361 #
+        #     limit_max_occurences <- 70000
+        # }
+
+
+        # # 123   204   341   512   649   901  1161  1432  2013  2350  2686  3207  3551  4165  4655  5597  6265  7096  8346  9509 11697 14828 18360 22399 70000
+        # if (cmd_arg[1] == 1) {
+        #     limit_min_occurences <- 100 #
+        #     limit_max_occurences <- 204
+        # }
+        # if (cmd_arg[1] == 2) {
+        #     limit_min_occurences <- 205 #
+        #     limit_max_occurences <- 341
+        # }
+        # if (cmd_arg[1] == 3) {
+        #     limit_min_occurences <- 342 #
+        #     limit_max_occurences <- 512
+        # }
+        # if (cmd_arg[1] == 4) {
+        #     limit_min_occurences <- 513 #
+        #     limit_max_occurences <- 649
+        # }
+        # if (cmd_arg[1] == 5) {
+        #     limit_min_occurences <- 650 #
+        #     limit_max_occurences <- 901
+        # }
+        # if (cmd_arg[1] == 6) {
+        #     limit_min_occurences <- 902 #
+        #     limit_max_occurences <- 1161
+        # }
+        # if (cmd_arg[1] == 7) {
+        #     limit_min_occurences <- 1162 #
+        #     limit_max_occurences <- 1432
+        # }
+        # if (cmd_arg[1] == 8) {
+        #     limit_min_occurences <- 1433 #
+        #     limit_max_occurences <- 2013
+        # }
+        # if (cmd_arg[1] == 9) {
+        #     limit_min_occurences <- 2014 #
+        #     limit_max_occurences <- 2350
+        # }
+        # if (cmd_arg[1] == 10) {
+        #     limit_min_occurences <- 2351 #
+        #     limit_max_occurences <- 2686
+        # }
+        # if (cmd_arg[1] == 11) {
+        #     limit_min_occurences <- 2687 #
+        #     limit_max_occurences <- 3207
+        # }
+        # if (cmd_arg[1] == 12) {
+        #     limit_min_occurences <- 3208 #
+        #     limit_max_occurences <- 3551
+        # }
+        # if (cmd_arg[1] == 13) {
+        #     limit_min_occurences <- 3552 #
+        #     limit_max_occurences <- 4165
+        # }
+        # if (cmd_arg[1] == 14) {
+        #     limit_min_occurences <- 4166 #
+        #     limit_max_occurences <- 4655
+        # }
+        # if (cmd_arg[1] == 15) {
+        #     limit_min_occurences <- 4656 #
+        #     limit_max_occurences <- 5597
+        # }
+        # if (cmd_arg[1] == 16) {
+        #     limit_min_occurences <- 5598 #
+        #     limit_max_occurences <- 6265
+        # }
+        # if (cmd_arg[1] == 17) {
+        #     limit_min_occurences <- 6266 #
+        #     limit_max_occurences <- 7096
+        # }
+        # if (cmd_arg[1] == 18) {
+        #     limit_min_occurences <- 7097 #
+        #     limit_max_occurences <- 8346
+        # }
+        # if (cmd_arg[1] == 19) {
+        #     limit_min_occurences <- 8347 #
+        #     limit_max_occurences <- 9509
+        # }
+        # if (cmd_arg[1] == 20) {
+        #     limit_min_occurences <- 9510 #
+        #     limit_max_occurences <- 11697
+        # }
+        # if (cmd_arg[1] == 21) {
+        #     limit_min_occurences <- 11698 #
+        #     limit_max_occurences <- 14828
+        # }
+        # if (cmd_arg[1] == 22) {
+        #     limit_min_occurences <- 14829 #
+        #     limit_max_occurences <- 18360
+        # }
+        # if (cmd_arg[1] == 23) {
+        #     limit_min_occurences <- 18361 #
+        #     limit_max_occurences <- 22399
+        # }
+        # if (cmd_arg[1] == 24) {
+        #     limit_min_occurences <- 22400 #
+        #     limit_max_occurences <- 70000
+        # }
     }
     if (alg == "maxent") {
         if (cmd_arg[1] == 1) {
@@ -111,6 +270,9 @@ enmsr <- list()
 fm_gbif_f_i_c <- list()
 fm_ndop_f_i_c <- list()
 fm_all_f_i_c <- list()
+fm_gbif_f_i_cSD <- list()
+fm_ndop_f_i_cSD <- list()
+fm_all_f_i_cSD <- list()
 
 rcrs <- "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
 
@@ -257,6 +419,9 @@ for (px_size_item in px_size) {
         fm_gbif_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fm_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
         fm_ndop_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fm_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
         fm_all_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fm_all_", px_size_item, "-", cmd_arg_str, ".rds"))
+        fm_gbif_f_i_cSD <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fmSD_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
+        fm_ndop_f_i_cSD <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fmSD_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
+        fm_all_f_i_cSD <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fmSD_all_", px_size_item, "-", cmd_arg_str, ".rds"))
     }
 
     # # původní načítání rasterů prediktorů, dočasná optimalizace aby se nemusel pokaždé skrz propisovat NA hodnoty
@@ -269,7 +434,7 @@ for (px_size_item in px_size) {
             paste0("l8_6-8_", px_size_item, "_B5"),
             paste0("l8_3-5_", px_size_item, "_B4"),
             paste0("l8_3-5_", px_size_item, "_B5"),
-            paste0("l8_3-5_", px_size_item, "_MNDWI"),
+            paste0("l8_6-8_", px_size_item, "_MNDWI"), # XXX změnit na letní (původně jarní) kvůli artefaktům ze sněhu a okrajů ledovců na horách
             paste0("l8_3-5_", px_size_item, "_NDVI"),
             # paste0("l8_6-8_", px_size_item, "_NDWI"),
             paste0("wc_", px_size_item, "_bio03"),
@@ -287,10 +452,10 @@ for (px_size_item in px_size) {
         # oprava rasterů ve stacku
         raster_stack <- stack_NA_repair(raster_stack)
 
-        rr <- writeRaster(raster_stack, paste0(export_path, "/inputs/predictors/central-europe-", px_size_item, ".grd"), format = "raster")
+        rr <- writeRaster(raster_stack, paste0(export_path, "/inputs/predictors/central-europe2-", px_size_item, ".grd"), format = "raster")
         hdr(rr, format = "ENVI")
     } else {
-        raster_stack <- stack(paste0(export_path, "/inputs/predictors/central-europe-", px_size_item, ".grd"))
+        raster_stack <- stack(paste0(export_path, "/inputs/predictors/central-europe2-", px_size_item, ".grd"))
     }
 
     rcrs <- crs(raster_stack)
@@ -411,7 +576,7 @@ for (px_size_item in px_size) {
     # obrácení pořadí druhů, od nejméně početných pro urychlení prvních výsledků
 
     ptaci_intersect_distinct <- ptaci_ndop_distinct %>%
-        filter(species %in% ptaci_gbif_distinct$species) # %>% filter(species == "Mergus merganser")
+        filter(species %in% ptaci_gbif_distinct$species) # %>% filter(species == "Aquila chrysaetos")
     # %>% filter(species == "Lanius collurio") # %>% filter(species == "Aquila chrysaetos")
 
     species <- rev(ptaci_intersect_distinct$species) # přepisuju původní seznam z ndop_top
@@ -441,14 +606,16 @@ for (px_size_item in px_size) {
         gbif_f_n <- nrow(gbif_f)
         f_n <- ndop_f_n * 100 / gbif_f_n
 
-        # GBIF má cca 3.4M nálezů, NDOp cca 1.5 (poměr 0.44) - stejný poměr musí být cca dodržován kvůli použití bias rasterů u ALL varianty, které jsou tímto pomerem zkonstruované!
+        # GBIF má cca 3.4M nálezů, NDOp cca 1.5 (poměr 0.44) - stejný poměr musí být cca dodržován kvůli použití bias rasterů u ALL varianty, které jsou tímto poměrem zkonstruované!
+        # opačně to je 2.27
         ndop_all_fraction <- round(gbif_f_n * 0.44)
-
+        gbif_all_fraction <- round(ndop_f_n * 2.27)
         all2_f <- list()
         all2_f[[1]] <- all_f
-
+        fraction_used <- "X"
         if (ndop_f_n > ndop_all_fraction) {
-            # musím omezit počet záznamů v NDOP na 44%
+            fraction_used <- "NDOP"
+            # musím omezit počet záznamů v NDOP na 44% GBIFu
             if (replicates > 1) {
                 for (r in 1:replicates) {
                     # vhodné pro každou replikaci jiný náhodný vzorek z ndop
@@ -457,7 +624,24 @@ for (px_size_item in px_size) {
             } else {
                 all2_f[[1]] <- bind_rows(gbif_f, ndop_f %>% sample_n(ndop_all_fraction))
             }
+        } else {
+            fraction_used <- "XGBIF"
+            # jen pojistka, kdyby náhdou zaokrouhlením nastaly oba případy...
+            if (gbif_f_n > gbif_all_fraction) {
+                fraction_used <- "GBIF"
+                # musím omezit počet záznamů v GBIF na 227% NDOPu
+                if (replicates > 1) {
+                    for (r in 1:replicates) {
+                        # vhodné pro každou replikaci jiný náhodný vzorek z ndop
+                        all2_f[[r]] <- bind_rows(ndop_f, gbif_f %>% sample_n(gbif_all_fraction))
+                    }
+                } else {
+                    all2_f[[1]] <- bind_rows(ndop_f, gbif_f %>% sample_n(gbif_all_fraction))
+                }
+            }
         }
+
+
 
         print(paste0(sp, " -  ", nrow(ndop_f), "/", nrow(gbif_f)))
 
@@ -628,7 +812,7 @@ for (px_size_item in px_size) {
                 arrange(nms)
 
             ntt_all_5 <- ntt_all[which(ntt_all[, 2] > quantile(ntt_all$V2, probs = c(0.85))), ]
-            ntt_all_5[2, 1]
+            # ntt_all_5[2, 1]
 
 
             nt_gbif <- as_tibble(fm_gbif)
@@ -638,7 +822,7 @@ for (px_size_item in px_size) {
                 arrange(nms)
 
             ntt_gbif_5 <- ntt_gbif[which(ntt_gbif[, 2] > quantile(ntt_gbif$V2, probs = c(0.85))), ]
-            ntt_gbif_5[2, 1]
+            # ntt_gbif_5[2, 1]
 
             nt_ndop <- as_tibble(fm_ndop)
             ntt_ndop <- as_tibble(cbind(nms = names(nt_ndop), t(nt_ndop))) %>%
@@ -647,15 +831,65 @@ for (px_size_item in px_size) {
                 arrange(nms)
 
             ntt_ndop_5 <- ntt_ndop[which(ntt_ndop[, 2] > quantile(ntt_ndop$V2, probs = c(0.85))), ]
-            ntt_ndop_5[2, 1]
+            # ntt_ndop_5[2, 1]
 
 
 
             # předvýběr: který adjust koeficient má nejširší (nejvyšší B2) niku (největší heterogenitu prostředí)?
-            fm_gbif_f_i_c[[as.character(px_size_item)]][[as.character(sp)]] <- fm_gbif_c <- as.numeric(ntt_gbif_5[3, 1])
-            fm_ndop_f_i_c[[as.character(px_size_item)]][[as.character(sp)]] <- fm_ndop_c <- as.numeric(ntt_ndop_5[3, 1])
-            fm_all_f_i_c[[as.character(px_size_item)]][[as.character(sp)]] <- fm_all_c <- as.numeric(ntt_all_5[3, 1])
- 
+            fm_gbif_f_i_c[[as.character(px_size_item)]][[as.character(sp)]] <- fm_gbif_c <- as.numeric(ntt_gbif_5[2, 1])
+            fm_ndop_f_i_c[[as.character(px_size_item)]][[as.character(sp)]] <- fm_ndop_c <- as.numeric(ntt_ndop_5[2, 1])
+            fm_all_f_i_c[[as.character(px_size_item)]][[as.character(sp)]] <- fm_all_c <- as.numeric(ntt_all_5[2, 1])
+
+
+            # ## varianta s SD
+            fm_allSD <- list()
+            fm_gbifSD <- list()
+            fm_ndopSD <- list()
+            for (i in names(fm)) {
+                fm_allSD[[i]] <- cellStats(fm[[i]]$enm_mxt_all[[1]]$suitability, stat = "sd")
+                fm_gbifSD[[i]] <- cellStats(fm[[i]]$enm_mxt_gbif[[1]]$suitability, stat = "sd")
+                fm_ndopSD[[i]] <- cellStats(fm[[i]]$enm_mxt_ndop[[1]]$suitability, stat = "sd")
+            }
+
+            # rychlé orientační určení vrcholu (s lepším px_size se u ndop zdá být vždy nejlepší 0.5...)
+            ntSD_all <- as_tibble(fm_allSD)
+            nttSD_all <- as_tibble(cbind(nms = names(ntSD_all), t(ntSD_all))) %>%
+                mutate(across(V2, as.numeric)) %>%
+                mutate(across(nms, as.numeric)) %>%
+                arrange(nms)
+
+            nttSD_all_5 <- nttSD_all[which(nttSD_all[, 2] < quantile(nttSD_all$V2, probs = c(0.15))), ]
+            # nttSD_all_5[2, 1]
+
+
+            ntSD_gbif <- as_tibble(fm_gbifSD)
+            nttSD_gbif <- as_tibble(cbind(nms = names(ntSD_gbif), t(ntSD_gbif))) %>%
+                mutate(across(V2, as.numeric)) %>%
+                mutate(across(nms, as.numeric)) %>%
+                arrange(nms)
+
+            nttSD_gbif_5 <- nttSD_gbif[which(nttSD_gbif[, 2] < quantile(nttSD_gbif$V2, probs = c(0.15))), ]
+            # nttSD_gbif_5[2, 1]
+
+            ntSD_ndop <- as_tibble(fm_ndopSD)
+            nttSD_ndop <- as_tibble(cbind(nms = names(ntSD_ndop), t(ntSD_ndop))) %>%
+                mutate(across(V2, as.numeric)) %>%
+                mutate(across(nms, as.numeric)) %>%
+                arrange(nms)
+
+            nttSD_ndop_5 <- nttSD_ndop[which(nttSD_ndop[, 2] < quantile(nttSD_ndop$V2, probs = c(0.15))), ]
+            # nttSD_ndop_5[2, 1]
+
+
+
+            # předvýběr: který adjust koeficient má nejširší (nejvyšší B2) niku (největší heterogenitu prostředí)?
+            fm_gbif_f_i_cSD[[as.character(px_size_item)]][[as.character(sp)]] <- fm_gbif_cSD <- as.numeric(nttSD_gbif_5[2, 1])
+            fm_ndop_f_i_cSD[[as.character(px_size_item)]][[as.character(sp)]] <- fm_ndop_cSD <- as.numeric(nttSD_ndop_5[2, 1])
+            fm_all_f_i_cSD[[as.character(px_size_item)]][[as.character(sp)]] <- fm_all_cSD <- as.numeric(nttSD_all_5[2, 1])
+
+
+
+
 
             # # 2) podrobný individuální výběr nejmenším intervalem (0.5) v předem vybraném rozsahu z 1)
             # by <- 0.05
@@ -930,7 +1164,7 @@ for (px_size_item in px_size) {
             png(paste0(export_path, "/outputs/png/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.png"))
             plot(enm_mxt_all.r.m,
                 main = paste0(sp, " | GBIF+NDOP, AUC=", round(enm_mxt_all.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
-                sub = paste0("NDOP/GBIF: ", ndop_f_n, "/", gbif_f_n, " = ", round(f_n), "% (NDOP fraction used: ", ndop_all_fraction, ")")
+                sub = paste0("NDOP/GBIF: ", ndop_f_n, "/", gbif_f_n, " = ", round(f_n), "% (fractions: ", ndop_all_fraction, "/", gbif_all_fraction, ", used: ", fraction_used, ")")
             )
             par(bg = NA)
             plot(czechia_3035$geometry, add = TRUE)
@@ -1098,6 +1332,9 @@ for (px_size_item in px_size) {
                 species = as.character(sp),
                 ndop_c = ndop_f_n,
                 gbif_c = gbif_f_n,
+                ndop_all_fraction = ndop_all_fraction,
+                gbif_all_fraction = gbif_all_fraction,
+                fraction_used = fraction_used,
                 gbif.np.tr = enm_mxt_gbif.np.tr,
                 gbif.np.te = enm_mxt_gbif.np.te,
                 all.np.tr = enm_mxt_all.np.tr,
@@ -1233,6 +1470,12 @@ for (px_size_item in px_size) {
         fm_gbif_f_i_c <- list()
         fm_ndop_f_i_c <- list()
         fm_all_f_i_c <- list()
+        saveRDS(fm_gbif_f_i_cSD, file = paste0(export_path, "/inputs/occurrences/", alg, "_fmSD_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(fm_ndop_f_i_cSD, file = paste0(export_path, "/inputs/occurrences/", alg, "_fmSD_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(fm_all_f_i_cSD, file = paste0(export_path, "/inputs/occurrences/", alg, "_fmSD_all_", px_size_item, "-", cmd_arg_str, ".rds"))
+        fm_gbif_f_i_cSD <- list()
+        fm_ndop_f_i_cSD <- list()
+        fm_all_f_i_cSD <- list()
     }
 }
 
