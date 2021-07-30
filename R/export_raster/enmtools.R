@@ -478,15 +478,23 @@ for (px_size_item in px_size) {
     raster_stack_mask_czechia <- setMinMax(raster_stack_mask_czechia)
 
     # chci alespoň poměrově určitou část plochy jako background, ne fixních 10000, které nemusí stačit
-    nback_all <- round(ncell(raster_stack[[1]]) / 10)
-    nback_ndop <- round(ncell(raster_stack_mask_czechia[[1]]) / 10)
-    if (px_size_item > 1000 & px_size_item <= 5000) {
-        nback_all <- round(ncell(raster_stack[[1]]) / 50)
-        nback_ndop <- round(ncell(raster_stack_mask_czechia[[1]]) / 50)
+    nback_all <- round(ncell(raster_stack[[1]]))
+    nback_ndop <- round(ncell(raster_stack_mask_czechia[[1]]))
+    nback_all_10 <- round(ncell(raster_stack[[1]]) / 10)
+    nback_ndop_10 <- round(ncell(raster_stack_mask_czechia[[1]]) / 10)
+    if (nback_all > 10000) {
+        if (nback_all_10 < 10000) {
+            nback_all <- 10000
+        } else {
+            nback_all <- nback_all_10
+        }
     }
-    if (px_size_item > 5000) {
-        nback_all <- round(ncell(raster_stack[[1]]))
-        nback_ndop <- round(ncell(raster_stack_mask_czechia[[1]]))
+    if (nback_ndop > 10000) {
+        if (nback_ndop_10 < 10000) {
+            nback_ndop <- 10000
+        } else {
+            nback_ndop <- nback_ndop_10
+        }
     }
 
     if (use_bias == TRUE) {
@@ -583,9 +591,11 @@ for (px_size_item in px_size) {
     # obrácení pořadí druhů, od nejméně početných pro urychlení prvních výsledků
 
     ptaci_intersect_distinct <- ptaci_ndop_distinct %>%
-        filter(species %in% ptaci_gbif_distinct$species) %>%
-        filter(species == "Aquila chrysaetos") # %>% filter(species == "Aquila chrysaetos")
-    # %>% filter(species == "Lanius collurio") # %>% filter(species == "Hydroprogne caspia")
+        filter(species %in% ptaci_gbif_distinct$species) 
+        # %>% filter(species == "Tichodroma muraria") 
+        # %>% filter(species == "Aquila chrysaetos")
+        # %>% filter(species == "Lanius collurio") 
+        # %>% filter(species == "Hydroprogne caspia")
 
     species <- rev(ptaci_intersect_distinct$species) # přepisuju původní seznam z ndop_top
 
@@ -917,7 +927,7 @@ for (px_size_item in px_size) {
             intervals2 <- setdiff(gbif_int3, intervals)
             intervals2 <- intervals2[intervals2 >= 0.05]
             intervals2 <- intervals2[intervals2 <= 10.05]
-            intervals2 <- c(intervals2, ntt_gbif_5_u) # raději znovu přepočtu 3 nejvyšší hodnoty, kdyby šlo náhodou o extrémní úlety
+            intervals2 <- unique(c(intervals2, ntt_gbif_5_u)) # raději znovu přepočtu 3 nejvyšší hodnoty, kdyby šlo náhodou o extrémní úlety
             for (s in intervals2) {
                 bvn <- format(round(s, 2), nsmall = 2)
                 bv <- paste0("scottIso-adj-", bvn)
@@ -936,7 +946,7 @@ for (px_size_item in px_size) {
             intervals2 <- setdiff(ndop_int3, intervals)
             intervals2 <- intervals2[intervals2 >= 0.05]
             intervals2 <- intervals2[intervals2 <= 10.05]
-            intervals2 <- c(intervals2, ntt_ndop_5_u) # raději znovu přepočtu 3 nejvyšší hodnoty, kdyby šlo náhodou o extrémní úlety
+            intervals2 <- unique(c(intervals2, ntt_ndop_5_u)) # raději znovu přepočtu 3 nejvyšší hodnoty, kdyby šlo náhodou o extrémní úlety
             for (s in intervals2) {
                 bvn <- format(round(s, 2), nsmall = 2)
                 bv <- paste0("scottIso-adj-", bvn)
@@ -954,7 +964,7 @@ for (px_size_item in px_size) {
             intervals2 <- setdiff(all_int3, intervals)
             intervals2 <- intervals2[intervals2 >= 0.05]
             intervals2 <- intervals2[intervals2 <= 10.05]
-            intervals2 <- c(intervals2, ntt_all_5_u) # raději znovu přepočtu 3 nejvyšší hodnoty, kdyby šlo náhodou o extrémní úlety
+            intervals2 <- unique(c(intervals2, ntt_all_5_u)) # raději znovu přepočtu 3 nejvyšší hodnoty, kdyby šlo náhodou o extrémní úlety
             for (s in intervals2) {
                 bvn <- format(round(s, 2), nsmall = 2)
                 bv <- paste0("scottIso-adj-", bvn)
@@ -1591,7 +1601,7 @@ for (px_size_item in px_size) {
         }
         gc()
     }
-
+    gc()
     #  dev.off()
     timestamp <- round(unclass(as.POSIXct(Sys.time())))
 
