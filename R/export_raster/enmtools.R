@@ -1067,7 +1067,9 @@ for (px_size_item in px_size) {
             ###
             ###############
             print("start fitted models")
-
+            bvn_gbif <- 99.0
+            bvn_ndop <- 99.0
+            bvn_all <- 99.0
             if (use_bias) {
                 if (use_fitted_bias) {
                     bvn_gbif <- format(round(fm_gbif_f_i_c[[as.character(px_size_item)]][[as.character(sp)]], 2), nsmall = 2)
@@ -1144,7 +1146,7 @@ for (px_size_item in px_size) {
             png(paste0(export_path, "/outputs/png/", sp, "_", px_size_item, "_", pres, "_", replicates, "_gbif.png"))
             plot(enm_mxt_gbif.r.m,
                 main = paste0(sp, " | GBIF, AUC=", round(enm_mxt_gbif.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
-                sub = paste0("GBIF: ", gbif_f_n)
+                sub = paste0("GBIF: ", gbif_f_n, " | adj: ", bvn_gbif)
             )
             par(bg = NA)
             plot(czechia_3035$geometry, add = TRUE)
@@ -1220,7 +1222,7 @@ for (px_size_item in px_size) {
             png(paste0(export_path, "/outputs/png/", sp, "_", px_size_item, "_", pres, "_", replicates, "_ndop.png"))
             plot(enm_mxt_ndop.r.m,
                 main = paste0(sp, " | NDOP, AUC=", round(enm_mxt_ndop.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
-                sub = paste0("NDOP: ", ndop_f_n)
+                sub = paste0("NDOP: ", ndop_f_n, " | adj: ", bvn_ndop)
             )
             par(bg = NA)
             plot(czechia_3035$geometry, add = TRUE)
@@ -1283,7 +1285,7 @@ for (px_size_item in px_size) {
             png(paste0(export_path, "/outputs/png/", sp, "_", px_size_item, "_", pres, "_", replicates, "_all.png"))
             plot(enm_mxt_all.r.m,
                 main = paste0(sp, " | GBIF+NDOP, AUC=", round(enm_mxt_all.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
-                sub = paste0("NDOP/GBIF: ", ndop_f_n, "/", gbif_f_n, " = ", round(f_n), "% (fractions: ", ndop_all_fraction, "/", gbif_all_fraction, ", used: ", fraction_used, ")")
+                sub = paste0("NDOP/GBIF: ", ndop_f_n, "/", gbif_f_n, " = ", round(f_n), "% (", ndop_all_fraction, "/", gbif_all_fraction, ", ", fraction_used, ")", " | adj: ", bvn_all)
             )
             par(bg = NA)
             plot(czechia_3035$geometry, add = TRUE)
@@ -1311,6 +1313,17 @@ for (px_size_item in px_size) {
             ### enm_mxt_all.cal <- lapply(enm_mxt_all, enmtools.calibrate, env = raster_stack_b, n.background = 10000)
 
 
+            ### rychlá vizualizace PA map
+            png(paste0(export_path, "/outputs/png-pa/", sp, "_", px_size_item, "_", pres, "_", replicates, "_gbif.png"))
+            plot(raster.gbif, main = paste0(sp, " | GBIF, (", (px_size_item / 1000), "km)"))
+            dev.off()
+            png(paste0(export_path, "/outputs/png-pa/", sp, "_", px_size_item, "_", pres, "_", replicates, "_all.png"))
+            plot(raster.all, main = paste0(sp, " | ALL, (", (px_size_item / 1000), "km)"))
+            dev.off()
+            png(paste0(export_path, "/outputs/png-pa/", sp, "_", px_size_item, "_", pres, "_", replicates, "_ndop.png"))
+            plot(raster.ndop, main = paste0(sp, " | NDOP, (", (px_size_item / 1000), "km)"))
+            dev.off()
+            stop()
             # # # # # # # # ořezy # # # # # # # # # #
 
 
@@ -1467,6 +1480,10 @@ for (px_size_item in px_size) {
                 ndop.breadth.B2 = enm_mxt_ndop.breadth.B2,
                 all.breadth.B1 = enm_mxt_all.breadth.B1,
                 all.breadth.B2 = enm_mxt_all.breadth.B2,
+                # selected adjust
+                bv_gbif = bv_gbif,
+                bv_ndop = bv_ndop,
+                bv_all = bv_all,
                 # rbreadth dodatečné po cropu a erasu
                 gbif_crop.breadth.B1 = gbif_crop.breadth$B1,
                 gbif_crop.breadth.B2 = gbif_crop.breadth$B2,
