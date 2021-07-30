@@ -1481,9 +1481,9 @@ for (px_size_item in px_size) {
                 all.breadth.B1 = enm_mxt_all.breadth.B1,
                 all.breadth.B2 = enm_mxt_all.breadth.B2,
                 # selected adjust
-                bv_gbif = bv_gbif,
-                bv_ndop = bv_ndop,
-                bv_all = bv_all,
+                bvn_gbif = bvn_gbif,
+                bvn_ndop = bvn_ndop,
+                bvn_all = bvn_all,
                 # rbreadth dodatečné po cropu a erasu
                 gbif_crop.breadth.B1 = gbif_crop.breadth$B1,
                 gbif_crop.breadth.B2 = gbif_crop.breadth$B2,
