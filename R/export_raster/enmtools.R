@@ -1323,7 +1323,7 @@ for (px_size_item in px_size) {
             png(paste0(export_path, "/outputs/png-pa/", sp, "_", px_size_item, "_", pres, "_", replicates, "_ndop.png"))
             plot(raster.ndop, main = paste0(sp, " | NDOP, (", (px_size_item / 1000), "km)"))
             dev.off()
-            stop()
+
             # # # # # # # # ořezy # # # # # # # # # #
 
 
