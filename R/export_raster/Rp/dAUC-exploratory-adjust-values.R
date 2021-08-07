@@ -71,7 +71,6 @@ tibbleB$species %<>% as.factor
 tibbleB$dataset %<>% as.factor
 tibbleB %<>% group_by(species, px_size, dataset)
 
-
 # # následující dává smysl jen v případě vybrané JEDNÉ ideální hodnoty adjustu
 
 # # sumarizace podle px_size
@@ -83,4 +82,44 @@ tibbleB %<>% group_by(species, px_size, dataset)
 # tibbleB.species %>% summarise(across(where(is.numeric), mean))
 
 # # sumarizace zgroupovaná zároveň podle druhu a px_size
-# tibbleB %>% summarise(across(where(is.numeric), mean))
+# tibbleB %>% filter(species == "Podiceps grisegena") %>% summarise(across(where(is.numeric), max))
+# odstraním nejvyšší V2 (možný extrém) - nedělat - může být fakt nejvyšší
+
+
+t4 <- tibbleB %>%
+  filter(species == "Podiceps grisegena" & dataset == "gbif" & px_size == 5000) %>%
+  top_n(5, V2) %>%
+  top_n(-4, V2) %>%
+  arrange(V2)
+
+# odstraním nejodlehlejší nms
+t4.m <- mean(t4$nms)
+t4 %<>% arrange(nms)
+
+if (abs(t4[1, ]$nms - t4.m) < abs(t4[4, ]$nms - t4.m)) {
+  t3 <- t4[-4, ]
+} else {
+  t3 <- t4[-1, ]
+}
+
+
+t5 <- tibbleB %>%
+  filter(species == "Podiceps grisegena" & dataset == "gbif" & px_size == 2000) %>%
+  top_n(5, V2) %>%
+  arrange(nms)
+t3 <- t5[-c(1, 5), ]
+median(t3$nms)
+
+#
+
+tibbleB %>%
+  filter(species == "Podiceps grisegena") %>%
+  summarise(max(V2))
+
+
+tibbleB %>%
+  top_n(5, V2) %>%
+  summarise(median(V2))
+
+pg.g <- tibbleB %>% filter(species == "Podiceps grisegena" & dataset == "gbif" & px_size == 10000)
+pg.a <- tibbleB %>% filter(species == "Podiceps grisegena" & dataset == "all" & px_size == 10000)
