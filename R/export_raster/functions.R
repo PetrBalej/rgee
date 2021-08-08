@@ -389,6 +389,8 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
     enm_mxt_gbif.breadth <- lapply(enm_mxt_gbif, raster.breadth)
     enm_mxt_gbif.breadth.B1 <- mean(sapply(enm_mxt_gbif.breadth, function(x) x$B1))
     enm_mxt_gbif.breadth.B2 <- mean(sapply(enm_mxt_gbif.breadth, function(x) x$B2))
+    # enm_mxt_gbif.breadth.B1.md <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B1))
+    # enm_mxt_gbif.breadth.B2.md <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B2))
   }
 
   ###
@@ -453,6 +455,8 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
     enm_mxt_ndop.breadth <- lapply(enm_mxt_ndop, raster.breadth)
     enm_mxt_ndop.breadth.B1 <- mean(sapply(enm_mxt_ndop.breadth, function(x) x$B1))
     enm_mxt_ndop.breadth.B2 <- mean(sapply(enm_mxt_ndop.breadth, function(x) x$B2))
+    # enm_mxt_ndop.breadth.B1.md <- median(sapply(enm_mxt_ndop.breadth, function(x) x$B1))
+    # enm_mxt_ndop.breadth.B2.md <- median(sapply(enm_mxt_ndop.breadth, function(x) x$B2))
   }
 
   ###
@@ -516,6 +520,8 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
     enm_mxt_all.breadth <- lapply(enm_mxt_all, raster.breadth)
     enm_mxt_all.breadth.B1 <- mean(sapply(enm_mxt_all.breadth, function(x) x$B1))
     enm_mxt_all.breadth.B2 <- mean(sapply(enm_mxt_all.breadth, function(x) x$B2))
+    # enm_mxt_all.breadth.B1.md <- median(sapply(enm_mxt_all.breadth, function(x) x$B1))
+    # enm_mxt_all.breadth.B2.md <- median(sapply(enm_mxt_all.breadth, function(x) x$B2))
   }
 
   if (breadth_only) {
@@ -523,13 +529,22 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
       enm_mxt_gbif.breadth.B1 = enm_mxt_gbif.breadth.B1, enm_mxt_gbif.breadth.B2 = enm_mxt_gbif.breadth.B2,
       enm_mxt_ndop.breadth.B1 = enm_mxt_ndop.breadth.B1, enm_mxt_ndop.breadth.B2 = enm_mxt_ndop.breadth.B2,
       enm_mxt_all.breadth.B1 = enm_mxt_all.breadth.B1, enm_mxt_all.breadth.B2 = enm_mxt_all.breadth.B2
+
+      # enm_mxt_gbif.breadth.B1.md = enm_mxt_gbif.breadth.B1.md, enm_mxt_gbif.breadth.B2.md = enm_mxt_gbif.breadth.B2.md,
+      # enm_mxt_ndop.breadth.B1.md = enm_mxt_ndop.breadth.B1.md, enm_mxt_ndop.breadth.B2.md = enm_mxt_ndop.breadth.B2.md,
+      # enm_mxt_all.breadth.B1.md = enm_mxt_all.breadth.B1.md, enm_mxt_all.breadth.B2.md = enm_mxt_all.breadth.B2.md
     ))
   } else {
     return(list(
       enm_mxt_gbif = enm_mxt_gbif, enm_mxt_ndop = enm_mxt_ndop, enm_mxt_all = enm_mxt_all,
+
       enm_mxt_gbif.breadth.B1 = enm_mxt_gbif.breadth.B1, enm_mxt_gbif.breadth.B2 = enm_mxt_gbif.breadth.B2,
       enm_mxt_ndop.breadth.B1 = enm_mxt_ndop.breadth.B1, enm_mxt_ndop.breadth.B2 = enm_mxt_ndop.breadth.B2,
       enm_mxt_all.breadth.B1 = enm_mxt_all.breadth.B1, enm_mxt_all.breadth.B2 = enm_mxt_all.breadth.B2
+
+      # enm_mxt_gbif.breadth.B1.md = enm_mxt_gbif.breadth.B1.md, enm_mxt_gbif.breadth.B2.md = enm_mxt_gbif.breadth.B2.md,
+      # enm_mxt_ndop.breadth.B1.md = enm_mxt_ndop.breadth.B1.md, enm_mxt_ndop.breadth.B2.md = enm_mxt_ndop.breadth.B2.md,
+      # enm_mxt_all.breadth.B1.md = enm_mxt_all.breadth.B1.md, enm_mxt_all.breadth.B2.md = enm_mxt_all.breadth.B2.md
     ))
   }
 }
@@ -551,13 +566,13 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
 #         fm_ndop_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/fm_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
 #         fm_all_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/fm_all_", px_size_item, "-", cmd_arg_str, ".rds"))
 
-#       ndop_df <- as_tibble(fm_ndop_f_i_c$`5000`) 
+#       ndop_df <- as_tibble(fm_ndop_f_i_c$`5000`)
 #        print(as_tibble(cbind(nms = names(ndop_df ), t(ndop_df ))) %>% mutate(across(V2, as.numeric)) %>% arrange(V2), n = 100)
 
 
-#       all_df <- as_tibble(fm_all_f_i_c$`5000`) 
+#       all_df <- as_tibble(fm_all_f_i_c$`5000`)
 #         print(as_tibble(cbind(nms = names(all_df ), t(all_df )))  %>% mutate(across(V2, as.numeric)) %>% arrange(V2), n = 100)
 
 
-#       gbif_df <- as_tibble(fm_gbif_f_i_c$`5000`) 
+#       gbif_df <- as_tibble(fm_gbif_f_i_c$`5000`)
 #         print(as_tibble(cbind(nms = names(gbif_df ), t(gbif_df)))  %>% mutate(across(V2, as.numeric)) %>% arrange(V2), n = 100)

@@ -20,8 +20,8 @@ export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
 alg <- "glm" # "glm" "maxent" "gam"
 px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
 replicates <- 1 # 4 pro checkerboard2 (4foldy)
-pref <- "_BFitXXXglm_" # předpona png obrázků s predikcí a dalších outputů / OWNPFr /// _OF-ps80_ BFit
-test.prop <- 0.3 # "block" "checkerboard2" 0.3
+pref <- "_BFitA_" # předpona png obrázků s predikcí a dalších outputů / OWNPFr /// _OF-ps80_ BFit
+test.prop <- 0.3 # "block" "checkerboard2" 0.3; pro bias fitting 0.0 - manuálně pro jistotu přehazuju ještě přímo na místě!!!
 generate_predictor_raster <- FALSE
 generate_bias_raster <- FALSE # pokud je TRUE, tak jen generuje bias rastery a vše ostatní modelování přeskočí - nutné volat celkově (ne s parametrem pro rozdělení na 4 skupiny druhů!!!)
 adjust <- 0.65
@@ -45,6 +45,7 @@ use_fitted_bias <- FALSE
 #  "C:\Program Files\R\R-4.0.5\bin\Rscript.exe" "G:\balej\iga\rgee\R\export_raster\enmtools.R" 1
 #  Rtools https://cran.r-project.org/bin/windows/Rtools/
 #  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtools.R", encoding = "UTF-8")
+#  source("D:/balej/rgee/R/export_raster/enmtools.R", encoding = "UTF-8")
 
 # install_github("jamiemkass/ENMeval", force = TRUE, ref="Version-0.3.1") ### nutná tato verze pro funkčnost v ENMToolsPB!!!!!
 
@@ -291,6 +292,15 @@ blocks_erased_cz <- st_read(paste0(wd, "/shp/blocks_erased_cz.shp"))
 # ČR
 czechia <- st_read(paste0(wd, "/shp/ne_10m_admin_0_countries/czechia/cz_3035.shp"))
 
+countries <- st_read(paste0(wd, "/shp/ne_10m_admin_0_countries/ne_10m_admin_0_countries_3035.shp"))
+
+places <- st_read(paste0(wd, "/shp/ne_10m_populated_places_simple/ne_10m_populated_places_simple_3035.shp"))
+places_cz <- st_read(paste0(wd, "/shp/ne_10m_populated_places_simple/ne_10m_populated_places_simple_3035_cz.shp"))
+
+rivers <- st_read(paste0(wd, "/shp/ne_10m_rivers_lake_centerlines/ne_10m_rivers_lake_centerlines_3035.shp"))
+rivers_cz <- st_read(paste0(wd, "/shp/ne_10m_rivers_lake_centerlines/ne_10m_rivers_lake_centerlines_3035_cz.shp"))
+
+
 # reálně se tím řídit nemusím, neodpovídá to reálnému počtu záznamů použitých do modelů, jen pomocná metrika?
 # ndop_top <- ndop_top(paste0(getwd(), "/rgee/species/ndop/ndop-top-2021-03-21.xlsx"))
 # species <- ndop_top %>%
@@ -420,7 +430,7 @@ if (trans_coords == TRUE) {
 # enms <- list()
 start_time <- Sys.time()
 for (px_size_item in px_size) {
-    pres <- paste0(alg, pref, px_size_item, cmd_arg_str)
+    pres <- paste0(alg, pref, px_size_item, cmd_arg_str) # pres <- paste0(px_size_item, "_", pref, "_", alg, "_", cmd_arg_str)
 
     if (eval == TRUE & use_fitted_bias == TRUE & generate_bias_raster == FALSE) {
         fm_gbif_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fm_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
@@ -456,13 +466,37 @@ for (px_size_item in px_size) {
             return(paste0(rasters_path, x, ".tif"))
         }, rasters_path = rasters_path)
         raster_stack <- stack(lapply(vif5sapply, raster::raster))
+
+        raster_stack_ce <- crop(raster_stack, extent(blocks_3035))
+        raster_stack_mask_ce <- mask(raster_stack_ce, blocks_3035)
+        raster_stack_mask_ce <- setMinMax(raster_stack_mask_ce)
+        raster_stack <- raster_stack_mask_ce
         # oprava rasterů ve stacku
         raster_stack <- stack_NA_repair(raster_stack)
 
-        rr <- writeRaster(raster_stack, paste0(export_path, "/inputs/predictors/central-europe2-", px_size_item, ".grd"), format = "raster")
+        rr <- writeRaster(raster_stack, paste0(export_path, "/inputs/predictors/central-europe3-", px_size_item, ".grd"), format = "raster")
+        hdr(rr, format = "ENVI")
+
+        # # ořez původního raster_stack na skutečný extent - nebude to brzdit??? - předořezat
+        # raster_stack_ce <- crop(raster_stack, extent(blocks_3035))
+        # raster_stack_mask_ce <- mask(raster_stack_ce, blocks_3035)
+        # raster_stack_mask_ce <- setMinMax(raster_stack_mask_ce)
+        # raster_stack <- raster_stack_mask_ce
+        # # oprava rasterů ve stacku
+        # raster_stack <- stack_NA_repair(raster_stack)
+        # rr <- writeRaster(raster_stack, paste0(export_path, "/inputs/predictors/central-europe3-", px_size_item, ".grd"), format = "raster")
+        # hdr(rr, format = "ENVI")
+
+        # ořez původního raster_stack na ČR pro lokální SDM
+        raster_stack_crop <- crop(raster_stack, extent(czechia_3035))
+        raster_stack_mask_czechia <- mask(raster_stack_crop, czechia_3035)
+        raster_stack_mask_czechia <- setMinMax(raster_stack_mask_czechia)
+        raster_stack_mask_czechia <- stack_NA_repair(raster_stack_mask_czechia)
+        rr <- writeRaster(raster_stack_mask_czechia, paste0(export_path, "/inputs/predictors/czechia3-", px_size_item, ".grd"), format = "raster")
         hdr(rr, format = "ENVI")
     } else {
-        raster_stack <- stack(paste0(export_path, "/inputs/predictors/central-europe2-", px_size_item, ".grd"))
+        raster_stack <- stack(paste0(export_path, "/inputs/predictors/central-europe3-", px_size_item, ".grd"))
+        raster_stack_mask_czechia <- stack(paste0(export_path, "/inputs/predictors/czechia3-", px_size_item, ".grd"))
     }
 
     rcrs <- crs(raster_stack)
@@ -472,10 +506,13 @@ for (px_size_item in px_size) {
     blocks_erased_cz_3035 <- blocks_erased_cz %>% st_transform(rcrs)
     czechia_3035 <- czechia %>% st_transform(rcrs)
 
-    # ořez původního raster_stack na ČR pro lokální SDM
-    raster_stack_crop <- crop(raster_stack, extent(czechia_3035))
-    raster_stack_mask_czechia <- mask(raster_stack_crop, czechia_3035)
-    raster_stack_mask_czechia <- setMinMax(raster_stack_mask_czechia)
+    countries_3035 <- countries %>% st_transform(rcrs)
+
+    places_3035 <- places %>% st_transform(rcrs)
+    places_cz_3035 <- places_cz %>% st_transform(rcrs)
+
+    rivers_3035 <- rivers %>% st_transform(rcrs)
+    rivers_cz_3035 <- rivers_cz %>% st_transform(rcrs)
 
     # chci alespoň poměrově určitou část plochy jako background, ne fixních 10000, které nemusí stačit
     nback_all <- round(ncell(raster_stack[[1]]))
@@ -495,6 +532,14 @@ for (px_size_item in px_size) {
         } else {
             nback_ndop <- nback_ndop_10
         }
+    }
+
+    # nad 100000 BG nejdu, trvá extrémně dlouho
+    if (nback_all > 100000) {
+        nback_all <- 100000
+    }
+    if (nback_ndop > 100000) {
+        nback_ndop <- 100000
     }
 
     if (use_bias == TRUE) {
@@ -518,7 +563,7 @@ for (px_size_item in px_size) {
             ndop_ppp <- ppp(ndop_coords[, 1], ndop_coords[, 2], window = ow_ndop)
 
 
-            adj_prep <- seq(0.05, 10.05, by = 0.10)
+            adj_prep <- seq(0.05, 1.00, by = 0.10)
             # adj_prep <- adj_prep[round((adj_prep * 10), digits = 3) %% 0.5 != 0] # XXX jen dočasná úprava aby se negenerovaly znovu tytéž adjusty, možno pak odstranit
 
 
@@ -539,7 +584,7 @@ for (px_size_item in px_size) {
                 # dens <- kde2d(gbif_coords[,1], gbif_coords[,2], n = c(nrow(raster_stack[[1]]), ncol(raster_stack[[1]])))  # chcípne na nedostatek paměti (už při 1000m)
                 # https://vita.had.co.nz/papers/density-estimation.pdf
 
-                writeRaster(bias_gbif, paste0(export_path, "/inputs/bias_rasters/Xbias_gbif-density-", generate_bias_raster_version, "-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
+                writeRaster(bias_gbif, paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", generate_bias_raster_version, "-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
 
                 # gbif_coords <- st_coordinates(cci_gbif_3035)
                 # gbif_dens <- bkde2D(gbif_coords[, ncol(gbif_coords):1], bandwidth = c(dpik(gbif_coords[, 1], gridsize = nrow(raster_stack[[1]])), dpik(gbif_coords[, 2], gridsize = ncol(raster_stack[[1]]))), gridsize = c(nrow(raster_stack[[1]]), ncol(raster_stack[[1]])))
@@ -550,7 +595,7 @@ for (px_size_item in px_size) {
                 # r.max <- maxValue(bias_gbif)
                 # bias_gbif <- ((bias_gbif - r.min) / (r.max - r.min))
                 # bias_gbif <- raster::setMinMax(bias_gbif)
-                # writeRaster(bias_gbif, paste0(export_path, "/inputs/bias_rasters/Xbias_gbif-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
+                # writeRaster(bias_gbif, paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
 
 
                 # ppp <- rescale(ppp, 10, "km")
@@ -559,7 +604,7 @@ for (px_size_item in px_size) {
                 r.max <- maxValue(bias_all)
                 bias_all <- ((bias_all - r.min) / (r.max - r.min))
                 crs(bias_all) <- rcrs
-                writeRaster(bias_all, paste0(export_path, "/inputs/bias_rasters/Xbias_all-density-", generate_bias_raster_version, "-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
+                writeRaster(bias_all, paste0(export_path, "/inputs/bias_rasters2/Xbias_all-density-", generate_bias_raster_version, "-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
 
                 # ppp <- rescale(ppp, 10, "km")
                 bias_ndop <- resample(raster(density.ppp(ndop_ppp, sigma = bw.scott.iso(ndop_ppp), adjust = adjust)), raster_stack_mask_czechia[[1]], method = "bilinear")
@@ -567,14 +612,14 @@ for (px_size_item in px_size) {
                 r.max <- maxValue(bias_ndop)
                 bias_ndop <- ((bias_ndop - r.min) / (r.max - r.min))
                 crs(bias_ndop) <- rcrs
-                writeRaster(bias_ndop, paste0(export_path, "/inputs/bias_rasters/Xbias_ndop-density-", generate_bias_raster_version, "-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
+                writeRaster(bias_ndop, paste0(export_path, "/inputs/bias_rasters2/Xbias_ndop-density-", generate_bias_raster_version, "-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
             }
 
             next
         } else {
-            bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_gbif-density-", generate_bias_raster_version, "-", px_size_item, ".tif"))
-            bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_ndop-density-", generate_bias_raster_version, "-", px_size_item, ".tif"))
-            bias_all <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_all-density-", generate_bias_raster_version, "-", px_size_item, ".tif"))
+            bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", generate_bias_raster_version, "-", px_size_item, ".tif"))
+            bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_ndop-density-", generate_bias_raster_version, "-", px_size_item, ".tif"))
+            bias_all <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_all-density-", generate_bias_raster_version, "-", px_size_item, ".tif"))
         }
     } else {
         bias_gbif <- NA
@@ -591,11 +636,13 @@ for (px_size_item in px_size) {
     # obrácení pořadí druhů, od nejméně početných pro urychlení prvních výsledků
 
     ptaci_intersect_distinct <- ptaci_ndop_distinct %>%
-        filter(species %in% ptaci_gbif_distinct$species) 
-        # %>% filter(species == "Tichodroma muraria") 
-        # %>% filter(species == "Aquila chrysaetos")
-        # %>% filter(species == "Lanius collurio") 
-        # %>% filter(species == "Hydroprogne caspia")
+        filter(species %in% ptaci_gbif_distinct$species)
+    # %>% filter(species == "Larus argentatus")
+    # %>% filter(species == "Emberiza calandra")
+    # %>% filter(species == "Podiceps grisegena")
+    # %>% filter(species == "Aquila chrysaetos")
+    # %>% filter(species == "Lanius collurio")
+    # %>% filter(species == "Hydroprogne caspia")
 
     species <- rev(ptaci_intersect_distinct$species) # přepisuju původní seznam z ndop_top
 
@@ -777,20 +824,25 @@ for (px_size_item in px_size) {
 
 
         if (eval == FALSE) {
+            test.prop <- 0.0 # pro jistotu manuální přepis proměnné, nasazení podílu testovacích nálezů se totiž mění při jednotlivých adjustech -> nestabilní
             gc()
-            intervals <- c(
-                c(0.05, 0.15, 0.30, 0.40, 0.50),
-                seq(0.55, 1.00, by = 0.05),
-                seq(1.10, 1.50, by = 0.1),
-                seq(2.05, 8.05, by = 1.00)
-            )
+            # intervals <- c(
+            #     c(0.05, 0.15, 0.30, 0.40, 0.50),
+            #     seq(0.55, 1.00, by = 0.05),
+            #     seq(1.10, 1.50, by = 0.1),
+            #     seq(2.05, 8.05, by = 1.00)
+            # )
+            # intervals <- c(0.7, 0.75, 0.79, 0.85, 1.1, 1.7)
+
+            intervals <- seq(0.05, 1.00, by = 0.05)
+
             # intervals <- c(
             #     seq(0.55, 2.05, by = 0.50)
             # )
             # výběr ideální raster.breadth, vygenerování seznamu ideálních bias rasterů pro každý druh a pixel size
 
             # 1) základní předvýběr s větším intervalem (by)
-            by <- 0.50
+
             fm <- list()
             for (s in intervals) { # seq(0.05, 10.05, by = by)
                 # počítám pouze neokrajové hodnoty
@@ -799,20 +851,63 @@ for (px_size_item in px_size) {
                 bvn <- format(round(s, 2), nsmall = 2)
                 bv <- paste0("scottIso-adj-", bvn)
                 ### volání / fitování modelů
-                bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"))
-                bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_ndop-density-", bv, "-", px_size_item, ".tif"))
-                bias_all <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_all-density-", bv, "-", px_size_item, ".tif"))
+                bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"))
+                bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_ndop-density-", bv, "-", px_size_item, ".tif"))
+                bias_all <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_all-density-", bv, "-", px_size_item, ".tif"))
 
-                fm[[bvn]] <- fit_models(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = FALSE)
+                fm[[bvn]] <- fit_models(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE)
+
+                # print(s)
+                # print("ořez NDOP")
+                #                 bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_ndop-density-", bv, "-", px_size_item, ".tif"))
+                #     # ořez původního raster_stack na skutečný extent - nebude to brzdit??? - předořezat
+                #     raster_stack_ce <- crop(bias_ndop, extent(czechia_3035))
+                #     raster_stack_mask_ce <- mask(raster_stack_ce, czechia_3035)
+                #     raster_stack_mask_ce <- setMinMax(raster_stack_mask_ce)
+                #     bias_ndop <- raster_stack_mask_ce
+                #     # oprava rasterů ve stacku
+
+                #     writeRaster(bias_ndop, paste0(export_path, "/inputs/bias_rasters22/Xbias_ndop-density-", bv, "-", px_size_item, ".tif"), format = "GTiff")
+
+
+                # print("ořez GBIF")
+                #                 bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"))
+                #     # ořez původního raster_stack na skutečný extent - nebude to brzdit??? - předořezat
+                #     raster_stack_ce <- crop(bias_gbif, extent(blocks_3035))
+                #     raster_stack_mask_ce <- mask(raster_stack_ce, blocks_3035)
+                #     raster_stack_mask_ce <- setMinMax(raster_stack_mask_ce)
+                #     bias_gbif <- raster_stack_mask_ce
+                #     # oprava rasterů ve stacku
+
+                #     writeRaster(bias_gbif, paste0(export_path, "/inputs/bias_rasters22/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"), format = "GTiff")
+
+                # print("ořez ALL")
+                #                 bias_all <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_all-density-", bv, "-", px_size_item, ".tif"))
+                #     # ořez původního raster_stack na skutečný extent - nebude to brzdit??? - předořezat
+                #     raster_stack_ce <- crop(bias_all, extent(blocks_3035))
+                #     raster_stack_mask_ce <- mask(raster_stack_ce, blocks_3035)
+                #     raster_stack_mask_ce <- setMinMax(raster_stack_mask_ce)
+                #     bias_all <- raster_stack_mask_ce
+                #     # oprava rasterů ve stacku
+
+                #     writeRaster(bias_all, paste0(export_path, "/inputs/bias_rasters22/Xbias_all-density-", bv, "-", px_size_item, ".tif"), format = "GTiff")
             }
 
             fm_all <- list()
             fm_gbif <- list()
             fm_ndop <- list()
+
+            # fm_all.md <- list()
+            # fm_gbif.md <- list()
+            # fm_ndop.md <- list()
             for (i in names(fm)) {
                 fm_all[[i]] <- fm[[i]]$enm_mxt_all.breadth.B2
                 fm_gbif[[i]] <- fm[[i]]$enm_mxt_gbif.breadth.B2
                 fm_ndop[[i]] <- fm[[i]]$enm_mxt_ndop.breadth.B2
+
+                # fm_all.md[[i]] <- fm[[i]]$enm_mxt_all.breadth.B2.md
+                # fm_gbif.md[[i]] <- fm[[i]]$enm_mxt_gbif.breadth.B2.md
+                # fm_ndop.md[[i]] <- fm[[i]]$enm_mxt_ndop.breadth.B2.md
             }
 
 
@@ -840,7 +935,7 @@ for (px_size_item in px_size) {
                 arrange(nms)
 
             # quantile - výsledný počet prvků závislý na výchozím počtu prvků!
-            ntt_all_5 <- ntt_all[which(ntt_all[, 2] > quantile(ntt_all$V2, probs = c(0.90))), ]
+            ntt_all_5 <- ntt_all %>% slice_max(V2, n = 1)
             # ntt_all_5[2, 1]
             # ntt_all_31 <- ntt_all_5[3,1] - ntt_all_5[1,1]
             # ntt_all_32 <- ntt_all_5[3,1] - ntt_all_5[2,1]
@@ -852,7 +947,7 @@ for (px_size_item in px_size) {
                 mutate(across(nms, as.numeric)) %>%
                 arrange(nms)
 
-            ntt_gbif_5 <- ntt_gbif[which(ntt_gbif[, 2] > quantile(ntt_gbif$V2, probs = c(0.90))), ]
+            ntt_gbif_5 <- ntt_gbif %>% slice_max(V2, n = 1)
             # ntt_gbif_5[2, 1]
 
             nt_ndop <- as_tibble(fm_ndop)
@@ -861,8 +956,41 @@ for (px_size_item in px_size) {
                 mutate(across(nms, as.numeric)) %>%
                 arrange(nms)
 
-            ntt_ndop_5 <- ntt_ndop[which(ntt_ndop[, 2] > quantile(ntt_ndop$V2, probs = c(0.90))), ]
+            ntt_ndop_5 <- ntt_ndop %>% slice_max(V2, n = 1)
             # ntt_ndop_5[2, 1]
+
+
+            # # ### MEDIAN rychlé orientační určení vrcholu (s lepším px_size se u ndop zdá být vždy nejlepší 0.5...)
+            # nt_all.md <- as_tibble(fm_all.md)
+            # ntt_all.md <- as_tibble(cbind(nms = names(nt_all.md), t(nt_all.md))) %>%
+            #     mutate(across(V2, as.numeric)) %>%
+            #     mutate(across(nms, as.numeric)) %>%
+            #     arrange(nms)
+
+            # # quantile - výsledný počet prvků závislý na výchozím počtu prvků!
+            # ntt_all_5.md <- ntt_all.md[which(ntt_all.md[, 2] > quantile(ntt_all.md$V2, probs = c(0.90))), ]
+            # # ntt_all_5[2, 1]
+            # # ntt_all_31 <- ntt_all_5[3,1] - ntt_all_5[1,1]
+            # # ntt_all_32 <- ntt_all_5[3,1] - ntt_all_5[2,1]
+            # # ntt_all_21 <- ntt_all_5[2,1] - ntt_all_5[1,1]
+
+            # nt_gbif.md <- as_tibble(fm_gbif.md)
+            # ntt_gbif.md <- as_tibble(cbind(nms = names(nt_gbif.md), t(nt_gbif.md))) %>%
+            #     mutate(across(V2, as.numeric)) %>%
+            #     mutate(across(nms, as.numeric)) %>%
+            #     arrange(nms)
+
+            # ntt_gbif_5.md <- ntt_gbif.md[which(ntt_gbif.md[, 2] > quantile(ntt_gbif.md$V2, probs = c(0.90))), ]
+            # # ntt_gbif_5[2, 1]
+
+            # nt_ndop.md <- as_tibble(fm_ndop.md)
+            # ntt_ndop.md <- as_tibble(cbind(nms = names(nt_ndop.md), t(nt_ndop.md))) %>%
+            #     mutate(across(V2, as.numeric)) %>%
+            #     mutate(across(nms, as.numeric)) %>%
+            #     arrange(nms)
+
+            # ntt_ndop_5.md <- ntt_ndop.md[which(ntt_ndop.md[, 2] > quantile(ntt_ndop.md$V2, probs = c(0.90))), ]
+            # # ntt_ndop_5[2, 1]
 
 
 
@@ -873,15 +1001,9 @@ for (px_size_item in px_size) {
 
             gbif_int3 <- c()
             for (u in ntt_gbif_5_u) {
-                if (u <= 1) {
-                    by <- 0.02
-                    # GBIF
-                    gbif_int3 <- c(gbif_int3, seq(u - (by * 2), u + (by * 2), by = by))
-                } else {
-                    by <- 0.25
-                    # GBIF
-                    gbif_int3 <- c(gbif_int3, seq(u - (by * 2), u + (by * 2), by = by))
-                }
+                by <- 0.01
+                # GBIF
+                gbif_int3 <- c(gbif_int3, seq(u - (by * 4), u + (by * 4), by = by))
             }
             gbif_int3 <- unique(gbif_int3)
 
@@ -890,15 +1012,9 @@ for (px_size_item in px_size) {
 
             ndop_int3 <- c()
             for (u in ntt_ndop_5_u) {
-                if (u <= 1) {
-                    by <- 0.02
-                    # ndop
-                    ndop_int3 <- c(ndop_int3, seq(u - (by * 2), u + (by * 2), by = by))
-                } else {
-                    by <- 0.25
-                    # ndop
-                    ndop_int3 <- c(ndop_int3, seq(u - (by * 2), u + (by * 2), by = by))
-                }
+                by <- 0.01
+                # ndop
+                ndop_int3 <- c(ndop_int3, seq(u - (by * 4), u + (by * 4), by = by))
             }
             ndop_int3 <- unique(ndop_int3)
 
@@ -907,15 +1023,9 @@ for (px_size_item in px_size) {
 
             all_int3 <- c()
             for (u in ntt_all_5_u) {
-                if (u <= 1) {
-                    by <- 0.02
-                    # all
-                    all_int3 <- c(all_int3, seq(u - (by * 2), u + (by * 2), by = by))
-                } else {
-                    by <- 0.25
-                    # all
-                    all_int3 <- c(all_int3, seq(u - (by * 2), u + (by * 2), by = by))
-                }
+                by <- 0.01
+                # all
+                all_int3 <- c(all_int3, seq(u - (by * 4), u + (by * 4), by = by))
             }
             all_int3 <- unique(all_int3)
 
@@ -926,15 +1036,15 @@ for (px_size_item in px_size) {
 
             intervals2 <- setdiff(gbif_int3, intervals)
             intervals2 <- intervals2[intervals2 >= 0.05]
-            intervals2 <- intervals2[intervals2 <= 10.05]
-            intervals2 <- unique(c(intervals2, ntt_gbif_5_u)) # raději znovu přepočtu 3 nejvyšší hodnoty, kdyby šlo náhodou o extrémní úlety
+            intervals2 <- intervals2[intervals2 <= 1.00]
+            # intervals2 <- unique(c(intervals2, ntt_gbif_5_u)) # raději znovu přepočtu 3 nejvyšší hodnoty, kdyby šlo náhodou o extrémní úlety
             for (s in intervals2) {
                 bvn <- format(round(s, 2), nsmall = 2)
                 bv <- paste0("scottIso-adj-", bvn)
                 ### volání / fitování modelů
-                if (file.exists(paste0(export_path, "/inputs/bias_rasters/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"))) {
+                if (file.exists(paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"))) {
                     print(paste0("2nd level GBIF --- scottIso-adj-", format(round(s, 2), nsmall = 2)))
-                    bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"))
+                    bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"))
                     fm_gbif_f[[bvn]] <- fit_models(alg, replicates, eval, test.prop, enm_mxt_gbif.s, NA, NA, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE)
                 }
             }
@@ -945,15 +1055,15 @@ for (px_size_item in px_size) {
 
             intervals2 <- setdiff(ndop_int3, intervals)
             intervals2 <- intervals2[intervals2 >= 0.05]
-            intervals2 <- intervals2[intervals2 <= 10.05]
-            intervals2 <- unique(c(intervals2, ntt_ndop_5_u)) # raději znovu přepočtu 3 nejvyšší hodnoty, kdyby šlo náhodou o extrémní úlety
+            intervals2 <- intervals2[intervals2 <= 1.00]
+            # intervals2 <- unique(c(intervals2, ntt_ndop_5_u)) # raději znovu přepočtu 3 nejvyšší hodnoty, kdyby šlo náhodou o extrémní úlety
             for (s in intervals2) {
                 bvn <- format(round(s, 2), nsmall = 2)
                 bv <- paste0("scottIso-adj-", bvn)
                 ### volání / fitování modelů
-                if (file.exists(paste0(export_path, "/inputs/bias_rasters/Xbias_ndop-density-", bv, "-", px_size_item, ".tif"))) {
+                if (file.exists(paste0(export_path, "/inputs/bias_rasters2/Xbias_ndop-density-", bv, "-", px_size_item, ".tif"))) {
                     print(paste0("2nd level NDOP --- scottIso-adj-", format(round(s, 2), nsmall = 2)))
-                    bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_ndop-density-", bv, "-", px_size_item, ".tif"))
+                    bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_ndop-density-", bv, "-", px_size_item, ".tif"))
                     fm_ndop_f[[bvn]] <- fit_models(alg, replicates, eval, test.prop, NA, enm_mxt_ndop.s, NA, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE)
                 }
             }
@@ -963,15 +1073,15 @@ for (px_size_item in px_size) {
 
             intervals2 <- setdiff(all_int3, intervals)
             intervals2 <- intervals2[intervals2 >= 0.05]
-            intervals2 <- intervals2[intervals2 <= 10.05]
-            intervals2 <- unique(c(intervals2, ntt_all_5_u)) # raději znovu přepočtu 3 nejvyšší hodnoty, kdyby šlo náhodou o extrémní úlety
+            intervals2 <- intervals2[intervals2 <= 1.00]
+            # intervals2 <- unique(c(intervals2, ntt_all_5_u)) # raději znovu přepočtu 3 nejvyšší hodnoty, kdyby šlo náhodou o extrémní úlety
             for (s in intervals2) {
                 bvn <- format(round(s, 2), nsmall = 2)
                 bv <- paste0("scottIso-adj-", bvn)
                 ### volání / fitování modelů
-                if (file.exists(paste0(export_path, "/inputs/bias_rasters/Xbias_all-density-", bv, "-", px_size_item, ".tif"))) {
+                if (file.exists(paste0(export_path, "/inputs/bias_rasters2/Xbias_all-density-", bv, "-", px_size_item, ".tif"))) {
                     print(paste0("2nd level ALL --- scottIso-adj-", format(round(s, 2), nsmall = 2)))
-                    bias_all <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_all-density-", bv, "-", px_size_item, ".tif"))
+                    bias_all <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_all-density-", bv, "-", px_size_item, ".tif"))
                     fm_all_f[[bvn]] <- fit_models(alg, replicates, eval, test.prop, NA, NA, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE)
                 }
             }
@@ -999,7 +1109,7 @@ for (px_size_item in px_size) {
                 arrange(nms)
 
             # quantile - výsledný počet prvků závislý na výchozím počtu prvků!
-            ntt_all_5 <- ntt_all[which(ntt_all[, 2] > quantile(ntt_all$V2, probs = c(0.92))), ]
+            ntt_all_5 <- ntt_all %>% slice_max(V2, n = 1)
             # ntt_all_5[2, 1]
             # ntt_all_31 <- ntt_all_5[3,1] - ntt_all_5[1,1]
             # ntt_all_32 <- ntt_all_5[3,1] - ntt_all_5[2,1]
@@ -1011,7 +1121,7 @@ for (px_size_item in px_size) {
                 mutate(across(nms, as.numeric)) %>%
                 arrange(nms)
 
-            ntt_gbif_5 <- ntt_gbif[which(ntt_gbif[, 2] > quantile(ntt_gbif$V2, probs = c(0.92))), ]
+            ntt_gbif_5 <- ntt_gbif %>% slice_max(V2, n = 1)
             # ntt_gbif_5[2, 1]
 
             nt_ndop <- as_tibble(fm_ndop)
@@ -1020,7 +1130,7 @@ for (px_size_item in px_size) {
                 mutate(across(nms, as.numeric)) %>%
                 arrange(nms)
 
-            ntt_ndop_5 <- ntt_ndop[which(ntt_ndop[, 2] > quantile(ntt_ndop$V2, probs = c(0.92))), ]
+            ntt_ndop_5 <- ntt_ndop %>% slice_max(V2, n = 1)
             # ntt_ndop_5[2, 1]
 
 
@@ -1089,13 +1199,13 @@ for (px_size_item in px_size) {
                     bvn_all <- format(round(fm_all_f_i_c[[as.character(px_size_item)]][[as.character(sp)]], 2), nsmall = 2)
                     bv_all <- paste0("scottIso-adj-", bvn_all)
                     # výběr ideálních variant bias rasterů
-                    bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_gbif-density-", bv_gbif, "-", px_size_item, ".tif"))
-                    bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_ndop-density-", bv_ndop, "-", px_size_item, ".tif"))
-                    bias_all <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_all-density-", bv_all, "-", px_size_item, ".tif"))
+                    bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", bv_gbif, "-", px_size_item, ".tif"))
+                    bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_ndop-density-", bv_ndop, "-", px_size_item, ".tif"))
+                    bias_all <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_all-density-", bv_all, "-", px_size_item, ".tif"))
                 } else {
-                    bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_gbif-density-", generate_bias_raster_version, "-", px_size_item, ".tif"))
-                    bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_ndop-density-", generate_bias_raster_version, "-", px_size_item, ".tif"))
-                    bias_all <- raster(paste0(export_path, "/inputs/bias_rasters/Xbias_all-density-", generate_bias_raster_version, "-", px_size_item, ".tif"))
+                    bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", generate_bias_raster_version, "-", px_size_item, ".tif"))
+                    bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_ndop-density-", generate_bias_raster_version, "-", px_size_item, ".tif"))
+                    bias_all <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_all-density-", generate_bias_raster_version, "-", px_size_item, ".tif"))
                 }
             } else {
                 bias_gbif <- NA
@@ -1153,15 +1263,19 @@ for (px_size_item in px_size) {
             if (export_suitability_raster) {
                 writeRaster(enm_mxt_gbif.r.m, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif.tif"), format = "GTiff", overwrite = TRUE)
             }
-            png(paste0(export_path, "/outputs/png/", sp, "_", px_size_item, "_", pres, "_", replicates, "_gbif.png"))
+            png(paste0(export_path, "/outputs/png/", sp, "_", px_size_item, "_", pres, "_", replicates, "_gbif.png"), width = 800, height = 800)
             plot(enm_mxt_gbif.r.m,
                 main = paste0(sp, " | GBIF, AUC=", round(enm_mxt_gbif.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
                 sub = paste0("GBIF: ", gbif_f_n, " | adj: ", bvn_gbif)
             )
             par(bg = NA)
-            plot(czechia_3035$geometry, add = TRUE)
+            plot(rivers_3035$geometry, add = TRUE, col = "blue")
             par()
-            points(enm_mxt_gbif.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
+            plot(countries_3035$geometry, add = TRUE)
+            par()
+            plot(places_3035$geometry, add = TRUE, col = "red", pch = 0)
+            par()
+            points(enm_mxt_gbif.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.3))
             dev.off()
 
 
@@ -1229,15 +1343,19 @@ for (px_size_item in px_size) {
             if (export_suitability_raster) {
                 writeRaster(enm_mxt_ndop.r.m, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.tif"), format = "GTiff", overwrite = TRUE)
             }
-            png(paste0(export_path, "/outputs/png/", sp, "_", px_size_item, "_", pres, "_", replicates, "_ndop.png"))
+            png(paste0(export_path, "/outputs/png/", sp, "_", px_size_item, "_", pres, "_", replicates, "_ndop.png"), width = 800, height = 800)
             plot(enm_mxt_ndop.r.m,
                 main = paste0(sp, " | NDOP, AUC=", round(enm_mxt_ndop.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
                 sub = paste0("NDOP: ", ndop_f_n, " | adj: ", bvn_ndop)
             )
             par(bg = NA)
+            plot(rivers_cz_3035$geometry, add = TRUE, col = "blue")
+            par()
             plot(czechia_3035$geometry, add = TRUE)
             par()
-            points(enm_mxt_ndop.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
+            plot(places_cz_3035$geometry, add = TRUE, col = "red", pch = 0)
+            par()
+            points(enm_mxt_ndop.pp.orig, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.3))
             dev.off()
 
             # Maximum test sensitivity plus specificity
@@ -1292,15 +1410,19 @@ for (px_size_item in px_size) {
             if (export_suitability_raster) {
                 writeRaster(enm_mxt_all.r.m, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.tif"), format = "GTiff", overwrite = TRUE)
             }
-            png(paste0(export_path, "/outputs/png/", sp, "_", px_size_item, "_", pres, "_", replicates, "_all.png"))
+            png(paste0(export_path, "/outputs/png/", sp, "_", px_size_item, "_", pres, "_", replicates, "_all.png"), width = 800, height = 800)
             plot(enm_mxt_all.r.m,
                 main = paste0(sp, " | GBIF+NDOP, AUC=", round(enm_mxt_all.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
                 sub = paste0("NDOP/GBIF: ", ndop_f_n, "/", gbif_f_n, " = ", round(f_n), "% (", ndop_all_fraction, "/", gbif_all_fraction, ", ", fraction_used, ")", " | adj: ", bvn_all)
             )
             par(bg = NA)
-            plot(czechia_3035$geometry, add = TRUE)
+            plot(rivers_3035$geometry, add = TRUE, col = "blue")
             par()
-            points(enm_mxt_all.pp.orig[[1]], col = rgb(red = 0, green = 0, blue = 1, alpha = 0.5))
+            plot(countries_3035$geometry, add = TRUE)
+            par()
+            plot(places_3035$geometry, add = TRUE, col = "red", pch = 0)
+            par()
+            points(enm_mxt_all.pp.orig[[1]], col = rgb(red = 0, green = 0, blue = 1, alpha = 0.3))
             dev.off()
 
             # Maximum test sensitivity plus specificity
