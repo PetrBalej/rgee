@@ -123,3 +123,53 @@ tibbleB %>%
 
 pg.g <- tibbleB %>% filter(species == "Podiceps grisegena" & dataset == "gbif" & px_size == 10000)
 pg.a <- tibbleB %>% filter(species == "Podiceps grisegena" & dataset == "all" & px_size == 10000)
+
+
+tibbleB %>%
+  filter(species == "Periparus ater") %>%
+  top_n(5, V2) %>%
+  summarise_at(vars(V2), median)
+
+tibbleB %>%
+  filter(species == "Periparus ater") %>%
+  slice_max(V2, n = 5) %>%
+  summarise_at(vars(nms), median)
+
+tibbleB %>%
+  filter(species == "Periparus ater") %>%
+  slice_max(V2, n = 5) %>%
+  summarise_at(vars(nms), median)
+print(tibbleB %>% filter(species == "Periparus ater") %>% slice_max(V2, n = 5) %>% summarise_at(vars(nms), median), n = 100)
+
+
+tibbleB %>%
+  filter(species == "Periparus ater") %>%
+  slice_max(V2, n = 5) %>%
+  filter(nms > quantile(nms, 0.10), nms < quantile(nms, 0.90)) %>%
+  summarise_at(vars(nms), median)
+
+t5 <- tibbleB %>%
+  slice_max(V2, n = 5) %>%
+  summarise_at(vars(nms), median) # %>% filter(species == "Periparus ater")
+
+t5f <- tibbleB %>%
+  slice_max(V2, n = 5) %>%
+  mutate(maxNms = max(nms), minNms = min(nms)) %>%
+  mutate(nmsRange = maxNms - minNms) %>%
+  summarise_at(vars(nms, minNms, maxNms, nmsRange), median)
+t5f3mmr <- tibbleB %>%
+  filter(nms < 3) %>%
+  slice_max(V2, n = 5) %>%
+  mutate(maxNms = max(nms), minNms = min(nms)) %>%
+  mutate(nmsRange = maxNms - minNms) %>%
+  summarise_at(vars(nms, minNms, maxNms, nmsRange), median)
+t3f3mmr <- tibbleB %>%
+  filter(nms < 3) %>%
+  slice_max(V2, n = 3) %>%
+  mutate(maxNms = max(nms), minNms = min(nms)) %>%
+  mutate(nmsRange = maxNms - minNms) %>%
+  summarise_at(vars(nms, minNms, maxNms, nmsRange), median)
+
+# write_csv(t5f, "adjust-top5-median.csv")
+# write_csv(t5f3mmr, "adjust-ltNms3-top5-median.csv")
+# write_csv(t3f3mmr, "adjust-ltNms3-top3-median.csv")

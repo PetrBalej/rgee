@@ -32,6 +32,7 @@ export_suitability_raster <- FALSE
 export_pa_raster <- FALSE
 eval <- FALSE # 1) bez evaluace si fituji bias rastery, 2) s evaluací dělám konečné modely
 use_fitted_bias <- FALSE
+do_vip <- FALSE # s Maxentem trvá extrémně dlouho, nereálné časy, možná jen nevhodná implementace v ENMTools? (vyhodnocuje se při eval TRUE)
 
 ###################################################################################
 # library(devtools)
@@ -1194,10 +1195,13 @@ for (px_size_item in px_size) {
                 if (use_fitted_bias) {
                     bvn_gbif <- format(round(fm_gbif_f_i_c[[as.character(px_size_item)]][[as.character(sp)]], 2), nsmall = 2)
                     bv_gbif <- paste0("scottIso-adj-", bvn_gbif)
+
                     bvn_ndop <- format(round(fm_ndop_f_i_c[[as.character(px_size_item)]][[as.character(sp)]], 2), nsmall = 2)
                     bv_ndop <- paste0("scottIso-adj-", bvn_ndop)
+
                     bvn_all <- format(round(fm_all_f_i_c[[as.character(px_size_item)]][[as.character(sp)]], 2), nsmall = 2)
                     bv_all <- paste0("scottIso-adj-", bvn_all)
+                    
                     # výběr ideálních variant bias rasterů
                     bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", bv_gbif, "-", px_size_item, ".tif"))
                     bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_ndop-density-", bv_ndop, "-", px_size_item, ".tif"))
@@ -1303,9 +1307,9 @@ for (px_size_item in px_size) {
             # raster::predict()  pro GLM https://rdrr.io/cran/raster/man/predict.html
             # dismo::predict() pro Maxent https://www.rdocumentation.org/packages/dismo/versions/1.3-3/topics/predict
             # ne, teď už můžu použít rovnou suitability raster...
-
-            enm_mxt_gbif.vip <- sapply(enm_mxt_gbif, enmtools.vip)
-
+            if (do_vip) {
+                enm_mxt_gbif.vip <- sapply(enm_mxt_gbif, enmtools.vip)
+            }
             # calculates Continuous Boyce Index - problematické, dělá errory
             ### enm_mxt_gbif.cal <- lapply(enm_mxt_gbif, enmtools.calibrate, env = raster_stack_b, n.background = 10000)
 
@@ -1373,8 +1377,9 @@ for (px_size_item in px_size) {
             if (export_pa_raster) {
                 writeRaster(raster.ndop, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.pa.tif"), format = "GTiff", overwrite = TRUE, datatype = "LOG1S")
             }
-            enm_mxt_ndop.vip <- sapply(enm_mxt_ndop, enmtools.vip)
-
+            if (do_vip) {
+                enm_mxt_ndop.vip <- sapply(enm_mxt_ndop, enmtools.vip)
+            }
             ### enm_mxt_ndop.cal <- lapply(enm_mxt_ndop, enmtools.calibrate, env = raster_stack_mask_czechia_b, n.background = 10000)
 
 
@@ -1439,9 +1444,9 @@ for (px_size_item in px_size) {
             if (export_pa_raster) {
                 writeRaster(raster.all, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_all.pa.tif"), format = "GTiff", overwrite = TRUE, datatype = "LOG1S")
             }
-
-            enm_mxt_all.vip <- sapply(enm_mxt_all, enmtools.vip)
-
+            if (do_vip) {
+                enm_mxt_all.vip <- sapply(enm_mxt_all, enmtools.vip)
+            }
             ### enm_mxt_all.cal <- lapply(enm_mxt_all, enmtools.calibrate, env = raster_stack_b, n.background = 10000)
 
 
@@ -1457,7 +1462,7 @@ for (px_size_item in px_size) {
             dev.off()
 
             # # # # # # # # ořezy # # # # # # # # # #
-
+            print("ořezy")
 
             # po ořezu nenínutné znormalizovat nově vzniklé rastery - dělá se v raster.breadth a raster.overlap automaticky přes raster.standardize (ten ale standardizuje čistě sumou všech pixelů...?!)
 
@@ -1520,6 +1525,7 @@ for (px_size_item in px_size) {
             all_erase.breadth <- raster.breadth(enm_mxt_all.r.m.crop.czechia)
 
 
+            print("env.overlap")
             eos.gbif_all <- list()
             for (r in 1:replicates) {
                 eos.gbif_all[[r]] <- env.overlap(enm_mxt_all[[r]], enm_mxt_gbif[[r]], env = raster_stack_b)[1:3]
@@ -1543,47 +1549,51 @@ for (px_size_item in px_size) {
             # #jak vypadá srovnání dvou stejných modelů?
             # ni.gbif_gbif <- identity.test(species.1 = enm_mxt_gbif.s, species.2 = enm_mxt_gbif.s, env = raster_stack_b, type = "glm", nreps = replicates)
 
+            if (do_vip) {
+                enm_mxt_gbif.vip.t <- lapply(enm_mxt_gbif.vip[seq(1, replicates * 2, 2)], function(x) {
+                    as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+                })
 
-            enm_mxt_gbif.vip.t <- lapply(enm_mxt_gbif.vip[seq(1, replicates * 2, 2)], function(x) {
-                as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
-            })
+                enm_mxt_ndop.vip.t <- lapply(enm_mxt_ndop.vip[seq(1, replicates * 2, 2)], function(x) {
+                    as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+                })
 
-            enm_mxt_ndop.vip.t <- lapply(enm_mxt_ndop.vip[seq(1, replicates * 2, 2)], function(x) {
-                as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
-            })
+                enm_mxt_all.vip.t <- lapply(enm_mxt_all.vip[seq(1, replicates * 2, 2)], function(x) {
+                    as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+                })
 
-            enm_mxt_all.vip.t <- lapply(enm_mxt_all.vip[seq(1, replicates * 2, 2)], function(x) {
-                as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
-            })
-
-            if (replicates == 1) {
-                enm_mxt_gbif.vip.s <- enm_mxt_gbif.vip.t[[1]]
-                enm_mxt_ndop.vip.s <- enm_mxt_ndop.vip.t[[1]]
-                enm_mxt_all.vip.s <- enm_mxt_all.vip.t[[1]]
-            } else {
-                b_g <- enm_mxt_gbif.vip.t[[1]]
-                b_n <- enm_mxt_ndop.vip.t[[1]]
-                b_a <- enm_mxt_all.vip.t[[1]]
-                for (n in 1:replicates) {
-                    if (n > 1) {
-                        b_g %<>% add_row(enm_mxt_gbif.vip.t[[n]])
-                        b_n %<>% add_row(enm_mxt_ndop.vip.t[[n]])
-                        b_a %<>% add_row(enm_mxt_all.vip.t[[n]])
+                if (replicates == 1) {
+                    enm_mxt_gbif.vip.s <- enm_mxt_gbif.vip.t[[1]]
+                    enm_mxt_ndop.vip.s <- enm_mxt_ndop.vip.t[[1]]
+                    enm_mxt_all.vip.s <- enm_mxt_all.vip.t[[1]]
+                } else {
+                    b_g <- enm_mxt_gbif.vip.t[[1]]
+                    b_n <- enm_mxt_ndop.vip.t[[1]]
+                    b_a <- enm_mxt_all.vip.t[[1]]
+                    for (n in 1:replicates) {
+                        if (n > 1) {
+                            b_g %<>% add_row(enm_mxt_gbif.vip.t[[n]])
+                            b_n %<>% add_row(enm_mxt_ndop.vip.t[[n]])
+                            b_a %<>% add_row(enm_mxt_all.vip.t[[n]])
+                        }
                     }
+                    enm_mxt_gbif.vip.s <- b_g %>%
+                        summarise_if(is.numeric, mean, na.rm = TRUE)
+
+                    enm_mxt_ndop.vip.s <- b_n %>%
+                        summarise_if(is.numeric, mean, na.rm = TRUE)
+
+                    enm_mxt_all.vip.s <- b_a %>%
+                        summarise_if(is.numeric, mean, na.rm = TRUE)
                 }
-                enm_mxt_gbif.vip.s <- b_g %>%
-                    summarise_if(is.numeric, mean, na.rm = TRUE)
-
-                enm_mxt_ndop.vip.s <- b_n %>%
-                    summarise_if(is.numeric, mean, na.rm = TRUE)
-
-                enm_mxt_all.vip.s <- b_a %>%
-                    summarise_if(is.numeric, mean, na.rm = TRUE)
+                enm_mxt_gbif.vip.s.z <- enm_mxt_gbif.vip.s %>% unite("enm_mxt_gbif.vip", names(enm_mxt_gbif.vip.t[[1]])) # separate(xy, c("x", "y"))
+                enm_mxt_ndop.vip.s.z <- enm_mxt_ndop.vip.s %>% unite("enm_mxt_ndop.vip", names(enm_mxt_ndop.vip.t[[1]])) # separate(xy, c("x", "y"))
+                enm_mxt_all.vip.s.z <- enm_mxt_all.vip.s %>% unite("enm_mxt_all.vip", names(enm_mxt_all.vip.t[[1]])) # separate(xy, c("x", "y"))
+            } else {
+                enm_mxt_gbif.vip.s <- NA
+                enm_mxt_ndop.vip.s <- NA
+                enm_mxt_all.vip.s <- NA
             }
-            enm_mxt_gbif.vip.s.z <- enm_mxt_gbif.vip.s %>% unite("enm_mxt_gbif.vip", names(enm_mxt_gbif.vip.t[[1]])) # separate(xy, c("x", "y"))
-            enm_mxt_ndop.vip.s.z <- enm_mxt_ndop.vip.s %>% unite("enm_mxt_ndop.vip", names(enm_mxt_ndop.vip.t[[1]])) # separate(xy, c("x", "y"))
-            enm_mxt_all.vip.s.z <- enm_mxt_all.vip.s %>% unite("enm_mxt_all.vip", names(enm_mxt_all.vip.t[[1]])) # separate(xy, c("x", "y"))
-
 
             gbif_ndop.geo.m <- raster.overlap(enm_mxt_gbif.r.m.crop.czechia, enm_mxt_ndop.r.m)
             gbif_all.geo.m <- raster.overlap(enm_mxt_all.r.m, enm_mxt_gbif.r.m)
