@@ -262,25 +262,33 @@ performance <- function(confusion) {
 
 
 get_freq_by_cat <- function(freq.df, cat.id) {
-  # získání hodnot dle kategorie početnosti z freq()
-  if (is.empty(which(freq.df[, 1] == cat.id))) {
-    return(0)
+  if (!is.na(freq.df)) {
+    # získání hodnot dle kategorie početnosti z freq()
+    if (is.empty(which(freq.df[, 1] == cat.id))) {
+      return(0)
+    } else {
+      return(unname(freq.df[which(freq.df[, 1] == cat.id), 2]))
+    }
   } else {
-    return(unname(freq.df[which(freq.df[, 1] == cat.id), 2]))
+    return(NA)
   }
 }
 
 rasters_confusion <- function(reality, prediction) {
-  # předpoklad je vstup binárních rasterů!!!
-  overlap <- reality + (prediction * 2)
-  classes <- freq(overlap)
-  confusion <- c()
-  confusion[1] <- get_freq_by_cat(classes, 3) # tp
-  confusion[2] <- get_freq_by_cat(classes, 2) # fp
-  confusion[3] <- get_freq_by_cat(classes, 1) # fn
-  confusion[4] <- get_freq_by_cat(classes, 0) # tn
+  if (!is.na(reality) && !is.na(prediction)) {
+    # předpoklad je vstup binárních rasterů!!!
+    overlap <- reality + (prediction * 2)
+    classes <- freq(overlap)
+    confusion <- c()
+    confusion[1] <- get_freq_by_cat(classes, 3) # tp
+    confusion[2] <- get_freq_by_cat(classes, 2) # fp
+    confusion[3] <- get_freq_by_cat(classes, 1) # fn
+    confusion[4] <- get_freq_by_cat(classes, 0) # tn
 
-  return(performance(confusion))
+    return(performance(confusion))
+  } else {
+    return(NA)
+  }
 }
 
 
@@ -337,7 +345,7 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
   enm_mxt_gbif.breadth.B1 <- NA
   enm_mxt_gbif.breadth.B2 <- NA
   enm_mxt_gbif <- list()
-  if (!is.na(enm_mxt_gbif.s)) {
+  if (!is.na(enm_mxt_gbif.s) && length(enm_mxt_gbif.s) != 0) {
     if (alg == "glm") {
       for (r in 1:replicates) {
         enm_mxt_gbif[[r]] <- enmtools.glm(
@@ -391,6 +399,11 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
     enm_mxt_gbif.breadth.B2 <- mean(sapply(enm_mxt_gbif.breadth, function(x) x$B2))
     # enm_mxt_gbif.breadth.B1.md <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B1))
     # enm_mxt_gbif.breadth.B2.md <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B2))
+
+    # enm_mxt_gbif.r <- stack(sapply(enm_mxt_gbif, function(x) x$suitability))
+    # enm_mxt_gbif.r.m <- cellStats(enm_mxt_gbif.r, stat = "mean")
+    # enm_mxt_gbif.r.md <- cellStats(enm_mxt_gbif.r, stat = "median")
+    # enm_mxt_gbif.r.sd <- cellStats(enm_mxt_gbif.r, stat = "sd")
   }
 
   ###
@@ -403,7 +416,7 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
   enm_mxt_ndop.breadth.B1 <- NA
   enm_mxt_ndop.breadth.B2 <- NA
   enm_mxt_ndop <- list()
-  if (!is.na(enm_mxt_ndop.s)) {
+  if (!is.na(enm_mxt_ndop.s) && length(enm_mxt_ndop.s) != 0) {
     if (alg == "glm") {
       for (r in 1:replicates) {
         enm_mxt_ndop[[r]] <- enmtools.glm(
@@ -467,7 +480,7 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
   enm_mxt_all.breadth.B1 <- NA
   enm_mxt_all.breadth.B2 <- NA
   enm_mxt_all <- list()
-  if (!is.na(enm_mxt_all.s)) {
+  if (!is.na(enm_mxt_all.s) && length(enm_mxt_all.s) != 0) {
     if (alg == "glm") {
       for (r in 1:replicates) {
         enm_mxt_all[[r]] <- enmtools.glm(
@@ -542,12 +555,26 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
       enm_mxt_ndop.breadth.B1 = enm_mxt_ndop.breadth.B1, enm_mxt_ndop.breadth.B2 = enm_mxt_ndop.breadth.B2,
       enm_mxt_all.breadth.B1 = enm_mxt_all.breadth.B1, enm_mxt_all.breadth.B2 = enm_mxt_all.breadth.B2
 
+      # enm_mxt_gbif.r.m = enm_mxt_gbif.r.m,
+      # enm_mxt_gbif.r.md = enm_mxt_gbif.r.md,
+      # enm_mxt_gbif.r.sd = enm_mxt_gbif.r.sd
+
       # enm_mxt_gbif.breadth.B1.md = enm_mxt_gbif.breadth.B1.md, enm_mxt_gbif.breadth.B2.md = enm_mxt_gbif.breadth.B2.md,
       # enm_mxt_ndop.breadth.B1.md = enm_mxt_ndop.breadth.B1.md, enm_mxt_ndop.breadth.B2.md = enm_mxt_ndop.breadth.B2.md,
       # enm_mxt_all.breadth.B1.md = enm_mxt_all.breadth.B1.md, enm_mxt_all.breadth.B2.md = enm_mxt_all.breadth.B2.md
     ))
   }
 }
+
+
+
+# is.defined <- function(sym) {
+#   # https://stackoverflow.com/a/43446356
+#   sym <- deparse(substitute(sym))
+#   env <- parent.frame()
+#   exists(sym, env)
+# }
+
 
 
 # # # # #  manuální kontrola použitých koeficientů pro adjust pro jednotlivé druhy
