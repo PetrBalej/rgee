@@ -44,16 +44,21 @@ pairs <- list(
   c("F_measure.all", "F_measure.gbif", "F_measure.ndop"),
   c("Jaccard.all", "Jaccard.gbif", "Jaccard.ndop"),
   c("sedi.all", "sedi.gbif", "sedi.ndop"),
-  c("TSS.gbif_ndop", "TSS.all_ndop", "TSS.all_ndop"),
+  c("TSS.ndop_gbif", "TSS.gbif_ndop", "TSS.ndop_all"),
   c("TSS.all_gbif", "TSS.all_gbif_erase", "TSS.all_gbif_erase"),
-  c("F_measure.gbif_ndop", "F_measure.all_ndop", "F_measure.all_ndop"),
+  c("F_measure.gbif_ndop", "F_measure.ndop_all", "F_measure.ndop_all"),
   c("F_measure.all_gbif", "F_measure.all_gbif_erase", "F_measure.all_gbif_erase"),
-  c("Jaccard.gbif_ndop", "Jaccard.all_ndop", "Jaccard.all_ndop"),
+  c("Jaccard.ndop_gbif", "Jaccard.gbif_ndop", "Jaccard.ndop_all"),
   c("Jaccard.all_gbif", "Jaccard.all_gbif_erase", "Jaccard.all_gbif_erase"),
 
-  c("Sensitivity.gbif_ndop", "Sensitivity.all_ndop", "Sensitivity.all_ndop"),
+  # https://borea.mnhn.fr/sites/default/files/pdfs/2018%20Leroy%20et%20al%20-%20Journal%20of%20Biogeography.pdf
+  c("Sorensen.ndop_gbif", "Sorensen.gbif_ndop", "Sorensen.ndop_all"),
+  c("OPR.ndop_gbif", "OPR.gbif_ndop", "OPR.ndop_all"),
+  c("UPR.ndop_gbif", "UPR.gbif_ndop", "UPR.ndop_all"),
+
+  c("Sensitivity.ndop_gbif", "Sensitivity.gbif_ndop", "Sensitivity.ndop_all"),
   c("Sensitivity.all_gbif", "Sensitivity.all_gbif_erase", "Sensitivity.all_gbif_erase"),
-  c("Specificity.gbif_ndop", "Specificity.all_ndop", "Specificity.all_ndop"),
+  c("Specificity.ndop_gbif", "Specificity.gbif_ndop", "Specificity.ndop_all"),
   c("Specificity.all_gbif", "Specificity.all_gbif_erase", "Specificity.all_gbif_erase"),
   #  c("auc.all.boyce", "auc.gbif.boyce", "auc.ndop.boyce"), # boyce je k ničemu, kritizovali hi jako neschopný rozlišit rozdíly v jednom článku - yru3it enmtools.calibrate? nebo udělat recalibrate?
   # # geogr. overlap
@@ -243,10 +248,20 @@ for (i in seq_along(names(rds_append))) {
     summarize(gbif_ndop.pa, .groups = "keep") %>%
     rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
     rename_all(paste0, ".gbif_ndop")
+  tibble.ndop_gbif.pa <- tibble %>%
+    summarize(ndop_gbif.pa, .groups = "keep") %>%
+    rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+    rename_all(paste0, ".ndop_gbif")
+
   tibble.all_ndop.pa <- tibble %>%
     summarize(all_ndop.pa, .groups = "keep") %>%
     rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
     rename_all(paste0, ".all_ndop")
+  tibble.ndop_all.pa <- tibble %>%
+    summarize(ndop_all.pa, .groups = "keep") %>%
+    rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+    rename_all(paste0, ".ndop_all")
+
   tibble.all_gbif.pa <- tibble %>%
     summarize(all_gbif.pa, .groups = "keep") %>%
     rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
@@ -265,7 +280,9 @@ for (i in seq_along(names(rds_append))) {
     left_join(tibble_all_p, by = c("species" = "species.all")) %>%
     left_join(tibble_ndop_p, by = c("species" = "species.ndop")) %>%
     left_join(tibble.gbif_ndop.pa, by = c("species" = "species.gbif_ndop")) %>%
+        left_join(tibble.ndop_gbif.pa, by = c("species" = "species.ndop_gbif")) %>%
     left_join(tibble.all_ndop.pa, by = c("species" = "species.all_ndop")) %>%
+    left_join(tibble.ndop_all.pa, by = c("species" = "species.ndop_all")) %>%
     left_join(tibble.all_gbif.pa, by = c("species" = "species.all_gbif")) %>%
     left_join(tibble.all_gbif_erase.pa, by = c("species" = "species.all_gbif_erase")) %>%
     ungroup() %>%
@@ -374,6 +391,36 @@ pic_box <- Jaccard %>%
 print(pic_box)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
+
+### Sorensen
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+Sorensen <- tibble_grains %>% pivot_longer(
+  cols = c("Sorensen.all", "Sorensen.gbif", "Sorensen.ndop"),
+  names_to = "Sorensen_type",
+  names_prefix = "F",
+  values_to = "Sorensen_value",
+  values_drop_na = TRUE
+)
+
+pic_box <- ggplot(Sorensen, aes(x = Sorensen_type, y = Sorensen_value, fill = Sorensen_type)) +
+  ylim(0, 1) + # porovnatelnost mezi glm a maxent +
+  geom_violin() +
+  facet_grid(~px_size_item)
+print(pic_box)
+
+# Plot
+pic_box <- Sorensen %>%
+  ggplot(aes(x = Sorensen_type, y = Sorensen_value, fill = Sorensen_type)) +
+  ylim(0, 1) + # porovnatelnost mezi glm a maxent
+  geom_boxplot() +
+  scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
+  geom_jitter(color = "red", size = 0.3, alpha = 0.3) +
+  ggtitle("Sorensen") +
+  xlab("") +
+  facet_grid(~px_size_item) # _wrap
+
+print(pic_box)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 # Plot NDOP
 perm.ndop <- tibble_grains %>% pivot_longer(
@@ -544,8 +591,8 @@ for (p in pairs) {
   dfAUCorig_count <- as.integer(count(dfAUCorig) / 4) * 4
 
 
-  auc_limit <- 0.5
-  typ_filtrace <- "GBIF_NDOP" # "GBIF_ALL" "GBIF_NDOP" "ALL_NDOP" "NDOP" "GBIF"
+  auc_limit <- 0.75
+  typ_filtrace <- "NDOP" # "GBIF_ALL" "GBIF_NDOP" "ALL_NDOP" "NDOP" "GBIF"
 
   if (typ_filtrace == "GBIF_ALL") {
     dfAUCfiltr <- dfAUCorig %>%
@@ -703,7 +750,7 @@ for (p in pairs) {
 
   pic_lm <- ggplot(df, aes(x = Question, y = as.numeric(dAUC), group = Question)) +
     geom_boxplot(aes(fill = Question)) +
-    facet_wrap(~px_size_item) + # !!! XXX - pokud chci v jednom řádku tak: ncol = 5
+    facet_wrap(~px_size_item, ncol = 5) + # !!! XXX - pokud chci v jednom řádku tak: ncol = 5
     labs(title = appendix, subtitle = "st", x = paste0(" grain size"), y = appendix, caption = caption) # + scale_y_continuous(trans = 'log2')
   print(pic_lm)
 
