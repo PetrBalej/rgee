@@ -36,6 +36,7 @@ do_vip <- FALSE # s Maxentem trvá extrémně dlouho, nereálné časy, možná 
 env_breadth <- FALSE
 do_all <- FALSE
 do_pa <- FALSE
+fit_gbif_crop <- FALSE # fitovat r.breadth až na výřezu ČR z GBIF dat, ne na cel7ch st5edoevropsk7ch datech
 
 ###################################################################################
 # library(devtools)
@@ -304,6 +305,18 @@ places_cz <- st_read(paste0(wd, "/shp/ne_10m_populated_places_simple/ne_10m_popu
 rivers <- st_read(paste0(wd, "/shp/ne_10m_rivers_lake_centerlines/ne_10m_rivers_lake_centerlines_3035.shp"))
 rivers_cz <- st_read(paste0(wd, "/shp/ne_10m_rivers_lake_centerlines/ne_10m_rivers_lake_centerlines_3035_cz.shp"))
 
+# sjednocení CRS - preventivní
+blocks_3035 <- blocks %>% st_transform(rcrs)
+blocks_erased_cz_3035 <- blocks_erased_cz %>% st_transform(rcrs)
+czechia_3035 <- czechia %>% st_transform(rcrs)
+
+countries_3035 <- countries %>% st_transform(rcrs)
+
+places_3035 <- places %>% st_transform(rcrs)
+places_cz_3035 <- places_cz %>% st_transform(rcrs)
+
+rivers_3035 <- rivers %>% st_transform(rcrs)
+rivers_cz_3035 <- rivers_cz %>% st_transform(rcrs)
 
 # reálně se tím řídit nemusím, neodpovídá to reálnému počtu záznamů použitých do modelů, jen pomocná metrika?
 # ndop_top <- ndop_top(paste0(getwd(), "/rgee/species/ndop/ndop-top-2021-03-21.xlsx"))
@@ -505,7 +518,7 @@ for (px_size_item in px_size) {
 
     rcrs <- crs(raster_stack)
 
-    # sjednocení CRS
+    # sjednocení CRS - dodatečná úprava CRS aby bylo jednotné
     blocks_3035 <- blocks %>% st_transform(rcrs)
     blocks_erased_cz_3035 <- blocks_erased_cz %>% st_transform(rcrs)
     czechia_3035 <- czechia %>% st_transform(rcrs)
@@ -640,7 +653,7 @@ for (px_size_item in px_size) {
     # obrácení pořadí druhů, od nejméně početných pro urychlení prvních výsledků
 
     ptaci_intersect_distinct <- ptaci_ndop_distinct %>%
-        filter(species %in% ptaci_gbif_distinct$species) 
+        filter(species %in% ptaci_gbif_distinct$species)
     # %>% filter(species == "Larus argentatus")
     # %>% filter(species == "Emberiza calandra")
     # %>% filter(species == "Podiceps grisegena")
@@ -829,6 +842,12 @@ for (px_size_item in px_size) {
         }
 
         if (eval == FALSE) {
+            breadth_only <- TRUE
+            if (fit_gbif_crop) {
+                # musím získat data z modelu (suitability) abych mohl vně ořezat GBIF na ČR a dopočíst r.breadth
+                breadth_only <- FALSE
+            }
+
             test.prop <- 0.0 # pro jistotu manuální přepis proměnné, nasazení podílu testovacích nálezů se totiž mění při jednotlivých adjustech -> nestabilní
             gc()
             # intervals <- c(
@@ -860,7 +879,7 @@ for (px_size_item in px_size) {
                 bias_ndop <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_ndop-density-", bv, "-", px_size_item, ".tif"))
                 bias_all <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_all-density-", bv, "-", px_size_item, ".tif"))
 
-                fm[[bvn]] <- fit_models(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE)
+                fm[[bvn]] <- fit_models(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = breadth_only)
 
                 # print(s)
                 # print("ořez NDOP")
@@ -907,7 +926,17 @@ for (px_size_item in px_size) {
             # fm_ndop.md <- list()
             for (i in names(fm)) {
                 fm_all[[i]] <- fm[[i]]$enm_mxt_all.breadth.B2
-                fm_gbif[[i]] <- fm[[i]]$enm_mxt_gbif.breadth.B2
+                if (!fit_gbif_crop) {
+                    fm_gbif[[i]] <- fm[[i]]$enm_mxt_gbif.breadth.B2
+                } else {
+                    ### !!! Jen na fitování, stejně dělám r.breadth pak ještě znovu u ginálních modelů.
+                    ### Asi bych měl ale ukládat do budoucna oboje hodnoty pro srovnání
+                    ###
+                    rs <- fm[[i]]$enm_mxt_gbif[[1]]$suitability
+                    rs_crop <- crop(rs, extent(czechia_3035))
+                    rs_mask_czechia <- mask(rs_crop, czechia_3035)
+                    fm_gbif[[i]] <- raster.breadth(rs_mask_czechia)$B2
+                }
                 fm_ndop[[i]] <- fm[[i]]$enm_mxt_ndop.breadth.B2
 
                 # fm_all.md[[i]] <- fm[[i]]$enm_mxt_all.breadth.B2.md
@@ -1050,7 +1079,7 @@ for (px_size_item in px_size) {
                 if (file.exists(paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"))) {
                     print(paste0("2nd level GBIF --- scottIso-adj-", format(round(s, 2), nsmall = 2)))
                     bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"))
-                    fm_gbif_f[[bvn]] <- fit_models(alg, replicates, eval, test.prop, enm_mxt_gbif.s, NA, NA, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE)
+                    fm_gbif_f[[bvn]] <- fit_models(alg, replicates, eval, test.prop, enm_mxt_gbif.s, NA, NA, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = breadth_only)
                 }
             }
 
@@ -1099,7 +1128,18 @@ for (px_size_item in px_size) {
                 fm_all[[i]] <- fm_all_f[[i]]$enm_mxt_all.breadth.B2
             }
             for (i in names(fm_gbif_f)) {
-                fm_gbif[[i]] <- fm_gbif_f[[i]]$enm_mxt_gbif.breadth.B2
+                if (!fit_gbif_crop) {
+                    fm_gbif[[i]] <- fm_gbif_f[[i]]$enm_mxt_gbif.breadth.B2
+                    } else {
+                    ###
+                    ### !!! Jen na fitování, stejně dělám r.breadth pak ještě znovu u ginálních modelů.
+                    ### Asi bych měl ale ukládat do budoucna oboje hodnoty pro srovnání
+                    ###
+                    rs <- fm_gbif_f[[i]]$enm_mxt_gbif[[1]]$suitability
+                    rs_crop <- crop(rs, extent(czechia_3035))
+                    rs_mask_czechia <- mask(rs_crop, czechia_3035)
+                    fm_gbif[[i]] <- raster.breadth(rs_mask_czechia)$B2
+                }
             }
             for (i in names(fm_ndop_f)) {
                 fm_ndop[[i]] <- fm_ndop_f[[i]]$enm_mxt_ndop.breadth.B2
@@ -1306,12 +1346,12 @@ for (px_size_item in px_size) {
             # The threshold values for the maxnet model relate to the raw outputs (prior to transformation). We can achieve our presence/absence map simply by applying our threshold to these raw values. To do so, we map the raw results of the model (i.e, this time we do not opt for a ‘cloglog’ or other transform) and then remove all values below our threshold.
             # Protože se v ENMTools u maxentu používá predict() bez
             if (do_pa) {
-            thr.gbif.mss <- mean(sapply(enm_mxt_gbif, function(x) {
-                x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
-            }))
-            if (alg == "glm") {
-                thr.gbif.mss <- plogis(thr.gbif.mss)
-            }
+                thr.gbif.mss <- mean(sapply(enm_mxt_gbif, function(x) {
+                    x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
+                }))
+                if (alg == "glm") {
+                    thr.gbif.mss <- plogis(thr.gbif.mss)
+                }
 
                 raster.gbif <- enm_mxt_gbif.r.m
                 raster.gbif[raster.gbif < thr.gbif.mss] <- 0
@@ -1386,12 +1426,12 @@ for (px_size_item in px_size) {
 
             # Maximum test sensitivity plus specificity
             if (do_pa) {
-            thr.ndop.mss <- mean(sapply(enm_mxt_ndop, function(x) {
-                x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
-            }))
-            if (alg == "glm") {
-                thr.ndop.mss <- plogis(thr.ndop.mss)
-            }
+                thr.ndop.mss <- mean(sapply(enm_mxt_ndop, function(x) {
+                    x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
+                }))
+                if (alg == "glm") {
+                    thr.ndop.mss <- plogis(thr.ndop.mss)
+                }
                 raster.ndop <- enm_mxt_ndop.r.m
                 raster.ndop[raster.ndop < thr.ndop.mss] <- 0
                 raster.ndop[raster.ndop >= thr.ndop.mss] <- 1
@@ -1468,12 +1508,12 @@ for (px_size_item in px_size) {
 
                 # Maximum test sensitivity plus specificity
                 if (do_pa) {
-                thr.all.mss <- mean(sapply(enm_mxt_all, function(x) {
-                    x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
-                }))
-                if (alg == "glm") {
-                    thr.all.mss <- plogis(thr.all.mss)
-                }
+                    thr.all.mss <- mean(sapply(enm_mxt_all, function(x) {
+                        x$test.evaluation@t[which.max(x$test.evaluation@TPR + x$test.evaluation@TNR)]
+                    }))
+                    if (alg == "glm") {
+                        thr.all.mss <- plogis(thr.all.mss)
+                    }
                     raster.all <- enm_mxt_all.r.m
                     raster.all[raster.all < thr.all.mss] <- 0
                     raster.all[raster.all >= thr.all.mss] <- 1
