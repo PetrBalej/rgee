@@ -91,3 +91,20 @@ gbif <-
     quote = ""
   )
 write_tsv(gbif, "0209125-200613084148143-redukce4.csv")
+
+# # 
+# # statistika záznamů podle zemí (sloupec countyCode)
+# # 
+# # výše ještě změnit: 
+# # countryCode = "c",
+# csv_gbif_cc <- gbif %>%
+#   dplyr::filter(
+#     (coordinateUncertaintyInMeters <= 300 | is.na(coordinateUncertaintyInMeters) | coordinateUncertaintyInMeters == "NA" | coordinateUncertaintyInMeters == NA | is.null(coordinateUncertaintyInMeters) | coordinateUncertaintyInMeters == " ") &
+#       (coordinatePrecision <= 300 | is.na(coordinatePrecision) | coordinatePrecision == "NA" | coordinatePrecision == NA | is.null(coordinatePrecision) | coordinatePrecision == " ") &
+#       dplyr::between(year, 2010, 2020)
+#   ) %>%
+#   dplyr::select(countryCode)
+
+# records_per_countries <- csv_gbif_cc %>% count(countryCode, sort = TRUE)
+
+# # write_csv(records_per_countries, "records-per-countries_300.csv")
