@@ -1,6 +1,6 @@
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
-    c("tidyverse", "magrittr", "dplyr", "ggplot2", "rstatix", "ggpubr", "gridExtra", "viridis")
+    c("raster", "tidyverse", "sf", "sp", "magrittr", "dplyr", "ggplot2", "rstatix", "ggpubr", "gridExtra", "viridis")
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -68,6 +68,33 @@ pairs <- list(
     # c("wcl8_perc.gbif", "wcl8_perc.all", "wcl8_perc.ndop") # cca 30% prišpívají, ale je třeba to rozdělit na samostatné 3 modely (stejný treshold): WC, L8 a WC+L8
 )
 
+# pomocné funkce
+source(paste0(wd, "/R/export_raster/functions.R"))
+
+rcrs <- "+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+
+# shapefiles
+# BB (+ČR)
+blocks <- st_read(paste0(wd, "/shp/blocks.shp"))
+# BB - ČR
+blocks_erased_cz <- st_read(paste0(wd, "/shp/blocks_erased_cz.shp"))
+# ČR
+czechia <- st_read(paste0(wd, "/shp/ne_10m_admin_0_countries/czechia/cz_3035.shp"))
+
+countries <- st_read(paste0(wd, "/shp/ne_10m_admin_0_countries/ne_10m_admin_0_countries_3035.shp"))
+
+places <- st_read(paste0(wd, "/shp/ne_10m_populated_places_simple/ne_10m_populated_places_simple_3035.shp"))
+places_cz <- st_read(paste0(wd, "/shp/ne_10m_populated_places_simple/ne_10m_populated_places_simple_3035_cz.shp"))
+
+rivers <- st_read(paste0(wd, "/shp/ne_10m_rivers_lake_centerlines/ne_10m_rivers_lake_centerlines_3035.shp"))
+rivers_cz <- st_read(paste0(wd, "/shp/ne_10m_rivers_lake_centerlines/ne_10m_rivers_lake_centerlines_3035_cz.shp"))
+
+
+
+# cci_all_3035 <- readRDS(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/inputs/occurrences/cci_all_3035.rds")) # %>% filter(species %in% ptaci_gbif_distinct$species)
+# cci_all_3035_czechia <- st_intersection(cci_all_3035, st_transform(czechia, st_crs(cci_all_3035)))
+# saveRDS(cci_all_3035_czechia, file = "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/inputs/occurrences/cci_all_3035_czechia.rds")
+cci_all_3035_czechia <- readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/inputs/occurrences/cci_all_3035_czechia.rds")
 
 prefix <- "glm_BFitA_" # "OWNPFr" "maxent_thr" "glm_GB_"
 
@@ -251,6 +278,137 @@ tibble_grains %<>% mutate(wcl8_perc.ndop = ((l8.ndop * 100) / wc.ndop))
 
 
 
+
+
+
+# celkem: 228*5: 1140
+# auc.ndop.te > 0.70: 606
+## gbif_ndop.geo.cor >= 0.70: 181
+## gbif_ndop.geo.cor >= 0.75: 115
+## gbif_ndop.geo.D >= 0.70: 629
+## gbif_ndop.geo.D >= 0.80: 219
+
+tibble_grains.reduced <- tibble_grains %>%
+    select_if(~ is.numeric(.) | is.character(.)) %>%
+    filter(auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.75)
+# tibble_grains %>%  filter(auc.ndop.te >= 0.70 & gbif_ndop.geo.D >= 0.80)
+# write_csv(tibble_grains %>% select_if(~ is.numeric(.) | is.character(.)), "tibble_grains.glm.csv")
+tibble_grains.reduced %>% filter(px_size_item == 10000)
+
+# NDOP závislost AUC na r.breadth
+plot(tibble_grains$ndop.breadth.B2, tibble_grains$auc.ndop.te)
+plot(tibble_grains.reduced$ndop.breadth.B2, tibble_grains.reduced$auc.ndop.te)
+
+
+# #
+# # kopírování
+# #
+# png_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/glm-prelim2/outputs/png"
+# # Acanthis cabaret_500_glm_BFitA_5003_4_all.png
+# tibble_grains.reduced.path <- tibble_grains.reduced %>%
+#     mutate(path = paste0(species, "_", px_size_item, "_", "glm_BFitA", "_", px_size_item, "[0-9]{1,2}_4_gbif.png")) %>%
+#     select(path)
+# # tibble_grains.reduced.path <-tibble_grains.reduced %>%  mutate(path = paste0(species, "_", px_size_item, "_","glm_BFitA", "_", px_size_item, "[0-9]{1,2}_4_gbif.png")) %>% select(path)
+# png_list <- list()
+# for (p in tibble_grains.reduced.path$path) {
+#     png_list[[p]] <-
+#         list.files(
+#             path = png_path,
+#             # původní: "^glm_fmt_", d, "_.*\\.rds$"
+#             # "^glm_fmt_", d, "_.*[0-9]{4,5}-[0-9]{1,2}\\.rds$" - vše bez 500
+#             pattern = paste0("^", p, "$"), # "^enmsr_glmE[0-9]_.+\\.rds$"  "^enmsr_xxx[0-9]_.+\\.rds$"   enmsr_glmF0_5000_3_1621355712.12381.rds       "^enmsr_glm2PATEST[0-9]_.+\\.rds$"
+#             ignore.case = TRUE,
+#             full.names = TRUE
+#         )
+# }
+
+# png_list <- unname(unlist(png_list))
+
+# # file.copy(unname(unlist(png_list)), "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/glm-prelim2/outputs/png-check-ndop")
+# #  file.copy(unname(unlist(png_list)), "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/glm-prelim2/outputs/png-check-gbif")
+
+
+
+
+
+
+
+
+#
+# generování mapky
+#
+png_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/glm-prelim2/r"
+# Acanthis cabaret_500_glm_BFitA_5003_4_all.png   glm_BFitA_5001_Aix sponsa_500_4_all.tif
+tibble_grains.reduced.path <- tibble_grains.reduced %>%
+    mutate(path = paste0("glm_BFitA", "_", px_size_item, "[0-9]{1,2}_", species, "_", px_size_item, "_4_ndop.tif"))
+# tibble_grains.reduced.path <-tibble_grains.reduced %>%  mutate(path = paste0(species, "_", px_size_item, "_","glm_BFitA", "_", px_size_item, "[0-9]{1,2}_4_gbif.png")) %>% select(path)
+png_list <- list()
+
+
+pdf(paste0(export_path, "/check-predictions-NDOP_GBIF-cor-0.75.pdf"), width = 15, height = 7)
+for (p in seq_along(tibble_grains.reduced.path$path)) {
+    pt <- tibble_grains.reduced.path[p, ]
+    png_list[[pt$path]] <-
+        list.files(
+            path = png_path,
+            # původní: "^glm_fmt_", d, "_.*\\.rds$"
+            # "^glm_fmt_", d, "_.*[0-9]{4,5}-[0-9]{1,2}\\.rds$" - vše bez 500
+            pattern = paste0("^", pt$path, "$"), # "^enmsr_glmE[0-9]_.+\\.rds$"  "^enmsr_xxx[0-9]_.+\\.rds$"   enmsr_glmF0_5000_3_1621355712.12381.rds       "^enmsr_glm2PATEST[0-9]_.+\\.rds$"
+            ignore.case = TRUE,
+            full.names = TRUE
+        )
+
+    points <- as.data.frame(st_coordinates(cci_all_3035_czechia %>% filter(species == as.character(pt$species))))
+
+    par(mfrow = c(1, 2))
+
+    # NDOP
+    # ořez původního raster_stack na ČR pro lokální SDM
+    raster_stack <- raster(png_list[[p]])
+    raster_stack_crop <- crop(raster_stack, extent(czechia))
+    raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
+    plot(raster_stack_mask_czechia,
+        main = paste0(pt$species, " | NDOP, AUC=", round(pt$auc.ndop.te, digits = 2), " (", (pt$px_size_item / 1000), "km)"),
+        sub = paste0("NDOP/GBIF: ", pt$ndop_c, "/", pt$gbif_c, " = ", round(1 / pt$gbif_ndop_rate * 100), "% | adj: ", pt$bvn_ndop, "/", pt$bvn_gbif, " | r.breadth.B2: ", round(pt$ndop.breadth.B2, digits = 2), "/", round(pt$gbif.breadth.B2, digits = 2), " (crop: ", round(pt$gbif_crop.breadth.B2, digits = 2), ")")
+    )
+    par(bg = NA)
+    plot(rivers_cz$geometry, add = TRUE, col = "blue")
+    par()
+    plot(czechia$geometry, add = TRUE)
+    par()
+    plot(places_cz$geometry, add = TRUE, col = "red", pch = 0)
+    par()
+    points(points, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.3), cex = 0.5)
+
+
+
+    # GBIF
+    # ořez původního raster_stack na ČR pro lokální SDM
+    raster_stack <- raster(gsub("_ndop", "_gbif", png_list[[p]]))
+    raster_stack_crop <- crop(raster_stack, extent(czechia))
+    raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
+    plot(raster_stack_mask_czechia,
+        main = paste0(pt$species, " | GBIF, (AUC=", round(pt$auc.gbif.te, digits = 2), ") (", (pt$px_size_item / 1000), "km)"),
+        sub = paste0("geo.cor (Spearman): ", round(pt$gbif_ndop.geo.cor, digits = 2), " | geo.D (Schoener): ", round(pt$gbif_ndop.geo.D, digits = 2))
+    )
+    par(bg = NA)
+    plot(rivers_cz$geometry, add = TRUE, col = "blue")
+    par()
+    plot(czechia$geometry, add = TRUE)
+    par()
+    plot(places_cz$geometry, add = TRUE, col = "red", pch = 0)
+    par()
+    points(points, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.3), cex = 0.5)
+}
+dev.off()
+
+
+
+
+png_list <- unname(unlist(png_list))
+
+
+stop()
 
 pxs_size <- tibble_grains %>% distinct(px_size_item)
 
