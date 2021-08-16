@@ -51,7 +51,7 @@ pairs <- list(
   c("Jaccard.ndop_gbif", "Jaccard.gbif_ndop", "Jaccard.ndop_all"),
   c("Jaccard.all_gbif", "Jaccard.all_gbif_erase", "Jaccard.all_gbif_erase"),
 
-  # https://borea.mnhn.fr/sites/default/files/pdfs/2018%20Leroy%20et%20al%20-%20Journal%20of%20Biogeography.pdf
+  # https://borea.mnhn.fr/sites/default/files/pdfs/2018%20Leroy%20et%20al%20-%20Journal%20of%20Biogeography",suffix_pdf,".pdf
   c("Sorensen.ndop_gbif", "Sorensen.gbif_ndop", "Sorensen.ndop_all"),
   c("OPR.ndop_gbif", "OPR.gbif_ndop", "OPR.ndop_all"),
   c("UPR.ndop_gbif", "UPR.gbif_ndop", "UPR.ndop_all"),
@@ -81,7 +81,8 @@ pairs <- list(
 
   c("gbif_crop.breadth.B1", "all_crop.breadth.B1", "ndop.breadth.B1"),
   c("gbif_crop.breadth.B2", "all_crop.breadth.B2", "ndop.breadth.B2"),
-
+  # # geogr šířka niky - cropnutý GBIF
+  c("gbif.breadth.B2", "gbif_crop.breadth.B2", "ndop.breadth.B2"),
   # # env šířka niky
 
   c("gbif.ebreadth.B2", "ndop.ebreadth.B2", "all.ebreadth.B2"),
@@ -280,7 +281,7 @@ for (i in seq_along(names(rds_append))) {
     left_join(tibble_all_p, by = c("species" = "species.all")) %>%
     left_join(tibble_ndop_p, by = c("species" = "species.ndop")) %>%
     left_join(tibble.gbif_ndop.pa, by = c("species" = "species.gbif_ndop")) %>%
-        left_join(tibble.ndop_gbif.pa, by = c("species" = "species.ndop_gbif")) %>%
+    left_join(tibble.ndop_gbif.pa, by = c("species" = "species.ndop_gbif")) %>%
     left_join(tibble.all_ndop.pa, by = c("species" = "species.all_ndop")) %>%
     left_join(tibble.ndop_all.pa, by = c("species" = "species.ndop_all")) %>%
     left_join(tibble.all_gbif.pa, by = c("species" = "species.all_gbif")) %>%
@@ -324,9 +325,21 @@ tibble_grains %<>% mutate(wcl8_perc.gbif = ((l8.gbif * 100) / wc.gbif))
 tibble_grains %<>% mutate(wcl8_perc.all = ((l8.all * 100) / wc.all))
 tibble_grains %<>% mutate(wcl8_perc.ndop = ((l8.ndop * 100) / wc.ndop))
 
+# auc_limit - nové limity obecně na všechno
+tibble_grains %<>%
+  filter(auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.75) # auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.75
+
+suffix_pdf <- "-cor075"
+
+give.n <- function(x) {
+  # pro zobrazení počtu nálezů nad boxploty
+  return(c(y = median(x) * 1.05, label = length(x)))
+}
+
+
 # glimpse(tibble_grains %>% dplyr::select(contains(".ebreadth.")))
 
-pdf(paste0(export_path, "/", prefix, "auc_variable_permutation_importance.pdf"))
+pdf(paste0(export_path, "/", prefix, "auc_variable_permutation_importance", suffix_pdf, ".pdf"))
 
 ### AUC
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -349,6 +362,7 @@ pic_box <- auc %>%
   ggplot(aes(x = auc_type, y = auc_value, fill = auc_type)) +
   ylim(0.3, 1) + # porovnatelnost mezi glm a maxent
   geom_boxplot() +
+  stat_summary(fun.data = give.n, geom = "text", fun.y = median, colour = "red", size = 2) +
   scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
   geom_jitter(color = "red", size = 0.3, alpha = 0.3) +
   ggtitle("AUC") +
@@ -382,6 +396,7 @@ pic_box <- Jaccard %>%
   ggplot(aes(x = Jaccard_type, y = Jaccard_value, fill = Jaccard_type)) +
   ylim(0, 1) + # porovnatelnost mezi glm a maxent
   geom_boxplot() +
+  stat_summary(fun.data = give.n, geom = "text", fun.y = median, colour = "red", size = 2) +
   scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
   geom_jitter(color = "red", size = 0.3, alpha = 0.3) +
   ggtitle("Jaccard") +
@@ -413,6 +428,7 @@ pic_box <- Sorensen %>%
   ggplot(aes(x = Sorensen_type, y = Sorensen_value, fill = Sorensen_type)) +
   ylim(0, 1) + # porovnatelnost mezi glm a maxent
   geom_boxplot() +
+  stat_summary(fun.data = give.n, geom = "text", fun.y = median, colour = "red", size = 2) +
   scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
   geom_jitter(color = "red", size = 0.3, alpha = 0.3) +
   ggtitle("Sorensen") +
@@ -433,6 +449,7 @@ perm.ndop <- tibble_grains %>% pivot_longer(
 pic_box <- perm.ndop %>%
   ggplot(aes(x = imp_type, y = imp_value, fill = imp_type)) +
   geom_boxplot() +
+  stat_summary(fun.data = give.n, geom = "text", fun.y = median, colour = "red", size = 2) +
   scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
   ggtitle("permutation Importance NDOP") +
   xlab("") +
@@ -453,6 +470,7 @@ perm.gbif <- tibble_grains %>% pivot_longer(
 pic_box <- perm.gbif %>%
   ggplot(aes(x = imp_type, y = imp_value, fill = imp_type)) +
   geom_boxplot() +
+  stat_summary(fun.data = give.n, geom = "text", fun.y = median, colour = "red", size = 2) +
   scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
   ggtitle("permutation Importance gbif") +
   xlab("") +
@@ -473,6 +491,7 @@ perm.all <- tibble_grains %>% pivot_longer(
 pic_box <- perm.all %>%
   ggplot(aes(x = imp_type, y = imp_value, fill = imp_type)) +
   geom_boxplot() +
+  stat_summary(fun.data = give.n, geom = "text", fun.y = median, colour = "red", size = 2) +
   scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
   ggtitle("permutation ImportanceALL") +
   xlab("") +
@@ -492,7 +511,7 @@ dev.off()
 
 pxs_size <- tibble_grains %>% distinct(px_size_item)
 
-pdf(paste0(export_path, "/", prefix, "overall.pdf"))
+pdf(paste0(export_path, "/", prefix, "overall", suffix_pdf, ".pdf"))
 
 # generovat per (filter): px_size, species,
 
@@ -526,7 +545,7 @@ dev.off()
 
 
 for (pxs in pxs_size$px_size_item) {
-  pdf(paste0(export_path, "/", prefix, "overall_", pxs, ".pdf"))
+  pdf(paste0(export_path, "/", prefix, "overall_", pxs, "", suffix_pdf, ".pdf"))
 
   # generovat per (filter): px_size, species,
   print("jedna")
@@ -591,36 +610,36 @@ for (p in pairs) {
   dfAUCorig_count <- as.integer(count(dfAUCorig) / 4) * 4
 
 
-  auc_limit <- 0.75
+  auc_limit <- 0.70
   typ_filtrace <- "NDOP" # "GBIF_ALL" "GBIF_NDOP" "ALL_NDOP" "NDOP" "GBIF"
 
-  if (typ_filtrace == "GBIF_ALL") {
-    dfAUCfiltr <- dfAUCorig %>%
-      filter(auc.all.te >= auc_limit) %>%
-      filter(auc.gbif.te >= auc_limit)
-  }
+  # if (typ_filtrace == "GBIF_ALL") {
+  #   dfAUCfiltr <- dfAUCorig %>%
+  #     filter(auc.all.te >= auc_limit) %>%
+  #     filter(auc.gbif.te >= auc_limit)
+  # }
 
-  if (typ_filtrace == "GBIF_NDOP") {
-    dfAUCfiltr <- dfAUCorig %>%
-      filter(auc.ndop.te >= auc_limit) %>%
-      filter(auc.gbif.te >= auc_limit)
-  }
+  # if (typ_filtrace == "GBIF_NDOP") {
+  #   dfAUCfiltr <- dfAUCorig %>%
+  #     filter(auc.ndop.te >= auc_limit) %>%
+  #     filter(auc.gbif.te >= auc_limit)
+  # }
 
-  if (typ_filtrace == "ALL_NDOP") {
-    dfAUCfiltr <- dfAUCorig %>%
-      filter(auc.ndop.te >= auc_limit) %>%
-      filter(auc.all.te >= auc_limit)
-  }
+  # if (typ_filtrace == "ALL_NDOP") {
+  #   dfAUCfiltr <- dfAUCorig %>%
+  #     filter(auc.ndop.te >= auc_limit) %>%
+  #     filter(auc.all.te >= auc_limit)
+  # }
 
-  if (typ_filtrace == "NDOP") {
-    dfAUCfiltr <- dfAUCorig %>%
-      filter(auc.ndop.te >= auc_limit)
-  }
+  # if (typ_filtrace == "NDOP") {
+  #   dfAUCfiltr <- dfAUCorig %>%
+  #     filter(auc.ndop.te >= auc_limit & gbif_ndop.geo.cor >= 0.75)
+  # }
 
-  if (typ_filtrace == "GBIF") {
-    dfAUCfiltr <- dfAUCorig %>%
-      filter(auc.gbif.te >= auc_limit)
-  }
+  # if (typ_filtrace == "GBIF") {
+  #   dfAUCfiltr <- dfAUCorig %>%
+  #     filter(auc.gbif.te >= auc_limit)
+  # }
 
 
   #
@@ -742,7 +761,7 @@ for (p in pairs) {
   labelmigr <- "Migration type: L: long-distance, P: partial, R: resident, S: short-distance"
 
 
-  pdf(paste0(export_path, "/", prefix, "_", appendix, "_aucLim-", auc_limit, "_filtr-", typ_filtrace, ".pdf"))
+  pdf(paste0(export_path, "/", prefix, "_", appendix, "_aucLim-", auc_limit, "_filtr-", typ_filtrace, "", suffix_pdf, ".pdf"))
 
   grid.arrange(top = caption, tableGrob(reduction))
   # grid.table(reduction)
@@ -750,6 +769,7 @@ for (p in pairs) {
 
   pic_lm <- ggplot(df, aes(x = Question, y = as.numeric(dAUC), group = Question)) +
     geom_boxplot(aes(fill = Question)) +
+    stat_summary(fun.data = give.n, geom = "text", fun.y = median, colour = "red", size = 2) +
     facet_wrap(~px_size_item, ncol = 5) + # !!! XXX - pokud chci v jednom řádku tak: ncol = 5
     labs(title = appendix, subtitle = "st", x = paste0(" grain size"), y = appendix, caption = caption) # + scale_y_continuous(trans = 'log2')
   print(pic_lm)
@@ -782,6 +802,7 @@ for (p in pairs) {
   # "Dependence of dAUC on habitat and grain"
   pic_box <- ggplot(df, aes(x = Habitat, y = as.numeric(dAUC), fill = Habitat)) +
     geom_boxplot() +
+    stat_summary(fun.data = give.n, geom = "text", fun.y = median, colour = "red", size = 2) +
     facet_grid(Question ~ px_size_item) +
     labs(title = tithab, subtitle = titQ1Q2, x = labelhab, y = labely) #+ scale_y_continuous(trans = 'log2')
   print(pic_box)
@@ -797,6 +818,7 @@ for (p in pairs) {
 
   pic_box <- ggplot(df, aes(x = factor(Protection, level = c("C", "H", "E", "N")), y = as.numeric(dAUC), fill = Protection)) +
     geom_boxplot() +
+    stat_summary(fun.data = give.n, geom = "text", fun.y = median, colour = "red", size = 2) +
     facet_grid(Question ~ px_size_item) +
     labs(title = titprot, subtitle = titQ1Q2, x = labelprot, y = labely) #+ scale_y_continuous(trans = 'log2')
   print(pic_box)
@@ -807,6 +829,7 @@ for (p in pairs) {
   # "Dependence of dAUC on European distribution and grain"
   pic_box <- ggplot(df, aes(x = Distribution, y = as.numeric(dAUC), fill = Distribution)) +
     geom_boxplot() +
+    stat_summary(fun.data = give.n, geom = "text", fun.y = median, colour = "red", size = 2) +
     facet_grid(Question ~ px_size_item) +
     labs(title = titdist, subtitle = titQ1Q2, x = labeldist, y = labely) #+ scale_y_continuous(trans = 'log2')
   print(pic_box)
@@ -818,6 +841,7 @@ for (p in pairs) {
   # to samé se dá udělat pro typ migrace, ale to asi nemá smysl ukazovat, protože není důvod, proč by na tom mělo něco záležet
   pic_box <- ggplot(df, aes(x = factor(Migration, level = c("R", "P", "S", "L")), y = as.numeric(dAUC), fill = Migration)) +
     geom_boxplot() +
+    stat_summary(fun.data = give.n, geom = "text", fun.y = median, colour = "red", size = 2) +
     facet_grid(Question ~ px_size_item) +
     labs(title = titmigr, subtitle = titQ1Q2, x = labelmigr, y = labely) #+ scale_y_continuous(trans = 'log2')
   print(pic_box)
