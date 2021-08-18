@@ -567,6 +567,13 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
 }
 
 
+rRMSE <- function(x, y) {
+  return(
+    sqrt(
+      mean((as.vector(x) - as.vector(y))^2, na.rm = TRUE)
+    )
+  )
+}
 
 # is.defined <- function(sym) {
 #   # https://stackoverflow.com/a/43446356
