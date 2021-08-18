@@ -932,7 +932,11 @@ for (px_size_item in px_size) {
                     ### !!! Jen na fitování, stejně dělám r.breadth pak ještě znovu u ginálních modelů.
                     ### Asi bych měl ale ukládat do budoucna oboje hodnoty pro srovnání
                     ###
-                    rs <- fm[[i]]$enm_mxt_gbif[[1]]$suitability
+                    if(replicates > 1){
+                        rs <- calc(stack(sapply(fm[[i]]$enm_mxt_gbif, function(x) x$suitability)), fun = mean, na.rm = TRUE)
+                    }else{
+                        rs <- stack(sapply(fm[[i]]$enm_mxt_gbif, function(x) x$suitability))
+                    }
                     rs_crop <- crop(rs, extent(czechia_3035))
                     rs_mask_czechia <- mask(rs_crop, czechia_3035)
                     fm_gbif[[i]] <- raster.breadth(rs_mask_czechia)$B2
@@ -1135,7 +1139,12 @@ for (px_size_item in px_size) {
                     ### !!! Jen na fitování, stejně dělám r.breadth pak ještě znovu u ginálních modelů.
                     ### Asi bych měl ale ukládat do budoucna oboje hodnoty pro srovnání
                     ###
-                    rs <- fm_gbif_f[[i]]$enm_mxt_gbif[[1]]$suitability
+                    if(replicates > 1){
+                        
+                        rs <- calc(stack(sapply(fm_gbif_f[[i]]$enm_mxt_gbif, function(x) x$suitability)), fun = mean, na.rm = TRUE) 
+                    }else{
+                        rs <- stack(sapply(fm_gbif_f[[i]]$enm_mxt_gbif, function(x) x$suitability))
+                    }
                     rs_crop <- crop(rs, extent(czechia_3035))
                     rs_mask_czechia <- mask(rs_crop, czechia_3035)
                     fm_gbif[[i]] <- raster.breadth(rs_mask_czechia)$B2
