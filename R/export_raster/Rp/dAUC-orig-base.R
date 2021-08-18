@@ -11,7 +11,7 @@ lapply(required_packages, require, character.only = TRUE)
 wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee"
 setwd(wd)
 
-export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/pdf_statsIGAprelim2"
+export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/pdf_statsIGA-BFitA"
 
 pairs <- list(
 
@@ -100,7 +100,7 @@ prefix <- "glm_BFitA_" # "OWNPFr" "maxent_thr" "glm_GB_"
 
 rds_list <-
     list.files(
-        path = paste0(export_path, "/../vse-v-jednom/glm-prelim2/outputs/rds"), # vse-v-jednom/outputs/rds/
+        path = paste0(export_path, "/../vse-v-jednom/BFitA/outputs/rds"), # vse-v-jednom/outputs/rds/
         pattern = paste0("^enmsr_", prefix, ".+\\.rds$"), # "^enmsr_glmE[0-9]_.+\\.rds$"  "^enmsr_xxx[0-9]_.+\\.rds$"   enmsr_glmF0_5000_3_1621355712.12381.rds       "^enmsr_glm2PATEST[0-9]_.+\\.rds$"
         ignore.case = TRUE,
         full.names = TRUE
@@ -288,9 +288,12 @@ tibble_grains %<>% mutate(wcl8_perc.ndop = ((l8.ndop * 100) / wc.ndop))
 ## gbif_ndop.geo.D >= 0.70: 629
 ## gbif_ndop.geo.D >= 0.80: 219
 
+
+# základní filtrace podle AUC a korelace
 tibble_grains.reduced <- tibble_grains %>%
-    select_if(~ is.numeric(.) | is.character(.)) %>%
-    filter(auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.75)
+    select_if(~ is.numeric(.) | is.character(.))
+# %>%
+# filter(auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.75)
 # tibble_grains %>%  filter(auc.ndop.te >= 0.70 & gbif_ndop.geo.D >= 0.80)
 # write_csv(tibble_grains %>% select_if(~ is.numeric(.) | is.character(.)), "tibble_grains.glm.csv")
 tibble_grains.reduced %>% filter(px_size_item == 10000)
@@ -329,23 +332,69 @@ plot(tibble_grains.reduced$ndop.breadth.B2, tibble_grains.reduced$auc.ndop.te)
 
 
 
-
-
-
-
-
 #
-# generování mapky
+# 1) výpočet a přídaní RMSE sloupce 
 #
-png_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/glm-prelim2/r"
+png_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/BFitA/outputs/r"
 # Acanthis cabaret_500_glm_BFitA_5003_4_all.png   glm_BFitA_5001_Aix sponsa_500_4_all.tif
 tibble_grains.reduced.path <- tibble_grains.reduced %>%
-    mutate(path = paste0("glm_BFitA", "_", px_size_item, "[0-9]{1,2}_", species, "_", px_size_item, "_4_ndop.tif"))
+    mutate(path = paste0(prefix, px_size_item, "[0-9]{1,2}_", species, "_", px_size_item, "_4_ndop.tif"))
 # tibble_grains.reduced.path <-tibble_grains.reduced %>%  mutate(path = paste0(species, "_", px_size_item, "_","glm_BFitA", "_", px_size_item, "[0-9]{1,2}_4_gbif.png")) %>% select(path)
 png_list <- list()
 
 
-pdf(paste0(export_path, "/check-predictions-NDOP_GBIF-cor-0.75.pdf"), width = 15, height = 7)
+tibble_grains.reduced.path %<>% mutate(rmse = 0.123)
+
+for (p in seq_along(tibble_grains.reduced.path$path)) {
+    pt <- tibble_grains.reduced.path[p, ]
+    png_list[[pt$path]] <-
+        list.files(
+            path = png_path,
+            # původní: "^glm_fmt_", d, "_.*\\.rds$"
+            # "^glm_fmt_", d, "_.*[0-9]{4,5}-[0-9]{1,2}\\.rds$" - vše bez 500
+            pattern = paste0("^", pt$path, "$"), # "^enmsr_glmE[0-9]_.+\\.rds$"  "^enmsr_xxx[0-9]_.+\\.rds$"   enmsr_glmF0_5000_3_1621355712.12381.rds       "^enmsr_glm2PATEST[0-9]_.+\\.rds$"
+            ignore.case = TRUE,
+            full.names = TRUE
+        )
+
+    # NDOP
+    # ořez původního raster_stack na ČR pro lokální SDM
+    raster_stack <- raster(png_list[[p]])
+    raster_stack_crop <- crop(raster_stack, extent(czechia))
+    raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
+
+    # GBIF
+    # ořez původního raster_stack na ČR pro lokální SDM
+    raster_stack2 <- raster(gsub("_ndop", "_gbif", png_list[[p]]))
+    raster_stack_crop2 <- crop(raster_stack2, extent(czechia))
+    raster_stack_mask_czechia2 <- mask(raster_stack_crop2, czechia)
+
+    rmse <- rRMSE(raster_stack_mask_czechia, raster_stack_mask_czechia2)
+
+    tibble_grains.reduced.path[p, ]$rmse <- rmse
+}
+
+hist(tibble_grains.reduced.path$rmse)
+
+
+
+tibble_grains.reduced.path.zaloha <- tibble_grains.reduced.path
+stop()
+# tibble_grains.reduced <- tibble_grains %>%
+#     select_if(~ is.numeric(.) | is.character(.)) %>%
+#     filter(auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.75)
+
+#
+# generování map do PDF
+#
+
+tibble_grains.reduced.path <- tibble_grains.reduced.path.zaloha %>%
+    filter(auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.75) # auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.75 & rmse <= 0.17
+
+#  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/Rp/dAUC-orig-base.R", encoding = "UTF-8")
+
+pdf(paste0(export_path, "/check-predictions-", prefix, "_10-1_-cor-0.75.pdf"), width = 15, height = 7)
+
 for (p in seq_along(tibble_grains.reduced.path$path)) {
     pt <- tibble_grains.reduced.path[p, ]
     png_list[[pt$path]] <-
@@ -364,7 +413,7 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
 
     # NDOP
     # ořez původního raster_stack na ČR pro lokální SDM
-    raster_stack <- raster(png_list[[p]])
+    raster_stack <- raster(png_list[[pt$path]])
     raster_stack_crop <- crop(raster_stack, extent(czechia))
     raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
     plot(raster_stack_mask_czechia,
@@ -384,12 +433,12 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
 
     # GBIF
     # ořez původního raster_stack na ČR pro lokální SDM
-    raster_stack <- raster(gsub("_ndop", "_gbif", png_list[[p]]))
+    raster_stack <- raster(gsub("_ndop", "_gbif", png_list[[pt$path]]))
     raster_stack_crop <- crop(raster_stack, extent(czechia))
     raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
     plot(raster_stack_mask_czechia,
         main = paste0(pt$species, " | GBIF, (AUC=", round(pt$auc.gbif.te, digits = 2), ") (", (pt$px_size_item / 1000), "km)"),
-        sub = paste0("geo.cor (Spearman): ", round(pt$gbif_ndop.geo.cor, digits = 2), " | geo.D (Schoener): ", round(pt$gbif_ndop.geo.D, digits = 2))
+        sub = paste0("geo.cor (Spearman): ", round(pt$gbif_ndop.geo.cor, digits = 2), " | geo.D (Schoener): ", round(pt$gbif_ndop.geo.D, digits = 2), " | RMSE: ", round(pt$rmse, digits = 3))
     )
     par(bg = NA)
     plot(rivers_cz$geometry, add = TRUE, col = "blue")
@@ -400,6 +449,7 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
     par()
     points(points, col = rgb(red = 0, green = 0, blue = 1, alpha = 0.3), cex = 0.5)
 }
+
 dev.off()
 
 
