@@ -653,7 +653,7 @@ for (px_size_item in px_size) {
     # obrácení pořadí druhů, od nejméně početných pro urychlení prvních výsledků
 
     ptaci_intersect_distinct <- ptaci_ndop_distinct %>%
-        filter(species %in% ptaci_gbif_distinct$species) 
+        filter(species %in% ptaci_gbif_distinct$species) # %>% filter(species != "Tichodroma muraria")
     # %>% filter(species == "Larus argentatus")
     # %>% filter(species == "Emberiza calandra")
     # %>% filter(species == "Podiceps grisegena")
@@ -1011,8 +1011,8 @@ for (px_size_item in px_size) {
             #
 
             print("1.5) - oveření top3 5 replikacemi ------------------------------------------------------------------------------")
-            replicates.prep <- 5
-            test.prop.prep <- 0.3
+            replicates.prep <- 3
+            test.prop.prep <- 0.1
 
             fm_gbif_f.prep <- list()
             for (s in ntt_gbif_5$nms) {
@@ -1096,7 +1096,7 @@ for (px_size_item in px_size) {
             # ntt_gbif_5[2, 1]
 
             if (length(fm_all.prep) == 0) {
-                nt_all.prep <- ntt_gbif_5[0, ]
+                nt_all.prep <- ntt_gbif_5.prep[0, ]
                 ntt_all.prep <- ntt_gbif.prep[0, ]
             } else {
                 nt_all.prep <- as_tibble(fm_all.prep)
@@ -1227,11 +1227,15 @@ for (px_size_item in px_size) {
 
             for (i in names(fm_all_f)) {
                 fm_all[[i]] <- fm_all_f[[i]]$enm_mxt_all.breadth.B2
-                if (length(ntt_all.prep[which(ntt_all.prep$nms == i), ]$V2) == 1) {
+            }
+            for (i in names(fm_all)) {
+                if (nrow(ntt_all.prep[which(as.character(format(ntt_all.prep$nms, 2)) == i), ]) == 1) {
                     # přepíšu původní extrémy zprůměrovanými hodnotami
-                    fm_all[[i]] <- ntt_all.prep[which(ntt_all.prep$nms == i), ]$V2
+                    fm_all[[i]] <- ntt_all.prep[which(as.character(format(ntt_all.prep$nms, 2)) == i), ]$V2
                 }
             }
+
+            
             for (i in names(fm_gbif_f)) {
                 if (!fit_gbif_crop) {
                     fm_gbif[[i]] <- fm_gbif_f[[i]]$enm_mxt_gbif.breadth.B2
@@ -1251,18 +1255,26 @@ for (px_size_item in px_size) {
                     rs_mask_czechia <- mask(rs_crop, czechia_3035)
                     fm_gbif[[i]] <- raster.breadth(rs_mask_czechia)$B2
                 }
-
-                if (length(ntt_gbif.prep[which(ntt_gbif.prep$nms == i), ]$V2) == 1) {
+            }
+            for (i in names(fm_gbif)) {
+                if (nrow(ntt_gbif.prep[which(as.character(format(ntt_gbif.prep$nms, 2)) == i), ]) == 1) {
                     # přepíšu původní extrémy zprůměrovanými hodnotami
-                    fm_gbif[[i]] <- ntt_gbif.prep[which(ntt_gbif.prep$nms == i), ]$V2
+                    fm_gbif[[i]] <- ntt_gbif.prep[which(as.character(format(ntt_gbif.prep$nms, 2)) == i), ]$V2
                 }
             }
+
+
             for (i in names(fm_ndop_f)) {
                 fm_ndop[[i]] <- fm_ndop_f[[i]]$enm_mxt_ndop.breadth.B2
-
-                if (length(ntt_ndop.prep[which(ntt_ndop.prep$nms == i), ]$V2) == 1) {
+            }
+            for (i in names(fm_ndop)) {
+                if (nrow(ntt_ndop.prep[which(as.character(format(ntt_ndop.prep$nms, 2)) == i), ]) == 1) {
                     # přepíšu původní extrémy zprůměrovanými hodnotami
-                    fm_ndop[[i]] <- ntt_ndop.prep[which(ntt_ndop.prep$nms == i), ]$V2
+                    print("přepis NDOP top3")
+                    print(fm_ndop[[i]])
+                    print(ntt_ndop.prep[which(as.character(format(ntt_ndop.prep$nms, 2)) == i), ])
+                    print(ntt_ndop.prep[which(as.character(format(ntt_ndop.prep$nms, 2)) == i), ]$V2)
+                    fm_ndop[[i]] <- ntt_ndop.prep[which(as.character(format(ntt_ndop.prep$nms, 2)) == i), ]$V2
                 }
             }
 
@@ -1342,7 +1354,7 @@ for (px_size_item in px_size) {
             plot(ntt_ndop, main = paste0(sp, " | NDOP, (", (px_size_item / 1000), "km)"), sub = paste0("1st: ", ntt_ndop_5_u, " | 2nd: ", ndop_top_adj))
             dev.off()
 
-  
+
             ## pokud generuju bias rastery, tak si je jen připravuji a přeskočím modelování
             # next
         } else {
