@@ -386,7 +386,7 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
           bg.source = "range",
           verbose = TRUE,
           bias = bias_gbif,
-          args = c("removeDuplicates=FALSE", "outputFormat=raw"), # maxent - zákaz groupování dle pixelů
+          args = c("removeDuplicates=FALSE", "outputFormat=raw"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
           nback = nback_all,
           corner = ifelse(r == 4, r, NA)
           # args = c("threads=4")
@@ -457,7 +457,7 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
           bg.source = "range",
           verbose = TRUE,
           bias = bias_ndop,
-          args = c("removeDuplicates=FALSE", "outputFormat=raw"), # maxent - zákaz groupování dle pixelů
+          args = c("removeDuplicates=FALSE", "outputFormat=raw"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
           nback = nback_ndop,
           corner = ifelse(r == 4, r, NA)
           # args = c("threads=4")
@@ -521,7 +521,7 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
           bg.source = "range",
           verbose = TRUE,
           bias = bias_all,
-          args = c("removeDuplicates=FALSE", "outputFormat=raw"), # maxent - zákaz groupování dle pixelů
+          args = c("removeDuplicates=FALSE", "outputFormat=raw"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
           nback = nback_all,
           corner = ifelse(r == 4, r, NA)
           # args = c("threads=4")
