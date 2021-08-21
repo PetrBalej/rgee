@@ -19,7 +19,9 @@ tibbleT <- list()
 for (d in datasets) {
   rds_list <-
     list.files(
-      path = "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/prelim/occurrences", # vse-v-jesdnom/outputs/rds/
+      path = "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/BF0/inputs/occurrences", # vse-v-jesdnom/outputs/rds/ , /mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/prelim/occurrences
+      # původní: "^glm_fmt_", d, "_.*\\.rds$"
+      # "^glm_fmt_", d, "_.*[0-9]{4,5}-[0-9]{1,2}\\.rds$" - vše bez 500
       pattern = paste0("^glm_fmt_", d, "_.*\\.rds$"), # "^enmsr_glmE[0-9]_.+\\.rds$"  "^enmsr_xxx[0-9]_.+\\.rds$"   enmsr_glmF0_5000_3_1621355712.12381.rds       "^enmsr_glm2PATEST[0-9]_.+\\.rds$"
       ignore.case = TRUE,
       full.names = TRUE
@@ -173,3 +175,81 @@ t3f3mmr <- tibbleB %>%
 # write_csv(t5f, "adjust-top5-median.csv")
 # write_csv(t5f3mmr, "adjust-ltNms3-top5-median.csv")
 # write_csv(t3f3mmr, "adjust-ltNms3-top3-median.csv")
+
+
+# tibbleB.glm <- tibbleB
+# tibbleB.maxent <- tibbleB
+
+
+# t3f3mmr.maxent <- tibbleB.maxent %>%
+#   filter(nms < 3) %>%
+#   slice_max(V2, n = 3) %>%
+#   mutate(maxNms = max(nms), minNms = min(nms)) %>%
+#   mutate(nmsRange = maxNms - minNms) %>%
+#   summarise_at(vars(nms, minNms, maxNms, nmsRange), median)
+
+#   # write_csv(t3f3mmr.maxent, "adjust-ltNms3-top3-median.maxent.csv")
+
+# t3f3mmr.glm <- tibbleB.glm %>%
+#   filter(nms < 3) %>%
+#   slice_max(V2, n = 3) %>%
+#   mutate(maxNms = max(nms), minNms = min(nms)) %>%
+#   mutate(nmsRange = maxNms - minNms) %>%
+#   summarise_at(vars(nms, minNms, maxNms, nmsRange), median)
+
+#   # write_csv(t3f3mmr.glm, "adjust-ltNms3-top3-median.glm.csv")
+
+
+# rozsahy raster.breadth
+
+RBRange <- tibbleB %>%
+  mutate(maxRB = max(V2), minRB = min(V2)) %>%
+  mutate(RBRange = maxRB - minRB) %>%
+  summarise_at(vars(RBRange, maxRB), mean)
+
+# library
+library(ggplot2)
+# # # - musím všude použít filtr na NDOP AUC a napárovat na GBIF, jinak nemůžu tvrdit, že ty hodnoty jsou správně...
+
+dataRB <- data.frame(px_size = RBRange$px_size, dataset = RBRange$dataset, maxRB = RBRange$maxRB, RBRange = RBRange$RBRange)
+
+
+# # #
+# # # grouped boxplot - porovnání max (ideál) šířky nik per pixel a dataset
+# # #
+ggplot(dataRB, aes(x = factor(px_size), y = maxRB, fill = dataset)) +
+  geom_boxplot() +
+  labs(
+    title = "porovnání maximální (ideální, peak) šířky nik per pixel a dataset",
+    subtitle = "GBIF data vykazují větší šířku niky napříč px size"
+  )
+
+# # #
+# # # grouped boxplot - porovnání rozpětí šířky nik během adjustace per pixel a dataset = jak moc se r.breadth zlepší (zvětší) během adjustace,
+# # # aneb jak moc velký vliv má můj bias fitting
+# # #
+
+ggplot(data, aes(x = factor(px_size), y = RBRange, fill = dataset)) +
+  geom_boxplot() +
+  labs(
+    title = "porovnání změny rozpětí šířky nik během bias fittingu per pixel a dataset",
+    subtitle = "jak moc se r.breadth zlepší (zvětší) během fittingu, jak velký je vliv bias rasteru na nálezy druhů",
+    caption = "NDOP data nejsou fittingem příliš ovlivněná (šířka niky se moc nemění, totéž GBIF 10km)"
+  )
+
+
+
+topAdjust <- tibbleB %>% slice_max(V2, n = 1)
+dataAdj <- data.frame(px_size = topAdjust$px_size, dataset = topAdjust$dataset, adjust = topAdjust$nms)
+# # #
+# # # grouped boxplot - porovnání rozpětí šířky nik během adjustace per pixel a dataset = jak moc se r.breadth zlepší (zvětší) během adjustace,
+# # # aneb jak moc velký vliv má můj bias fitting
+# # #
+
+ggplot(dataAdj, aes(x = factor(px_size), y = adjust, fill = dataset)) +
+  geom_boxplot() +
+  labs(
+    title = "adjust (kernel size) s největší r.breadth (ideál, peak)",
+    subtitle = "(vyšší adjust hodnota ~ větší šířka kernelu)",
+    caption = "srovnatelné asi jen v rámci jedné px_size, napříč asi ne, každý rozměr má předem vypočítaný ideální adjust"
+  )
