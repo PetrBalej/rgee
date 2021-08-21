@@ -1846,7 +1846,7 @@ for (px_size_item in px_size) {
             }
 
             print("RMSE")
-            rmse <- rRMSE(enm_mxt_gbif.r.m.crop.czechia, enm_mxt_ndop.r.m)
+            rmse <- rRMSE(raster.standardize(enm_mxt_gbif.r.m.crop.czechia), raster.standardize(enm_mxt_ndop.r.m))
 
             print("fill emsr")
             if (do_all) {
