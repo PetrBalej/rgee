@@ -325,6 +325,15 @@ round_df <- function(x, digits) {
   return(x)
 }
 
+floor_df <- function(x, digits) {
+  # pro optimalizaci tvorby bufferů, použít?
+  numcols <- sapply(x, mode) == "numeric"
+  x[numcols] <- x[numcols] / (10^abs(digits))
+  x[numcols] <- floor(x[numcols])
+  x[numcols] <- x[numcols] * (10^abs(digits))
+  return(x)
+}
+
 
 normalize <- function(x) {
   min <- raster::minValue(x)
@@ -567,6 +576,238 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
 }
 
 
+fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = FALSE) {
+
+
+
+  ###
+  ### gbifM
+  ###
+  print("GBIFM")
+  enm_mxt_gbif.breadth.B1 <- NA
+  enm_mxt_gbif.breadth.B2 <- NA
+  enm_mxt_gbif <- list()
+  if (!is.na(enm_mxt_gbif.s) && length(enm_mxt_gbif.s) != 0) {
+    if (alg == "glm") {
+      for (r in 1:replicates) {
+        enm_mxt_gbif[[r]] <- enmtools.glm(
+          enm_mxt_gbif.s,
+          eval = eval,
+          raster_stack_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_gbif,
+          nback = nback_all,
+          corner = ifelse(r == 4, r, NA)
+        )
+      }
+    }
+    if (alg == "gam") {
+      for (r in 1:replicates) {
+        enm_mxt_gbif[[r]] <- enmtools.gam(
+          enm_mxt_gbif.s,
+          eval = eval,
+          raster_stack_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_gbif,
+          nback = nback_all,
+          corner = ifelse(r == 4, r, NA)
+        )
+      }
+    }
+    if (alg == "maxent") {
+      for (r in 1:replicates) {
+        enm_mxt_gbif[[r]] <- enmtools.maxent(
+          enm_mxt_gbif.s,
+          eval = eval,
+          raster_stack_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_gbif,
+          args = c("removeDuplicates=FALSE", "outputFormat=raw"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
+          nback = nback_all,
+          corner = ifelse(r == 4, r, NA)
+          # args = c("threads=4")
+        )
+      }
+    }
+    ### GBIF .breadth
+    enm_mxt_gbif.breadth <- lapply(enm_mxt_gbif, raster.breadth)
+    enm_mxt_gbif.breadth.B1 <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B1))
+    enm_mxt_gbif.breadth.B2 <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B2))
+    # enm_mxt_gbif.breadth.B1.md <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B1))
+    # enm_mxt_gbif.breadth.B2.md <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B2))
+
+    # enm_mxt_gbif.r <- stack(sapply(enm_mxt_gbif, function(x) x$suitability))
+    # enm_mxt_gbif.r.m <- cellStats(enm_mxt_gbif.r, stat = "mean")
+    # enm_mxt_gbif.r.md <- cellStats(enm_mxt_gbif.r, stat = "median")
+    # enm_mxt_gbif.r.sd <- cellStats(enm_mxt_gbif.r, stat = "sd")
+  }
+
+  ###
+  ### ndopM
+  ###
+
+  print("NDOPM")
+
+
+  enm_mxt_ndop.breadth.B1 <- NA
+  enm_mxt_ndop.breadth.B2 <- NA
+  enm_mxt_ndop <- list()
+  if (!is.na(enm_mxt_ndop.s) && length(enm_mxt_ndop.s) != 0) {
+    if (alg == "glm") {
+      for (r in 1:replicates) {
+        enm_mxt_ndop[[r]] <- enmtools.glm(
+          enm_mxt_ndop.s,
+          eval = eval,
+          raster_stack_mask_czechia_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = NA,
+          nback = nback_ndop,
+          corner = ifelse(r == 4, r, NA)
+        )
+      }
+    }
+    if (alg == "gam") {
+      for (r in 1:replicates) {
+        enm_mxt_ndop[[r]] <- enmtools.gam(
+          enm_mxt_ndop.s,
+          eval = eval,
+          raster_stack_mask_czechia_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = NA,
+          nback = nback_ndop,
+          corner = ifelse(r == 4, r, NA)
+        )
+      }
+    }
+    if (alg == "maxent") {
+      for (r in 1:replicates) {
+        enm_mxt_ndop[[r]] <- enmtools.maxent(
+          enm_mxt_ndop.s,
+          eval = eval,
+          raster_stack_mask_czechia_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = NA,
+          args = c("removeDuplicates=FALSE", "outputFormat=raw"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
+          nback = nback_ndop,
+          corner = ifelse(r == 4, r, NA)
+          # args = c("threads=4")
+        )
+      }
+    }
+    ### NDOP .breadth
+    enm_mxt_ndop.breadth <- lapply(enm_mxt_ndop, raster.breadth)
+    enm_mxt_ndop.breadth.B1 <- median(sapply(enm_mxt_ndop.breadth, function(x) x$B1))
+    enm_mxt_ndop.breadth.B2 <- median(sapply(enm_mxt_ndop.breadth, function(x) x$B2))
+    # enm_mxt_ndop.breadth.B1.md <- median(sapply(enm_mxt_ndop.breadth, function(x) x$B1))
+    # enm_mxt_ndop.breadth.B2.md <- median(sapply(enm_mxt_ndop.breadth, function(x) x$B2))
+  }
+
+  ###
+  ### allM (ndpop+gbif)
+  ###
+  print("ALLM")
+
+  enm_mxt_all.breadth.B1 <- NA
+  enm_mxt_all.breadth.B2 <- NA
+  enm_mxt_all <- list()
+  if (!is.na(enm_mxt_all.s) && length(enm_mxt_all.s) != 0) {
+    if (alg == "glm") {
+      for (r in 1:replicates) {
+        enm_mxt_all[[r]] <- enmtools.glm(
+          enm_mxt_all.s[[r]],
+          eval = eval,
+          raster_stack_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_all,
+          nback = nback_all,
+          corner = ifelse(r == 4, r, NA)
+        )
+      }
+    }
+    if (alg == "gam") {
+      for (r in 1:replicates) {
+        enm_mxt_all[[r]] <- enmtools.gam(
+          enm_mxt_all.s[[r]],
+          eval = eval,
+          raster_stack_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_all,
+          nback = nback_all,
+          corner = ifelse(r == 4, r, NA)
+        )
+      }
+    }
+    if (alg == "maxent") {
+      for (r in 1:replicates) {
+        enm_mxt_all[[r]] <- enmtools.maxent(
+          enm_mxt_all.s[[r]],
+          eval = eval,
+          raster_stack_b,
+          test.prop = test.prop,
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_all,
+          args = c("removeDuplicates=FALSE", "outputFormat=raw"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
+          nback = nback_all,
+          corner = ifelse(r == 4, r, NA)
+          # args = c("threads=4")
+        )
+      }
+    }
+
+    ### ALL .breadth
+    enm_mxt_all.breadth <- lapply(enm_mxt_all, raster.breadth)
+    enm_mxt_all.breadth.B1 <- median(sapply(enm_mxt_all.breadth, function(x) x$B1))
+    enm_mxt_all.breadth.B2 <- median(sapply(enm_mxt_all.breadth, function(x) x$B2))
+    # enm_mxt_all.breadth.B1.md <- median(sapply(enm_mxt_all.breadth, function(x) x$B1))
+    # enm_mxt_all.breadth.B2.md <- median(sapply(enm_mxt_all.breadth, function(x) x$B2))
+  }
+
+  if (breadth_only) {
+    return(list(
+      enm_mxt_gbif.breadth.B1 = enm_mxt_gbif.breadth.B1, enm_mxt_gbif.breadth.B2 = enm_mxt_gbif.breadth.B2,
+      enm_mxt_ndop.breadth.B1 = enm_mxt_ndop.breadth.B1, enm_mxt_ndop.breadth.B2 = enm_mxt_ndop.breadth.B2,
+      enm_mxt_all.breadth.B1 = enm_mxt_all.breadth.B1, enm_mxt_all.breadth.B2 = enm_mxt_all.breadth.B2
+
+      # enm_mxt_gbif.breadth.B1.md = enm_mxt_gbif.breadth.B1.md, enm_mxt_gbif.breadth.B2.md = enm_mxt_gbif.breadth.B2.md,
+      # enm_mxt_ndop.breadth.B1.md = enm_mxt_ndop.breadth.B1.md, enm_mxt_ndop.breadth.B2.md = enm_mxt_ndop.breadth.B2.md,
+      # enm_mxt_all.breadth.B1.md = enm_mxt_all.breadth.B1.md, enm_mxt_all.breadth.B2.md = enm_mxt_all.breadth.B2.md
+    ))
+  } else {
+    return(list(
+      enm_mxt_gbif = enm_mxt_gbif, enm_mxt_ndop = enm_mxt_ndop, enm_mxt_all = enm_mxt_all,
+
+      enm_mxt_gbif.breadth.B1 = enm_mxt_gbif.breadth.B1, enm_mxt_gbif.breadth.B2 = enm_mxt_gbif.breadth.B2,
+      enm_mxt_ndop.breadth.B1 = enm_mxt_ndop.breadth.B1, enm_mxt_ndop.breadth.B2 = enm_mxt_ndop.breadth.B2,
+      enm_mxt_all.breadth.B1 = enm_mxt_all.breadth.B1, enm_mxt_all.breadth.B2 = enm_mxt_all.breadth.B2
+
+      # enm_mxt_gbif.r.m = enm_mxt_gbif.r.m,
+      # enm_mxt_gbif.r.md = enm_mxt_gbif.r.md,
+      # enm_mxt_gbif.r.sd = enm_mxt_gbif.r.sd
+
+      # enm_mxt_gbif.breadth.B1.md = enm_mxt_gbif.breadth.B1.md, enm_mxt_gbif.breadth.B2.md = enm_mxt_gbif.breadth.B2.md,
+      # enm_mxt_ndop.breadth.B1.md = enm_mxt_ndop.breadth.B1.md, enm_mxt_ndop.breadth.B2.md = enm_mxt_ndop.breadth.B2.md,
+      # enm_mxt_all.breadth.B1.md = enm_mxt_all.breadth.B1.md, enm_mxt_all.breadth.B2.md = enm_mxt_all.breadth.B2.md
+    ))
+  }
+}
+
 rRMSE <- function(x, y) {
   return(
     sqrt(
@@ -574,6 +815,16 @@ rRMSE <- function(x, y) {
     )
   )
 }
+
+
+rEPS <- function(x, y) {
+  # https://rdrr.io/github/adamlilith/enmSdm/src/R/compareNiches.r
+  # Godsoe's Expected fraction of Shared Presences (ESP)
+  return(
+    2 * sum(x * y, na.rm = TRUE) / (sum(x + y, na.rm = TRUE))
+  )
+}
+
 
 # is.defined <- function(sym) {
 #   # https://stackoverflow.com/a/43446356
