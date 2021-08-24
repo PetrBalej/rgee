@@ -1513,9 +1513,14 @@ for (px_size_item in px_size) {
             }
 
             print("RMSE")
-            rmse <- rRMSE(raster.standardize(enm_mxt_gbif.r.m.crop.czechia), raster.standardize(enm_mxt_ndop.r.m))
+            rmse <- rRMSE(enm_mxt_gbif.r.m.crop.czechia, enm_mxt_ndop.r.m)
+            print("RMSEs")
+            rmses <- rRMSE(raster.standardize(enm_mxt_gbif.r.m.crop.czechia), raster.standardize(enm_mxt_ndop.r.m))
+
             print("EPS")
-            eps <- rEPS(raster.standardize(enm_mxt_gbif.r.m.crop.czechia), raster.standardize(enm_mxt_ndop.r.m))
+            eps <- rEPS(enm_mxt_gbif.r.m.crop.czechia, enm_mxt_ndop.r.m)
+            print("EPSs")
+            epss <- rEPS(raster.standardize(enm_mxt_gbif.r.m.crop.czechia), raster.standardize(enm_mxt_ndop.r.m))
 
             print("fill emsr")
             if (do_all) {
@@ -1639,6 +1644,8 @@ for (px_size_item in px_size) {
 
                     gbif_ndop.geo.rmse = rmse,
                     gbif_ndop.geo.eps = eps,
+                    gbif_ndop.geo.rmses = rmses,
+                    gbif_ndop.geo.epss = epss,
 
                     # niche overlap
                     gbif_all.env.D = NA,
@@ -1774,6 +1781,8 @@ for (px_size_item in px_size) {
 
                     gbif_ndop.geo.rmse = rmse,
                     gbif_ndop.geo.eps = eps,
+                    gbif_ndop.geo.rmses = rmses,
+                    gbif_ndop.geo.epss = epss,
 
                     # niche overlap
                     gbif_all.env.D = NA,
