@@ -811,7 +811,7 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
 rRMSE <- function(x, y) {
   return(
     sqrt(
-      mean((as.vector(x) - as.vector(y))^2, na.rm = TRUE)
+      mean(((as.vector(x) - as.vector(y))^2), na.rm = TRUE)
     )
   )
 }
