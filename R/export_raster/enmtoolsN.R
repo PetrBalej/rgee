@@ -653,7 +653,7 @@ for (px_size_item in px_size) {
     # obrácení pořadí druhů, od nejméně početných pro urychlení prvních výsledků
 
     ptaci_intersect_distinct <- ptaci_ndop_distinct %>%
-        filter(species %in% ptaci_gbif_distinct$species) %>% filter(species != "Tichodroma muraria" & px_size_item == 10000)
+        filter(species %in% ptaci_gbif_distinct$species) # %>% filter(species != "Tichodroma muraria" & px_size_item != 10000)
     # %>% filter(species == "Larus argentatus")
     # %>% filter(species == "Emberiza calandra")
     # %>% filter(species == "Podiceps grisegena")

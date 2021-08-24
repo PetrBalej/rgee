@@ -821,7 +821,7 @@ rEPS <- function(x, y) {
   # https://rdrr.io/github/adamlilith/enmSdm/src/R/compareNiches.r
   # Godsoe's Expected fraction of Shared Presences (ESP)
   return(
-    2 * sum(x * y, na.rm = TRUE) / (sum(x + y, na.rm = TRUE))
+    2 * sum(as.vector(x) * as.vector(y), na.rm = TRUE) / (sum(as.vector(x) + as.vector(y), na.rm = TRUE))
   )
 }
 
