@@ -870,6 +870,11 @@ for (px_size_item in px_size) {
             # intervals <- c(0.7, 0.75, 0.79, 0.85, 1.1, 1.7)
 
             intervals <- c(seq(0.55, 0.65, by = 0.05), seq(0.67, 0.83, by = 0.02), seq(0.85, 0.95, by = 0.05)) # 75 modelů po 5
+            if (px_size_item >= 5000) {
+                intervals <- c(seq(0.45, 0.55, by = 0.05), seq(0.57, 0.73, by = 0.02), seq(0.75, 0.95, by = 0.05)) # 85 modelů po 5
+            }
+
+
             # intervals <- c(seq(0.55, 0.65, by = 0.05), seq(0.68, 0.83, by = 0.03), seq(0.85, 0.95, by = 0.05))
             # intervals <- c(
             #     seq(0.55, 2.05, by = 0.50)
@@ -1007,7 +1012,7 @@ for (px_size_item in px_size) {
             dev.off()
             if (do_all) {
                 png(paste0(export_path, "/outputs/png-adjust/", sp, "_", px_size_item, "_", pres, "_", replicates, "_all.png"))
-                plot(ntt_all, main = paste0(sp, " | ALL, (", (px_size_item / 1000), "km)"), sub = paste0("1st: ", all_top_adj ))
+                plot(ntt_all, main = paste0(sp, " | ALL, (", (px_size_item / 1000), "km)"), sub = paste0("1st: ", all_top_adj))
                 dev.off()
             }
             if (do_all) {
