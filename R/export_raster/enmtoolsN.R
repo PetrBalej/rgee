@@ -818,6 +818,25 @@ for (px_size_item in px_size) {
         raster_stack_mask_czechia_b <- mask(raster_stack_mask_czechia, buffer.local)
         raster_stack_mask_czechia_b <- setMinMax(raster_stack_mask_czechia_b)
 
+        # příprava occurences - ořezání pixely výsledného rastru prediktorů - nutno takto, ořezání polygonem nestačí (aby mi do modelu nevstupovaly nálezy které leží v NA oblastech)!
+        # nedělám pro all!!! (zatím nepotřebuju) - ale měl bych s tím později také dále počítat při určování poměru GBIF/NDOP pro ALL
+        # zatím toto ENMTools neumí...
+        # GBIF
+        spatialPoints.gbif <- crop(as(gbif_f, "Spatial"), buffer.global)
+        gbif_f.f <- st_as_sf(spatialPoints.gbif)
+        enm_mxt_gbif.pp.orig <- as.data.frame(st_coordinates(gbif_f.f))
+        colnames(enm_mxt_gbif.pp.orig)[1] <- "Longitude"
+        colnames(enm_mxt_gbif.pp.orig)[2] <- "Latitude"
+        # NDOP
+        spatialPoints.ndop <- crop(as(ndop_f, "Spatial"), buffer.local)
+        ndop_f.f <- st_as_sf(spatialPoints.ndop)
+        enm_mxt_ndop.pp.orig <- as.data.frame(st_coordinates(ndop_f.f))
+        colnames(enm_mxt_ndop.pp.orig)[1] <- "Longitude"
+        colnames(enm_mxt_ndop.pp.orig)[2] <- "Latitude"
+
+        ndop_f_n.f <- nrow(ndop_f.f)
+        gbif_f_n.f <- nrow(gbif_f.f)
+
         # # # zbytečné, nakonec se stejně znovu provede v check.bg() v enmtools.glm() pokud jsou takto zamaskované env prediktory
         # bias_gbif_b <- mask(bias_gbif, buffer.global)
         # bias_all_b <- mask(bias_all, buffer.global)
@@ -852,7 +871,6 @@ for (px_size_item in px_size) {
         }
 
         if (eval == FALSE) {
-
             test.prop.fit <- 0.1 # pro jistotu manuální přepis proměnné, nasazení podílu testovacích nálezů se totiž mění při jednotlivých adjustech -> nestabilní
             replicates.fit <- 5
             gc()
@@ -1103,7 +1121,7 @@ for (px_size_item in px_size) {
             png(paste0(export_path, "/outputs/png/", sp, "_", px_size_item, "_", pres, "_", replicates, "_gbif.png"), width = 800, height = 800)
             plot(enm_mxt_gbif.r.m,
                 main = paste0(sp, " | GBIF, AUC=", round(enm_mxt_gbif.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
-                sub = paste0("GBIF: ", gbif_f_n, " | adj: ", bvn_gbif)
+                sub = paste0("GBIF: ", gbif_f_n.f, " | adj: ", bvn_gbif)
             )
             par(bg = NA)
             plot(rivers_3035$geometry, add = TRUE, col = "blue")
@@ -1190,7 +1208,7 @@ for (px_size_item in px_size) {
             png(paste0(export_path, "/outputs/png/", sp, "_", px_size_item, "_", pres, "_", replicates, "_ndop.png"), width = 800, height = 800)
             plot(enm_mxt_ndop.r.m,
                 main = paste0(sp, " | NDOP, AUC=", round(enm_mxt_ndop.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
-                sub = paste0("NDOP: ", ndop_f_n, " | adj: ", bvn_ndop)
+                sub = paste0("NDOP: ", ndop_f_n.f, " | adj: ", bvn_ndop)
             )
             par(bg = NA)
             plot(rivers_cz_3035$geometry, add = TRUE, col = "blue")
@@ -1272,7 +1290,7 @@ for (px_size_item in px_size) {
                 png(paste0(export_path, "/outputs/png/", sp, "_", px_size_item, "_", pres, "_", replicates, "_all.png"), width = 800, height = 800)
                 plot(enm_mxt_all.r.m,
                     main = paste0(sp, " | GBIF+NDOP, AUC=", round(enm_mxt_all.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
-                    sub = paste0("NDOP/GBIF: ", ndop_f_n, "/", gbif_f_n, " = ", round(f_n), "% (", ndop_all_fraction, "/", gbif_all_fraction, ", ", fraction_used, ")", " | adj: ", bvn_all)
+                    sub = paste0("NDOP/GBIF: ", ndop_f_n.f, "/", gbif_f_n.f, " = ", round(f_n), "% (", ndop_all_fraction, "/", gbif_all_fraction, ", ", fraction_used, ")", " | adj: ", bvn_all)
                 )
                 par(bg = NA)
                 plot(rivers_3035$geometry, add = TRUE, col = "blue")
@@ -1511,6 +1529,8 @@ for (px_size_item in px_size) {
                     ndop_c = ndop_f_n,
                     ndop_c_thin = ndop_f_n_thin,
                     gbif_c = gbif_f_n,
+                    ndop_c.f = ndop_f_n.f,
+                    gbif_c.f = gbif_f_n.f,
                     ndop_all_fraction = ndop_all_fraction,
                     gbif_all_fraction = gbif_all_fraction,
                     fraction_used = fraction_used,
@@ -1648,6 +1668,8 @@ for (px_size_item in px_size) {
                     ndop_c = ndop_f_n,
                     ndop_c_thin = ndop_f_n_thin,
                     gbif_c = gbif_f_n,
+                    ndop_c.f = ndop_f_n.f,
+                    gbif_c.f = gbif_f_n.f,
                     ndop_all_fraction = ndop_all_fraction,
                     gbif_all_fraction = gbif_all_fraction,
                     fraction_used = fraction_used,
