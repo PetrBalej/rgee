@@ -853,11 +853,6 @@ for (px_size_item in px_size) {
 
         if (eval == FALSE) {
 
-            if (fit_gbif_crop) {
-                # pokud dodám rastr (čr), chci jím cropovat GBIF
-                fit_gbif_crop <- czechia_3035
-            }
-
             test.prop.fit <- 0.1 # pro jistotu manuální přepis proměnné, nasazení podílu testovacích nálezů se totiž mění při jednotlivých adjustech -> nestabilní
             replicates.fit <- 5
             gc()
@@ -900,7 +895,7 @@ for (px_size_item in px_size) {
                 bias_ndop <- NA
                 bias_all <- NA
 
-                fm[[bvn]] <- fit_modelsN(alg, replicates.fit, eval, test.prop.fit, enm_mxt_gbif.s, NA, NA, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, TRUE, fit_gbif_crop)
+                fm[[bvn]] <- fit_modelsN(alg, replicates.fit, eval, test.prop.fit, enm_mxt_gbif.s, NA, NA, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, TRUE, fit_gbif_crop, czechia_3035)
             }
 
             fm_all <- list()
