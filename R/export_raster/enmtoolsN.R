@@ -20,7 +20,7 @@ export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
 alg <- "glm" # "glm" "maxent" "gam"
 px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
 replicates <- 1 # 4 pro checkerboard2 (4foldy)
-pref <- "_BFGBIF1_" # předpona png obrázků s predikcí a dalších outputů / OWNPFr /// _OF-ps80_ BFit
+pref <- "_LV_" # předpona png obrázků s predikcí a dalších outputů / OWNPFr /// _OF-ps80_ BFit
 test.prop <- 0.3 # "block" "checkerboard2" 0.3; pro bias fitting 0.0 - manuálně pro jistotu přehazuju ještě přímo na místě!!!
 generate_predictor_raster <- FALSE
 generate_bias_raster <- FALSE # pokud je TRUE, tak jen generuje bias rastery a vše ostatní modelování přeskočí - nutné volat celkově (ne s parametrem pro rozdělení na 4 skupiny druhů!!!)
@@ -46,8 +46,8 @@ fit_gbif_crop <- TRUE # fitovat r.breadth až na výřezu ČR z GBIF dat, ne na 
 # install_local("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/ENMToolsPB", force = TRUE, build=TRUE)
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #  Rscript "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtoolsN.R" 1
-#  "C:\Program Files\R\R-3.6.0\bin\Rscript.exe" "C:\Users\petr\Documents\iga\rgee\R\export_raster\enmtoolsN.R" 1
-#  "C:\Program Files\R\R-4.0.5\bin\Rscript.exe" "G:\balej\iga\rgee\R\export_raster\enmtoolsN.R" 1
+#
+#  "C:\Program Files\R\R-4.0.5\bin\x64\Rscript.exe" "G:\balej\rgee\R\export_raster\enmtoolsN.R" 1
 #  Rtools https://cran.r-project.org/bin/windows/Rtools/
 #  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtoolsN.R", encoding = "UTF-8")
 #  source("D:/balej/rgee/R/export_raster/enmtoolsN.R", encoding = "UTF-8")
@@ -822,14 +822,16 @@ for (px_size_item in px_size) {
         # nedělám pro all!!! (zatím nepotřebuju) - ale měl bych s tím později také dále počítat při určování poměru GBIF/NDOP pro ALL
         # zatím toto ENMTools neumí...
         # GBIF
-        spatialPoints.gbif <- crop(as(gbif_f, "Spatial"), buffer.global)
-        gbif_f.f <- st_as_sf(spatialPoints.gbif)
+        spatialPoints.gbif <- extract(buffer.global, as(gbif_f, "Spatial"))
+        gbif_f.f <- gbif_f[which(spatialPoints.gbif == 1), ]
+        gbif_f.f <- st_as_sf(gbif_f.f)
         enm_mxt_gbif.pp.orig <- as.data.frame(st_coordinates(gbif_f.f))
         colnames(enm_mxt_gbif.pp.orig)[1] <- "Longitude"
         colnames(enm_mxt_gbif.pp.orig)[2] <- "Latitude"
         # NDOP
-        spatialPoints.ndop <- crop(as(ndop_f, "Spatial"), buffer.local)
-        ndop_f.f <- st_as_sf(spatialPoints.ndop)
+        spatialPoints.ndop <- extract(buffer.local, as(ndop_f, "Spatial"))
+        ndop_f.f <- ndop_f[which(spatialPoints.ndop == 1), ]
+        ndop_f.f <- st_as_sf(ndop_f.f)
         enm_mxt_ndop.pp.orig <- as.data.frame(st_coordinates(ndop_f.f))
         colnames(enm_mxt_ndop.pp.orig)[1] <- "Longitude"
         colnames(enm_mxt_ndop.pp.orig)[2] <- "Latitude"
@@ -1066,7 +1068,7 @@ for (px_size_item in px_size) {
 
 
             ### volání fitovaných modelů
-            fm <- fit_modelsN(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, NA, bias_all, nback_all, nback_ndop)
+            fm <- fit_modelsN(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, NA, bias_all, nback_all, nback_ndop, FALSE, fit_gbif_crop, czechia_3035)
 
             enm_mxt_gbif <- fm$enm_mxt_gbif
             enm_mxt_ndop <- fm$enm_mxt_ndop
