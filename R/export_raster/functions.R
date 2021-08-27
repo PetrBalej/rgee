@@ -576,7 +576,7 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
 }
 
 
-fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = FALSE) {
+fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE, fit_gbif_crop = NA) {
 
 
 
@@ -635,10 +635,21 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
         )
       }
     }
+
     ### GBIF .breadth
     enm_mxt_gbif.breadth <- lapply(enm_mxt_gbif, raster.breadth)
-    enm_mxt_gbif.breadth.B1 <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B1))
-    enm_mxt_gbif.breadth.B2 <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B2))
+    if (is.na(fit_gbif_crop)) {
+      enm_mxt_gbif.breadth.B1 <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B1))
+      enm_mxt_gbif.breadth.B2 <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B2))
+    } else {
+      print("GBIFM crop by Czechia")
+      sr <- sapply(enm_mxt_gbif, function(x) x$suitability)
+      src <- sapply(sr, crop, y = extent(fit_gbif_crop))
+      srm <- sapply(src, mask, mask = fit_gbif_crop)
+      enm_mxt_gbif.breadth.B1 <- median(unlist(sapply(srm, raster.breadth)[1, ]))
+      enm_mxt_gbif.breadth.B2 <- median(unlist(sapply(srm, raster.breadth)[2, ]))
+    }
+
     # enm_mxt_gbif.breadth.B1.md <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B1))
     # enm_mxt_gbif.breadth.B2.md <- median(sapply(enm_mxt_gbif.breadth, function(x) x$B2))
 

@@ -20,7 +20,7 @@ export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
 alg <- "glm" # "glm" "maxent" "gam"
 px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
 replicates <- 1 # 4 pro checkerboard2 (4foldy)
-pref <- "_BFGBIF0_" # předpona png obrázků s predikcí a dalších outputů / OWNPFr /// _OF-ps80_ BFit
+pref <- "_BFGBIF1_" # předpona png obrázků s predikcí a dalších outputů / OWNPFr /// _OF-ps80_ BFit
 test.prop <- 0.3 # "block" "checkerboard2" 0.3; pro bias fitting 0.0 - manuálně pro jistotu přehazuju ještě přímo na místě!!!
 generate_predictor_raster <- FALSE
 generate_bias_raster <- FALSE # pokud je TRUE, tak jen generuje bias rastery a vše ostatní modelování přeskočí - nutné volat celkově (ne s parametrem pro rozdělení na 4 skupiny druhů!!!)
@@ -852,10 +852,10 @@ for (px_size_item in px_size) {
         }
 
         if (eval == FALSE) {
-            breadth_only <- TRUE
+
             if (fit_gbif_crop) {
-                # musím získat data z modelu (suitability) abych mohl vně ořezat GBIF na ČR a dopočíst r.breadth
-                breadth_only <- FALSE
+                # pokud dodám rastr (čr), chci jím cropovat GBIF
+                fit_gbif_crop <- czechia_3035
             }
 
             test.prop.fit <- 0.1 # pro jistotu manuální přepis proměnné, nasazení podílu testovacích nálezů se totiž mění při jednotlivých adjustech -> nestabilní
@@ -870,15 +870,19 @@ for (px_size_item in px_size) {
             # intervals <- c(0.7, 0.75, 0.79, 0.85, 1.1, 1.7)
 
             intervals <- c(seq(0.55, 0.65, by = 0.05), seq(0.67, 0.83, by = 0.02), seq(0.85, 0.95, by = 0.05)) # 75 modelů po 5
-            if (px_size_item >= 5000) {
+
+            if (px_size_item == 5000 & alg == "glm") {
                 intervals <- c(seq(0.45, 0.55, by = 0.05), seq(0.57, 0.73, by = 0.02), seq(0.75, 0.95, by = 0.05)) # 85 modelů po 5
             }
 
+            if (px_size_item == 5000 & alg == "maxent") {
+                intervals <- c(seq(0.45, 0.55, by = 0.05), seq(0.57, 0.83, by = 0.02), seq(0.85, 0.95, by = 0.05)) # 85 modelů po 5
+            }
 
-            # intervals <- c(seq(0.55, 0.65, by = 0.05), seq(0.68, 0.83, by = 0.03), seq(0.85, 0.95, by = 0.05))
-            # intervals <- c(
-            #     seq(0.55, 2.05, by = 0.50)
-            # )
+            if (px_size_item == 10000) {
+                intervals <- c(seq(0.05, 0.95, by = 0.10)) # 50 modelů po 5
+            }
+
             # výběr ideální raster.breadth, vygenerování seznamu ideálních bias rasterů pro každý druh a pixel size
 
             print("1) základní předvýběr s větším intervalem ------------------------------------------------------------------------------")
@@ -896,7 +900,7 @@ for (px_size_item in px_size) {
                 bias_ndop <- NA
                 bias_all <- NA
 
-                fm[[bvn]] <- fit_modelsN(alg, replicates.fit, eval, test.prop.fit, enm_mxt_gbif.s, NA, NA, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = breadth_only)
+                fm[[bvn]] <- fit_modelsN(alg, replicates.fit, eval, test.prop.fit, enm_mxt_gbif.s, NA, NA, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, TRUE, fit_gbif_crop)
             }
 
             fm_all <- list()
@@ -908,27 +912,8 @@ for (px_size_item in px_size) {
             # fm_ndop.md <- list()
             for (i in names(fm)) {
                 fm_all[[i]] <- fm[[i]]$enm_mxt_all.breadth.B2
-                if (!fit_gbif_crop) {
-                    fm_gbif[[i]] <- fm[[i]]$enm_mxt_gbif.breadth.B2
-                } else {
-                    ### !!! Jen na fitování, stejně dělám r.breadth pak ještě znovu u ginálních modelů.
-                    ### Asi bych měl ale ukládat do budoucna oboje hodnoty pro srovnání
-                    ###
-                    # if (replicates > 1) {
-                    #     rb <- sapply(fm[[i]]$enm_mxt_gbif, function(x) raster.breadth(x$suitability))
-                    # } else {
-                    #     rb <- sapply(fm[[i]]$enm_mxt_gbif, function(x) raster.breadth(x$suitability))
-                    # }
-
-                    fm_gbif[[i]] <- median(unlist(sapply(fm[[i]]$enm_mxt_gbif, raster.breadth)[2, ]))
-
-                    # fm_gbif[[i]] <- raster.breadth(rs_mask_czechia)$B2
-                    # rs_crop <- crop(rs, extent(czechia_3035))
-                    # rs_mask_czechia <- mask(rs_crop, czechia_3035)
-                    # fm_gbif[[i]] <- raster.breadth(rs_mask_czechia)$B2
-                }
+                fm_gbif[[i]] <- fm[[i]]$enm_mxt_gbif.breadth.B2
                 fm_ndop[[i]] <- fm[[i]]$enm_mxt_ndop.breadth.B2
-
                 # fm_all.md[[i]] <- fm[[i]]$enm_mxt_all.breadth.B2.md
                 # fm_gbif.md[[i]] <- fm[[i]]$enm_mxt_gbif.breadth.B2.md
                 # fm_ndop.md[[i]] <- fm[[i]]$enm_mxt_ndop.breadth.B2.md
