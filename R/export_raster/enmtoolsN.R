@@ -755,10 +755,6 @@ for (px_size_item in px_size) {
         # zaokrouhlení (optimalizace), aby se vytvářelo méně bufferů
         enm_mxt_ndop.pp <- unique(round_df(enm_mxt_ndop.pp.orig, -4)[c("Longitude", "Latitude")])
 
-        # pro NDOP ještě prostorově dofiltruju 100m pixelem a posunu souřadnice do jeho středu (+50)
-        enm_mxt_ndop.pp.orig <- unique(floor_df(enm_mxt_ndop.pp.orig, -2)[c("Longitude", "Latitude")]) + 50
-        ndop_f_n_thin <- nrow(enm_mxt_ndop.pp.orig)
-
 
         # # odstranění osamocených nálezů, symbolickou podmínkou je alespoň skupina 1-2 ("k") nálezů v okolí 100 km, aby nešlo o náhodný nález
         ext <- extent(raster_stack[[1]])
@@ -838,6 +834,10 @@ for (px_size_item in px_size) {
 
         ndop_f_n.f <- nrow(ndop_f.f)
         gbif_f_n.f <- nrow(gbif_f.f)
+
+        # pro NDOP ještě prostorově dofiltruju 100m pixelem a posunu souřadnice do jeho středu (+50)
+        enm_mxt_ndop.pp.orig <- unique(floor_df(enm_mxt_ndop.pp.orig, -2)[c("Longitude", "Latitude")]) + 50
+        ndop_f_n_thin <- nrow(enm_mxt_ndop.pp.orig)
 
         # # # zbytečné, nakonec se stejně znovu provede v check.bg() v enmtools.glm() pokud jsou takto zamaskované env prediktory
         # bias_gbif_b <- mask(bias_gbif, buffer.global)
@@ -1037,7 +1037,15 @@ for (px_size_item in px_size) {
             bvn_all <- 99.0
             if (use_bias) {
                 if (use_fitted_bias) {
-                    bvn_gbif <- format(round(fm_gbif_f_i_c[[as.character(px_size_item)]][[as.character(sp)]], 2), nsmall = 2)
+                    # vyhlazení extrémně ujetých bodů plovoucím mediánem do tvaru pěknějších "křivek"
+                    gbif_t <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fmt_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
+                    sp1 <- gbif_t[[as.character(px_size_item)]][[as.character(sp)]]
+                    x <- sp1$V2
+                    rmed <- stats::runmed(x, 5, endrule = "median")
+                    sp1.s <- sp1[which.max(rmed), ]
+                    ideal_adj_gbif <- sp1.s[, 1]
+                    # bvn_gbif <- format(round(fm_gbif_f_i_c[[as.character(px_size_item)]][[as.character(sp)]], 2), nsmall = 2)
+                    bvn_gbif <- format(unname(unlist(round(ideal_adj_gbif, 2))), nsmall = 2)
                     bv_gbif <- paste0("scottIso-adj-", bvn_gbif)
 
                     bvn_ndop <- format(round(fm_ndop_f_i_c[[as.character(px_size_item)]][[as.character(sp)]], 2), nsmall = 2)
