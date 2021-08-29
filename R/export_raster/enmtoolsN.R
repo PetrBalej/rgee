@@ -345,7 +345,8 @@ synonyms <- list(
     "Ichthyaetus melanocephalus" = "Larus melanocephalus",
     "Poecile montanus" = "Parus montanus",
     "Saxicola rubicola" = "Saxicola torquata",
-    "Lyrurus tetrix" = "Tetrao tetrix"
+    "Lyrurus tetrix" = "Tetrao tetrix",
+    "Chlidonias hybrida" = "Chlidonias hybridus"
 )
 
 ### nalezy_start###
