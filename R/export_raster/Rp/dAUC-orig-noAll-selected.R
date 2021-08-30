@@ -40,6 +40,7 @@ nepuvodni <- c(
     "Branta canadensis",
     "Columba livia",
     "Alopochen aegyptiacus",
+    "Alopochen aegyptiaca",
     "Threskiornis aethiopicus",
     "Aix galericulata",
     "Oxyura jamaicensis",
@@ -195,8 +196,8 @@ pic_box <-
         axis.text.x = element_blank(),
         axis.ticks.x = element_blank(),
         plot.title = element_text(hjust = 0.5, face = "bold"),
-        plot.subtitle = element_text(hjust = 0.5),
-        plot.caption = element_text(hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5, size = 5),
+        plot.caption = element_text(hjust = 0.5, size = 5),
         panel.grid.minor = element_blank(),
         panel.grid.major.x = element_blank(),
         panel.grid.major = element_line(size = 0.1)
@@ -210,7 +211,7 @@ pic_box <-
     ylab("overlap by metrics") +
     labs(
         caption = "EPS (Godsoe\'s Expected fraction of Shared Presences); RMSD (=RMSE, root-mean-square deviation/error)",
-        subtitle = "GLM predictions: NDOP vs GBIF (Centr. Europe bias corrected prediction to CZ)"
+        subtitle = "Performance of regional (GBIF, centr. Europe) birds bias corrected SDM predictions to Czechia (locally validated by NDOP, AUC > 0.7)"
     ) +
     # facet_wrap(~px_size_item) # _wrap, labeller = as_labeller(auc_type = metric_names)
     facet_grid(. ~ px_size_item, switch = "x") # _wrap, labeller = as_labeller(auc_type = metric_names)
