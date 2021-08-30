@@ -146,12 +146,12 @@ suffix_pdf <- paste0("-all-", prefix, "-10-0.5-") # -cor075- -rmse017- -eps-05-
 
 give.m <- function(x) {
     # pro zobrazení počtu nálezů nad boxploty
-    return(c(y = median(x), label = round(median(x), 2))) # label = median(x) length(x)
+    return(c(y = median(x), label = round(median(x), 3))) # label = median(x) length(x)
 }
 
 # glimpse(tibble_grains %>% dplyr::select(contains(".ebreadth.")))
 
-pdf(paste0(export_path, "/pdf/", prefix, "-final-charts-", suffix_pdf, ".pdf"), width = 5, height = 4)
+pdf(paste0(export_path, "/pdf/", prefix, "-final-charts-", suffix_pdf, ".pdf"), width = 4, height = 4)
 
 
 ### geo.X overlap metriky
@@ -159,12 +159,13 @@ pdf(paste0(export_path, "/pdf/", prefix, "-final-charts-", suffix_pdf, ".pdf"), 
 
 
 metric_names <- c(
+    # "gbif_ndop.geo.I" = "Warren\'s I",
     "gbif_ndop.geo.D" = "Schoener\'s D",
     "gbif_ndop.geo.cor" = "Spearman\'s rank correlation",
-    "gbif_ndop.geo.eps" = "EPS",
+    # "gbif_ndop.geo.eps" = "EPS",
     "gbif_ndop.geo.rmse" = "RMSD"
 )
-tibble_grains_overlap <- tibble_grains %>% select(px_size_item, gbif_ndop.geo.D, gbif_ndop.geo.cor, gbif_ndop.geo.eps, gbif_ndop.geo.rmse)
+tibble_grains_overlap <- tibble_grains %>% select(px_size_item, gbif_ndop.geo.D, gbif_ndop.geo.cor, gbif_ndop.geo.rmse) # gbif_ndop.geo.eps, gbif_ndop.geo.I
 tibble_grains_overlap %<>%
     rename_at(names(metric_names), ~metric_names)
 
@@ -188,7 +189,7 @@ auc <- tibble_grains_overlap %>% pivot_longer(
 # Plot
 pic_box <-
     ggplot(auc, aes(x = factor(auc_type, levels = unname(metric_names)), y = auc_value, fill = factor(auc_type, levels = unname(metric_names)))) +
-    guides(fill = guide_legend(title = "overlap metrics:")) +
+    guides(fill = guide_legend(title = "")) + # overlap metrics:
     theme_light() +
     theme(
         text = element_text(size = 8),
@@ -196,8 +197,8 @@ pic_box <-
         axis.text.x = element_blank(),
         axis.ticks.x = element_blank(),
         plot.title = element_text(hjust = 0.5, face = "bold"),
-        plot.subtitle = element_text(hjust = 0.5, size = 5),
-        plot.caption = element_text(hjust = 0.5, size = 5),
+        plot.subtitle = element_text(hjust = 0.5, size = 4),
+        plot.caption = element_text(hjust = 0.5, size = 4),
         panel.grid.minor = element_blank(),
         panel.grid.major.x = element_blank(),
         panel.grid.major = element_line(size = 0.1)
@@ -210,8 +211,8 @@ pic_box <-
     xlab("px size") +
     ylab("overlap by metrics") +
     labs(
-        caption = "EPS (Godsoe\'s Expected fraction of Shared Presences); RMSD (=RMSE, root-mean-square deviation/error)",
-        subtitle = "Performance of regional (GBIF, centr. Europe) birds bias corrected SDM predictions to Czechia (locally validated by NDOP, AUC > 0.7)"
+        caption = "RMSD (=RMSE, root-mean-square deviation/error). Warren's I and EPS don't sufficiently visualizes discrimination ability.", # EPS (Godsoe\'s Expected fraction of Shared Presences);
+        subtitle = "Performance of regional (GBIF, centr. Europe) birds bias corrected SDM (GLM) predictions to Czechia (locally validated by NDOP, AUC>0.7)"
     ) +
     # facet_wrap(~px_size_item) # _wrap, labeller = as_labeller(auc_type = metric_names)
     facet_grid(. ~ px_size_item, switch = "x") # _wrap, labeller = as_labeller(auc_type = metric_names)
