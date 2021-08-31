@@ -223,6 +223,42 @@ pic_box <-
 print(pic_box + geom_boxplot(size = 0.1, outlier.size = 0.01) + stat_summary(fun.data = give.m, geom = "text", fun.y = median, colour = "white", size = 1.5))
 print(pic_box + geom_violin(size = 0.2) + stat_summary(fun.data = mean_sd, geom = "pointrange", color = "white", size = 0.1))
 
+
+# kumulativní performance
+pic_box2 <-
+    ggplot(auc, aes(auc_value, colour = as.factor(px_size_item))) +
+    theme_light() +
+    theme(
+        text = element_text(size = 8),
+        # legend.position = "bottom",
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        legend.text = element_text(size = 4),
+        legend.title = element_text(size = 5),
+        plot.subtitle = element_text(hjust = 0.5, size = 4),
+        plot.caption = element_text(hjust = 0.5, size = 4),
+        panel.grid.minor = element_blank(),
+        # panel.grid.major.x = element_blank(),
+        panel.grid.major = element_line(size = 0.1)
+    ) +
+    # scale_color_manual(values=wes_palette(n=5, name="Royal2")) +
+    # scale_color_brewer(palette = "Spectral") +
+    scale_color_manual(values = c("#264653", "#2a9d8f", "#e9c46a", "#f4a261", "#e76f51")) +
+    xlim(0.0, 1) + # porovnatelnost mezi glm a maxent
+    # scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
+    # geom_jitter(color = "red", size = 0.2, alpha = 0.2) +
+    ggtitle("Geographical niche overlap") +
+    xlab("overlap by metric") +
+    ylab("cumulative probability") +
+    labs(
+        colour = "px size",
+        caption = "RMSD (=RMSE, root-mean-square deviation/error). Warren's I and EPS don't sufficiently visualizes discrimination ability.", # EPS (Godsoe\'s Expected fraction of Shared Presences);
+        subtitle = "Performance of regional (GBIF, centr. Europe) birds bias corrected SDM (GLM) predictions to Czechia (locally validated by NDOP, AUC>0.7)"
+    ) +
+    stat_ecdf(size = 0.3, geom = "line") +
+    facet_grid(vars(auc_type)) # _wrap, labeller = as_labeller(auc_type = metric_names)
+
+print(pic_box2)
+
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 
 
