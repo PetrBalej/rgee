@@ -18,7 +18,8 @@ synonyms <- list(
     "Ichthyaetus melanocephalus" = "Larus melanocephalus",
     "Poecile montanus" = "Parus montanus",
     "Saxicola rubicola" = "Saxicola torquata",
-    "Lyrurus tetrix" = "Tetrao tetrix"
+    "Lyrurus tetrix" = "Tetrao tetrix",
+    "Chlidonias hybrida" = "Chlidonias hybridus"
 )
 
 # kontrola (do)instalace všech dodatečně potřebných balíčků
@@ -34,7 +35,7 @@ lapply(required_packages, require, character.only = TRUE)
 wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee"
 setwd(wd)
 
-export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/pdf_statsIGA-BFitA"
+export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/LV"
 
 pairs <- list(
 
@@ -44,27 +45,27 @@ pairs <- list(
     c("F_measure.ndop", "F_measure.gbif", "F_measure.ndop"),
     c("Jaccard.ndop", "Jaccard.gbif", "Jaccard.ndop"),
     c("sedi.ndop", "sedi.gbif", "sedi.ndop"),
-    c("TSS.ndop_gbif", "TSS.gbif_ndop", "TSS.gbif_ndop"),
+    # c("TSS.gbif_ndop", "TSS.gbif_ndop", "TSS.gbif_ndop"),
 
-    c("F_measure.gbif_ndop", "F_measure.gbif_ndop", "F_measure.gbif_ndop"),
+    # c("F_measure.gbif_ndop", "F_measure.gbif_ndop", "F_measure.gbif_ndop"),
 
-    c("Jaccard.ndop_gbif", "Jaccard.gbif_ndop", "Jaccard.gbif_ndop"),
+    # c("Jaccard.ndop_gbif", "Jaccard.gbif_ndop", "Jaccard.gbif_ndop"),
 
 
-    # https://borea.mnhn.fr/sites/default/files/pdfs/2018%20Leroy%20et%20al%20-%20Journal%20of%20Biogeography",suffix_pdf,".pdf
-    c("Sorensen.ndop_gbif", "Sorensen.gbif_ndop", "Sorensen.gbif_ndop"),
-    c("OPR.ndop_gbif", "OPR.gbif_ndop", "OPR.gbif_ndop"),
-    c("UPR.ndop_gbif", "UPR.gbif_ndop", "UPR.gbif_ndop"),
+    # # https://borea.mnhn.fr/sites/default/files/pdfs/2018%20Leroy%20et%20al%20-%20Journal%20of%20Biogeography",suffix_pdf,".pdf
+    # c("Sorensen.ndop_gbif", "Sorensen.gbif_ndop", "Sorensen.gbif_ndop"),
+    # c("OPR.ndop_gbif", "OPR.gbif_ndop", "OPR.gbif_ndop"),
+    # c("UPR.ndop_gbif", "UPR.gbif_ndop", "UPR.gbif_ndop"),
 
-    c("Sensitivity.ndop_gbif", "Sensitivity.gbif_ndop", "Sensitivity.gbif_ndop"),
+    # c("Sensitivity.ndop_gbif", "Sensitivity.gbif_ndop", "Sensitivity.gbif_ndop"),
 
-    c("Specificity.ndop_gbif", "Specificity.gbif_ndop", "Specificity.gbif_ndop"),
+    # c("Specificity.ndop_gbif", "Specificity.gbif_ndop", "Specificity.gbif_ndop"),
 
     #  c("auc.gbif.boyce", "auc.gbif.boyce", "auc.ndop.boyce"), # boyce je k ničemu, kritizovali hi jako neschopný rozlišit rozdíly v jednom článku - yru3it enmtools.calibrate? nebo udělat recalibrate?
     # # geogr. overlap
-    c("gbif_ndop.geo.D", "gbif_ndop.geo.D", "gbif_ndop.geo.D"),
-    c("gbif_ndop.geo.I", "gbif_ndop.geo.I", "gbif_ndop.geo.I"),
-    c("gbif_ndop.geo.cor", "gbif_ndop.geo.cor", "gbif_ndop.geo.cor"),
+    c("gbif_ndop.geo.D", "gbif_ndop.geo.I", "gbif_ndop.geo.cor"),
+    c("gbif_ndop.geo.D", "gbif_ndop.geo.cor", "gbif_ndop.geo.rmse"),
+    c("gbif_ndop.geo.eps", "gbif_ndop.geo.cor", "gbif_ndop.geo.rmse"),
     # # env. overlap
 
 
@@ -81,13 +82,13 @@ pairs <- list(
     c("gbif_crop.breadth.B1", "ndop.breadth.B1", "ndop.breadth.B1"),
     c("gbif_crop.breadth.B2", "ndop.breadth.B2", "ndop.breadth.B2"),
     # # geogr šířka niky - cropnutý GBIF
-    c("gbif.breadth.B2", "gbif_crop.breadth.B2", "ndop.breadth.B2"),
+    c("gbif.breadth.B2", "gbif_crop.breadth.B2", "ndop.breadth.B2")
     # # env šířka niky
 
-    c("gbif.ebreadth.B2", "ndop.ebreadth.B2", "gbif.ebreadth.B2"),
+    # c("gbif.ebreadth.B2", "ndop.ebreadth.B2", "gbif.ebreadth.B2"),
 
     # # permut. performance prediktorů - poměr WB : L8
-    c("wcl8.gbif", "wcl8.ndop", "wcl8.ndop")
+    # c("wcl8.gbif", "wcl8.ndop", "wcl8.ndop")
     # c("wcl8_perc.gbif", "wcl8_perc.ndop", "wcl8_perc.ndop") # cca 30% prišpívají, ale je třeba to rozdělit na samostatné 3 modely (stejný treshold): WC, L8 a WC+L8
 )
 
@@ -124,12 +125,12 @@ pairs <- list(
 
 
 # enmsr_glmE1_1000_1_1621239440.03447.rds
-
-prefix <- "glm_BFitA_" # "OWNPFr" "maxent_thr" "glm_GB_"
+#  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/Rp/dAUC-orig-noAll.R", encoding = "UTF-8")
+prefix <- "glm_LV_" # "OWNPFr" "maxent_thr" "glm_GB_"
 
 rds_list <-
     list.files(
-        path = paste0(export_path, "/../vse-v-jednom/BFitA/outputs/rds"), # vse-v-jednom/outputs/rds/
+        path = paste0(export_path, "/outputs/rds"), # vse-v-jednom/outputs/rds/
         pattern = paste0("^enmsr_", prefix, ".+\\.rds$"), # "^enmsr_glmE[0-9]_.+\\.rds$"  "^enmsr_xxx[0-9]_.+\\.rds$"   enmsr_glmF0_5000_3_1621355712.12381.rds       "^enmsr_glm2PATEST[0-9]_.+\\.rds$"
         ignore.case = TRUE,
         full.names = TRUE
@@ -161,6 +162,7 @@ nepuvodni <- c(
     "Branta canadensis",
     "Columba livia",
     "Alopochen aegyptiacus",
+    "Alopochen aegyptiaca",
     "Threskiornis aethiopicus",
     "Aix galericulata",
     "Oxyura jamaicensis",
@@ -182,6 +184,7 @@ problematicke <- c(
     "Luscinia luscinia" # problematické nálezy zejména z Červenohorského sedla (>1000mnm, ikdyž jsou vícekrát a dlouhodobě nezávisle potvrzené, možná jde jen o oblíbenou zastávku při průtahu (kam?) nebo záměny s L. mega.? Raději vyloučit.
 )
 
+
 "%notin%" <- Negate("%in%")
 for (i in seq_along(names(rds_append))) {
     tibble <- rds_append[[i]] %>% # ttemp
@@ -190,8 +193,8 @@ for (i in seq_along(names(rds_append))) {
         bind_rows(.id = "species") %>%
         # group_by(species) %>% dplyr::select(-r)
         distinct(species, .keep_all = TRUE) %>%
-        filter(species %notin% nepuvodni) %>%
-        filter(species %notin% problematicke)
+        filter(species %notin% nepuvodni)
+    # %>% filter(species %notin% problematicke)
 
 
 
@@ -276,24 +279,100 @@ tibble_grains %<>% mutate(gbif_ndop_perc = ((ndop_c * 100) / gbif_c))
 
 tibble_grains_numeric <- tibble_grains %>% select_if(., is.numeric) # pro základní deskriptivní statistiku
 
+print("počet druhů bez problematických:")
+print(nrow(tibble_grains_numeric %>% filter(px_size_item == 1000)))
 
-
+# 2km mediany: .cor 0.71; .eps 0.45; rmse 0.19
 auc_limit <- 0.70
 # auc_limit - nové limity obecně na všechno
 tibble_grains %<>%
-    filter(auc.ndop.te >= auc_limit & gbif_ndop.geo.cor >= 0.75) # auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.75
+    filter(auc.ndop.te >= auc_limit) # auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.75 & gbif_ndop.geo.rmse <= 0.17 & gbif_ndop.geo.eps >= 0.50
 
-suffix_pdf <- paste0("-cor075-", prefix, "-10-1")
+suffix_pdf <- paste0("-all-", prefix, "-10-0.5-") # -cor075- -rmse017- -eps-05-
 
 give.n <- function(x) {
     # pro zobrazení počtu nálezů nad boxploty
-    return(c(y = median(x) * 1.05, label = length(x)))
+    return(c(y = median(x) * 1.05, label = length(x))) # label = median(x)
+}
+
+
+give.m <- function(x) {
+    # pro zobrazení počtu nálezů nad boxploty
+    return(c(y = median(x) * 1.05, label = round(median(x), 2))) # label = median(x)
 }
 
 
 # glimpse(tibble_grains %>% dplyr::select(contains(".ebreadth.")))
 
-pdf(paste0(export_path, "/", prefix, "auc_variable_permutation_importance", suffix_pdf, ".pdf"))
+pdf(paste0(export_path, "/pdf/", prefix, "auc_variable_permutation_importance", suffix_pdf, ".pdf"))
+
+
+### geo.X overlap metriky
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+neworder <- c("gbif_ndop.geo.D", "gbif_ndop.geo.cor", "gbif_ndop.geo.eps", "gbif_ndop.geo.rmse")
+
+metric_names <- c(
+    "gbif_ndop.geo.D" = "Schoener\'s D",
+    "gbif_ndop.geo.cor" = "Spearman\'s rank correlation",
+    "gbif_ndop.geo.eps" = "EPS",
+    "gbif_ndop.geo.rmse" = "RMSD"
+)
+tibble_grains_overlap <- tibble_grains %>% select(px_size_item, gbif_ndop.geo.D, gbif_ndop.geo.cor, gbif_ndop.geo.eps, gbif_ndop.geo.rmse)
+tibble_grains_overlap %<>%
+    rename_at(names(metric_names), ~metric_names)
+
+auc <- tibble_grains_overlap %>% pivot_longer(
+    cols = unname(metric_names),
+    names_to = "auc_type", # "px size",
+    names_prefix = "p",
+    values_to = "auc_value", # "overlap by metrics",
+    values_drop_na = TRUE
+)
+
+pic_box <- ggplot(auc, aes(x = auc_type, y = auc_value, fill = auc_type)) +
+    ylim(0.0, 1) + # porovnatelnost mezi glm a maxent +
+    geom_violin() +
+    facet_grid(~px_size_item) +
+    ggtitle("geographical niche overlap (GLM: NDOP CZ vs GBIF corrected prediction to CZ)") +
+    xlab("px size") +
+    ylab("overlap by metrics")
+print(pic_box)
+
+# Plot
+pic_box <- auc %>%
+    ggplot(aes(x = factor(auc_type, levels = unname(metric_names)), y = auc_value, fill = factor(auc_type, levels = unname(metric_names)))) +
+    guides(fill = guide_legend(title = "overlap metrics:")) +
+    theme(
+        legend.position = "bottom",
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5)
+    ) +
+    ylim(0.0, 1) + # porovnatelnost mezi glm a maxent
+    geom_boxplot(axis.ticks.x = element_blank()) +
+    stat_summary(fun.data = give.m, geom = "text", fun.y = median, colour = "red", size = 1.5) +
+    scale_fill_viridis(discrete = TRUE, alpha = 0.9) +
+    # geom_jitter(color = "red", size = 0.2, alpha = 0.2) +
+    ggtitle("Geographical niche overlap") +
+    xlab("px size") +
+    ylab("overlap by metrics") +
+    labs(
+        caption = "EPS (Godsoe\'s Expected fraction of Shared Presences); RMSD (=RMSE, root-mean-square deviation/error)",
+        subtitle = "GLM predictions: NDOP vs GBIF (corrected prediction to CZ)"
+    ) +
+    # facet_wrap(~px_size_item) # _wrap, labeller = as_labeller(auc_type = metric_names)
+    facet_grid(. ~ px_size_item) # _wrap, labeller = as_labeller(auc_type = metric_names)
+
+print(pic_box)
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
+
+
+
+
+
+
 
 ### AUC
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -411,26 +490,26 @@ dev.off()
 
 pxs_size <- tibble_grains %>% distinct(px_size_item)
 
-pdf(paste0(export_path, "/", prefix, "overall", suffix_pdf, ".pdf"))
+pdf(paste0(export_path, "/pdf/", prefix, "overall", suffix_pdf, ".pdf"))
 
 # generovat per (filter): px_size, species,
 
-boxplot(x = as.list(as.data.frame(tibble_grains %>% filter(px_size_item == pxs_size$px_size_item[1]) %>% select_if(., is.numeric) %>% dplyr::select(contains("_c")))))
+# boxplot(x = as.list(as.data.frame(tibble_grains %>% filter(px_size_item == pxs_size$px_size_item[1]) %>% select_if(., is.numeric) %>% dplyr::select(contains("_c")))))
 
-boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains("auc.")) %>% dplyr::select(contains(".te")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 2), rep("green", 2), rep("cyan3", 2)))
+# boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains("auc.")) %>% dplyr::select(contains(".te")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 2), rep("green", 2), rep("cyan3", 2)))
 
-boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains("TSS.")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 2), rep("green", 2), rep("cyan3", 2)))
+# boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains("TSS.")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 2), rep("green", 2), rep("cyan3", 2)))
 
-# boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".boyce")))), las = 2, cex.axis = 0.7)
+# # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".boyce")))), las = 2, cex.axis = 0.7)
 
 
-boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".geo.")))), las = 2, cex.axis = 0.7)
+# boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".geo.")))), las = 2, cex.axis = 0.7)
 
-boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".env.")))), las = 2, cex.axis = 0.7)
+# # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".env.")))), las = 2, cex.axis = 0.7)
 
-boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".breadth.B1")))), las = 2, cex.axis = 0.7)
+# boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".breadth.B1")))), las = 2, cex.axis = 0.7)
 
-boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".breadth.B2")))), las = 2, cex.axis = 0.7)
+# boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".breadth.B2")))), las = 2, cex.axis = 0.7)
 
 # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% dplyr::select(contains(".ebreadth.B1")))), las = 2, cex.axis = 0.7)
 
@@ -444,26 +523,26 @@ dev.off()
 
 
 for (pxs in pxs_size$px_size_item) {
-    pdf(paste0(export_path, "/", prefix, "overall_", pxs, "", suffix_pdf, ".pdf"))
+    pdf(paste0(export_path, "/pdf/", prefix, "overall_", pxs, "", suffix_pdf, ".pdf"))
 
     # generovat per (filter): px_size, species,
     print("jedna")
     print(pxs)
-    boxplot(x = as.list(as.data.frame(tibble_grains %>% filter(px_size_item == pxs) %>% select_if(., is.numeric) %>% dplyr::select(contains("_c")))))
+    # boxplot(x = as.list(as.data.frame(tibble_grains %>% filter(px_size_item == pxs) %>% select_if(., is.numeric) %>% dplyr::select(contains("_c")))))
 
-    boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains("auc.")) %>% dplyr::select(contains(".te")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 2), rep("green", 2), rep("cyan3", 2)))
+    # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains("auc.")) %>% dplyr::select(contains(".te")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 2), rep("green", 2), rep("cyan3", 2)))
 
-    boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains("TSS.")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 2), rep("green", 2), rep("cyan3", 2)))
+    # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains("TSS.")))), las = 2, cex.axis = 0.7, col = c(rep("cyan", 2), rep("green", 2), rep("cyan3", 2)))
 
-    # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".boyce")))), las = 2, cex.axis = 0.7)
+    # # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".boyce")))), las = 2, cex.axis = 0.7)
 
-    boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".geo.")))), las = 2, cex.axis = 0.7)
+    # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".geo.")))), las = 2, cex.axis = 0.7)
 
-    boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".env.")))), las = 2, cex.axis = 0.7)
+    # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".env.")))), las = 2, cex.axis = 0.7)
 
-    boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".breadth.B1")))), las = 2, cex.axis = 0.7)
+    # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".breadth.B1")))), las = 2, cex.axis = 0.7)
 
-    boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".breadth.B2")))), las = 2, cex.axis = 0.7)
+    # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".breadth.B2")))), las = 2, cex.axis = 0.7)
 
     # boxplot(x = as.list(as.data.frame(tibble_grains_numeric %>% filter(px_size_item == pxs) %>% dplyr::select(contains(".ebreadth.B1")))), las = 2, cex.axis = 0.7)
 
@@ -553,10 +632,27 @@ for (p in pairs) {
     dftraits <- read_delim(paste0(wd, "/R/export_raster/Rp/birds_traits_K.csv"), delim = ";")
     glimpse(dftraits) # check data
 
+    # nahrazení názvů druhů novějšími názvy z NDOPu
+    for (s in names(synonyms)) {
+        matched <- dftraits %>% filter(species == synonyms[[s]])
+        if (nrow(matched) == 1) {
+            dftraits[dftraits$species == synonyms[[s]], "species"] <- s
+        }
+    }
+
+
+    ###
+    ### JOIN na traits způsobí ztrátu některých druhů (rozdílné názvy druhů)!? !!!!!!!!!!!!!!!!!!!!
+
+    ###
     # join bird traits to dfAUC
     joined_traits <- dfAUCfiltr %>%
         left_join(dftraits, by = c("species" = "species")) %>%
         filter(!is.na(Habitat))
+
+    joined_traits_anti <- dfAUCfiltr %>%
+        anti_join(dftraits, by = c("species" = "species"))
+
 
 
     c_orig <- as_tibble(dfAUCorig %>% group_by(px_size_item) %>% count(px_size_item))
@@ -658,7 +754,7 @@ for (p in pairs) {
     labelmigr <- "Migration type: L: long-distance, P: partial, R: resident, S: short-distance"
 
 
-    pdf(paste0(export_path, "/", prefix, "_", appendix, "_aucLim-", auc_limit, "_filtr-", typ_filtrace, "", suffix_pdf, ".pdf"))
+    pdf(paste0(export_path, "/pdf/", prefix, "_", appendix, "_aucLim-", auc_limit, "_filtr-", typ_filtrace, "", suffix_pdf, ".pdf"))
 
     grid.arrange(top = caption, tableGrob(reduction))
     # grid.table(reduction)
