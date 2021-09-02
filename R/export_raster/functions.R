@@ -628,7 +628,9 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
           bg.source = "range",
           verbose = TRUE,
           bias = bias_gbif,
-          args = c("removeDuplicates=FALSE", "outputFormat=raw", "threads=4"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
+          args = c("removeDuplicates=FALSE", "threads=4"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
+          removeDuplicates = FALSE,
+          threads = 4,
           nback = nback_all,
           corner = ifelse(r == 4, r, NA)
           # args = c("threads=4")
@@ -710,7 +712,9 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
           bg.source = "range",
           verbose = TRUE,
           bias = NA,
-          args = c("removeDuplicates=FALSE", "outputFormat=raw", "threads=4"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
+          args = c("removeDuplicates=FALSE", "threads=4"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
+          removeDuplicates = FALSE,
+          threads = 4,
           nback = nback_ndop,
           corner = ifelse(r == 4, r, NA)
           # args = c("threads=4")
@@ -774,7 +778,9 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
           bg.source = "range",
           verbose = TRUE,
           bias = bias_all,
-          args = c("removeDuplicates=FALSE", "outputFormat=raw", "threads=4"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
+          args = c("removeDuplicates=FALSE", "threads=4"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
+          removeDuplicates = FALSE,
+          threads = 4,
           nback = nback_all,
           corner = ifelse(r == 4, r, NA)
           # args = c("threads=4")
