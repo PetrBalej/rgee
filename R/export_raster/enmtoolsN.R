@@ -1219,7 +1219,7 @@ for (px_size_item in px_size) {
             png(paste0(export_path, "/outputs/png/", sp, "_", px_size_item, "_", pres, "_", replicates, "_ndop.png"), width = 800, height = 800)
             plot(enm_mxt_ndop.r.m,
                 main = paste0(sp, " | NDOP, AUC=", round(enm_mxt_ndop.auc, digits = 2), " (", (px_size_item / 1000), "km)"),
-                sub = paste0("NDOP: ", ndop_f_n.f, " | adj: ", bvn_ndop)
+                sub = paste0("NDOP: ", ndop_f_n.f, "/", ndop_f_n_thin, " | adj: ", bvn_ndop)
             )
             par(bg = NA)
             plot(rivers_cz_3035$geometry, add = TRUE, col = "blue")
