@@ -837,7 +837,7 @@ for (px_size_item in px_size) {
         gbif_f_n.f <- nrow(gbif_f.f)
 
         # pro NDOP ještě prostorově dofiltruju 100m pixelem a posunu souřadnice do jeho středu (+50)
-        enm_mxt_ndop.pp.orig <- unique(floor_df(enm_mxt_ndop.pp.orig, -2)[c("Longitude", "Latitude")]) + 50
+        enm_mxt_ndop.pp.orig <- unique(per_pixel_df(enm_mxt_ndop.pp.orig, 100)) # možno místo 100 zadat i px_size_item dle velikosti pixelu...
         ndop_f_n_thin <- nrow(enm_mxt_ndop.pp.orig)
 
         # # # zbytečné, nakonec se stejně znovu provede v check.bg() v enmtools.glm() pokud jsou takto zamaskované env prediktory

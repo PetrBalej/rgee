@@ -322,7 +322,7 @@ round_df <- function(x, digits) {
   # pro optimalizaci tvorby bufferů, použít?
   numcols <- sapply(x, mode) == "numeric"
   x[numcols] <- round(x[numcols], digits)
-  return(x)
+  return(unique(x))
 }
 
 floor_df <- function(x, digits) {
@@ -331,9 +331,17 @@ floor_df <- function(x, digits) {
   x[numcols] <- x[numcols] / (10^abs(digits))
   x[numcols] <- floor(x[numcols])
   x[numcols] <- x[numcols] * (10^abs(digits))
-  return(x)
+  return(unique(x))
 }
 
+per_pixel_df <- function(x, divide_by) {
+  # jeden nález per pixel (divide_by), zadané v dataframe
+  numcols <- sapply(x, mode) == "numeric"
+  x[numcols] <- x[numcols] %/% divide_by
+  x[numcols] <- x[numcols] * divide_by
+  x[numcols] <- x[numcols] + (divide_by / 2)
+  return(unique(x))
+}
 
 normalize <- function(x) {
   min <- raster::minValue(x)
