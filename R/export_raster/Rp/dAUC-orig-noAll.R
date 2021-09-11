@@ -30,6 +30,9 @@ install.packages(setdiff(required_packages, rownames(installed.packages())))
 # načte všechny požadované knihovny jako dělá jednotlivě library()
 lapply(required_packages, require, character.only = TRUE)
 
+########
+## vygeneruje běžné typy grafů
+########
 
 # vede na git rgee
 wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee"
@@ -107,23 +110,6 @@ pairs <- list(
 # stop()
 
 
-# dfe500 <- append(append(
-#   append(
-#     readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_glm4Qr_500_1_1621157991.74236.rds"),
-#     readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_glm4Qr_500_1_1621152134.96594.rds")
-#   ),
-#   readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_glm4Qr_500_1_1621152060.20922.rds")
-# ), readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_glm4Qr_500_1_1621150566.15917.rds"))
-
-# dfe0 <- append(
-#   append(
-#     readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_5000_1_1621012083.67113.rds"),
-#     readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_10000_3_1621016560.79906.rds")
-#   ),
-#   readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_1000_1_1621022574.0087.rds")
-# )
-
-
 # enmsr_glmE1_1000_1_1621239440.03447.rds
 #  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/Rp/dAUC-orig-noAll.R", encoding = "UTF-8")
 prefix <- "glm_LV_" # "OWNPFr" "maxent_thr" "glm_GB_"
@@ -144,15 +130,6 @@ for (i in seq_along(rds_list)) {
 }
 
 
-
-# dfe <- list(
-#  "5000" = readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_5000_1_1621012083.67113.rds"),
-#  "10000" = readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_10000_3_1621016560.79906.rds"),
-#  "1000" = readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_1000_1_1621022574.0087.rds"))
-# dfe <-
-# readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/tmp3/rds/enmsr_1000_1_1621022574.0087.rds")
-
-# dfAUCorig_10000 <- dfe[["10000"]]
 
 # https://cs.wikipedia.org/wiki/Seznam_pt%C3%A1k%C5%AF_%C4%8Ceska
 nepuvodni <- c(
@@ -286,9 +263,9 @@ print(nrow(tibble_grains_numeric %>% filter(px_size_item == 1000)))
 auc_limit <- 0.70
 # auc_limit - nové limity obecně na všechno
 tibble_grains %<>%
-    filter(auc.ndop.te >= auc_limit) # auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.75 & gbif_ndop.geo.rmse <= 0.17 & gbif_ndop.geo.eps >= 0.50
+    filter(auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.70 & gbif_ndop.geo.rmse <= 0.20 & gbif_ndop.geo.D >= 0.80) # auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.75 & gbif_ndop.geo.rmse <= 0.17 & gbif_ndop.geo.eps >= 0.50
 
-suffix_pdf <- paste0("-all-", prefix, "-10-0.5-") # -cor075- -rmse017- -eps-05-
+suffix_pdf <- paste0("-all-", prefix, "-7728-") # -cor075- -rmse017- -eps-05-
 
 give.n <- function(x) {
     # pro zobrazení počtu nálezů nad boxploty
@@ -589,34 +566,6 @@ for (p in pairs) {
 
     typ_filtrace <- "NDOP" # "GBIF_ALL" "GBIF_NDOP" "ALL_NDOP" "NDOP" "GBIF"
     dfAUCfiltr <- dfAUCorig
-    # if (typ_filtrace == "GBIF_ALL") {
-    #   dfAUCfiltr <- dfAUCorig %>%
-    #     filter(auc.all.te >= auc_limit) %>%
-    #     filter(auc.gbif.te >= auc_limit)
-    # }
-
-    # if (typ_filtrace == "GBIF_NDOP") {
-    #   dfAUCfiltr <- dfAUCorig %>%
-    #     filter(auc.ndop.te >= auc_limit) %>%
-    #     filter(auc.gbif.te >= auc_limit)
-    # }
-
-    # if (typ_filtrace == "ALL_NDOP") {
-    #   dfAUCfiltr <- dfAUCorig %>%
-    #     filter(auc.ndop.te >= auc_limit) %>%
-    #     filter(auc.all.te >= auc_limit)
-    # }
-
-    # if (typ_filtrace == "NDOP") {
-    #   dfAUCfiltr <- dfAUCorig %>%
-    #     filter(auc.ndop.te >= auc_limit & gbif_ndop.geo.cor >= 0.75)
-    # }
-
-    # if (typ_filtrace == "GBIF") {
-    #   dfAUCfiltr <- dfAUCorig %>%
-    #     filter(auc.gbif.te >= auc_limit)
-    # }
-
 
     #
     # neměl bych podle auc filtrovat individuálně podle !!!typu datasetu a velikosti zrna!!! a ne odstraňovat úplně všechny druhy jen když nevyšel jen jeden model?!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!§

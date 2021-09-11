@@ -6,6 +6,9 @@ install.packages(setdiff(required_packages, rownames(installed.packages())))
 # načte všechny požadované knihovny jako dělá jednotlivě library()
 lapply(required_packages, require, character.only = TRUE)
 
+########
+## vygeneruje základní grafy niche overlap
+########
 
 # vede na git rgee
 wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee"
