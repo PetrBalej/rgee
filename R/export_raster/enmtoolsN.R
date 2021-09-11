@@ -325,29 +325,7 @@ rivers_cz_3035 <- rivers_cz %>% st_transform(rcrs)
 #     filter(Nálezů < limit_max_occurences_ndop_top)
 
 
-synonyms <- list(
-    "Spatula clypeata" = "Anas clypeata",
-    "Phylloscopus sibilatrix" = "Phylloscopus sibillatrix",
-    "Spatula querquedula" = "Anas querquedula",
-    "Mareca penelope" = "Anas penelope",
-    "Calidris pugnax" = "Philomachus pugnax",
-    "Dryobates minor" = "Dendrocopos minor",
-    # nové oproti traits
-    "Acanthis cabaret" = "Acanthis flammea",
-    "Mareca strepera" = "Anas strepera",
-    "Clanga pomarina" = "Aquila pomarina",
-    "Tetrastes bonasia" = "Bonasa bonasia",
-    "Linaria cannabina" = "Carduelis cannabina",
-    "Acanthis flammea" = "Carduelis flammea",
-    "Dendrocoptes medius" = "Dendrocopos medius",
-    "Dryobates minor" = "Dendrocopos minor",
-    "Ardea alba" = "Egretta alba",
-    "Ichthyaetus melanocephalus" = "Larus melanocephalus",
-    "Poecile montanus" = "Parus montanus",
-    "Saxicola rubicola" = "Saxicola torquata",
-    "Lyrurus tetrix" = "Tetrao tetrix",
-    "Chlidonias hybrida" = "Chlidonias hybridus"
-)
+synonyms <- synonyms()
 
 ### nalezy_start###
 # příprava nálezových dat (další krok)

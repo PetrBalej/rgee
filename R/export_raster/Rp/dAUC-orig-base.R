@@ -15,7 +15,7 @@ lapply(required_packages, require, character.only = TRUE)
 wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee"
 setwd(wd)
 
-export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/LV/pdf"
+export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/LV"
 
 # pomocné funkce
 source(paste0(wd, "/R/export_raster/functions.R"))
@@ -47,155 +47,14 @@ cci_all_3035_czechia <- readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jed
 
 prefix <- "glm_LV_" # "OWNPFr" "maxent_thr" "glm_GB_"
 
-rds_list <-
-    list.files(
-        path = paste0(export_path, "/../outputs/rds"), # vse-v-jednom/outputs/rds/
-        pattern = paste0("^enmsr_", prefix, ".+\\.rds$"), # "^enmsr_glmE[0-9]_.+\\.rds$"  "^enmsr_xxx[0-9]_.+\\.rds$"   enmsr_glmF0_5000_3_1621355712.12381.rds       "^enmsr_glm2PATEST[0-9]_.+\\.rds$"
-        ignore.case = TRUE,
-        full.names = TRUE
-    )
+if (file.exists(paste0(export_path, "/outputs/tibble_grains-", prefix, ".rds"))) {
+    tibble_grains <- readRDS(file = paste0(export_path, "/outputs/tibble_grains-", prefix, ".rds"))
+} else {
+    tibble_grains <- join_outputs_rds(export_path, prefix)
 
-
-rds_append <- readRDS(rds_list[[1]])
-rds_list <- rds_list[-1]
-for (i in seq_along(rds_list)) {
-    rds_append <- append(rds_append, readRDS(rds_list[[i]]))
-}
-
-
-# https://cs.wikipedia.org/wiki/Seznam_pt%C3%A1k%C5%AF_%C4%8Ceska
-nepuvodni <- c(
-    # C
-    "Phasianus colchicus",
-    "Syrmaticus reevesi",
-    "Branta canadensis",
-    "Columba livia",
-    "Alopochen aegyptiacus",
-    "Alopochen aegyptiaca",
-    "Threskiornis aethiopicus",
-    "Aix galericulata",
-    "Oxyura jamaicensis",
-    # D
-    "Bucephala albeola",
-    "Bucephala islandica",
-    "Lophodytes cucullatus",
-    "Histrionicus histrionicus",
-    "Gypaetus barbatus",
-    # E
-    "Phylloscopus sibilatrix",
-    "Aix sponsa",
-    "Platalea leucorodia"
-)
-
-problematicke <- c(
-    "Turdus merula", # lesní vs. městské populace
-    "Luscinia svecica", # dva poddruhy s odlišnými nároky, nejsem schopný je jednoduše odlišit...
-    "Luscinia luscinia" # problematické nálezy zejména z Červenohorského sedla (>1000mnm, ikdyž jsou vícekrát a dlouhodobě nezávisle potvrzené, možná jde jen o oblíbenou zastávku při průtahu (kam?) nebo záměny s L. mega.? Raději vyloučit.
-)
-
-"%notin%" <- Negate("%in%")
-for (i in seq_along(names(rds_append))) {
-    tibble <- rds_append[[i]] %>% # ttemp
-        map_depth(1, na.omit) %>%
-        map(as_tibble) %>%
-        bind_rows(.id = "species") %>%
-        # group_by(species) %>% dplyr::select(-r)
-        distinct(species, .keep_all = TRUE) %>%
-        filter(species %notin% nepuvodni)
-    # %>% filter(species %notin% problematicke)
-
-
-    # tibble_ordered %>% summarize(vip1.all)
-    tibble %<>% tibble %>% group_by(species, px_size_item) # sp = paste(species, px_size_item)
-
-    tibble_gbif <- tibble %>%
-        summarize(vip1.gbif, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".gbif")
-    tibble_all <- tibble %>%
-        summarize(vip1.all, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".all")
-    tibble_ndop <- tibble %>%
-        summarize(vip1.ndop, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".ndop")
-
-
-
-
-    tibble_gbif_p <- tibble %>%
-        summarize(perf.gbif, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".gbif")
-    tibble_all_p <- tibble %>%
-        summarize(perf.all, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".all")
-    tibble_ndop_p <- tibble %>%
-        summarize(perf.ndop, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".ndop")
-
-
-
-
-    tibble.gbif_ndop.pa <- tibble %>%
-        summarize(gbif_ndop.pa, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".gbif_ndop")
-    tibble.ndop_gbif.pa <- tibble %>%
-        summarize(ndop_gbif.pa, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".ndop_gbif")
-
-    tibble.all_ndop.pa <- tibble %>%
-        summarize(all_ndop.pa, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".all_ndop")
-    tibble.ndop_all.pa <- tibble %>%
-        summarize(ndop_all.pa, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".ndop_all")
-
-    tibble.all_gbif.pa <- tibble %>%
-        summarize(all_gbif.pa, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".all_gbif")
-    tibble.all_gbif_erase.pa <- tibble %>%
-        summarize(all_gbif_erase.pa, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".all_gbif_erase")
-
-
-    tibble_result <- tibble %>%
-        left_join(tibble_gbif, by = c("species" = "species.gbif")) %>%
-        left_join(tibble_all, by = c("species" = "species.all")) %>%
-        left_join(tibble_ndop, by = c("species" = "species.ndop")) %>%
-        left_join(tibble_gbif_p, by = c("species" = "species.gbif")) %>%
-        left_join(tibble_all_p, by = c("species" = "species.all")) %>%
-        left_join(tibble_ndop_p, by = c("species" = "species.ndop")) %>%
-        left_join(tibble.gbif_ndop.pa, by = c("species" = "species.gbif_ndop")) %>%
-        left_join(tibble.ndop_gbif.pa, by = c("species" = "species.ndop_gbif")) %>%
-        left_join(tibble.all_ndop.pa, by = c("species" = "species.all_ndop")) %>%
-        left_join(tibble.ndop_all.pa, by = c("species" = "species.ndop_all")) %>%
-        left_join(tibble.all_gbif.pa, by = c("species" = "species.all_gbif")) %>%
-        left_join(tibble.all_gbif_erase.pa, by = c("species" = "species.all_gbif_erase")) %>%
-        ungroup() %>%
-        dplyr::select(-contains("vip")) %>%
-        dplyr::select(-contains("perf.")) %>%
-        dplyr::select(-contains(".pa")) %>%
-        rename_all(gsub, pattern = ".Importance.", replacement = ".Imp.")
-
-
-
-    # spojím to až na konci!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!§§
-    if (i == 1) {
-        # založím novou tibble na základě vyprázdněné první
-        tibble_grains <- tibble_result[NULL, ]
-    }
-
-    tibble_grains %<>% add_row(tibble_result)
+    ### uložit do rds a csv
+    # saveRDS(tibble_grains, file = paste0(export_path, "/outputs/tibble_grains-",prefix,".rds"))
+    # write_csv(tibble_grains %>% select_if(~ is.numeric(.) | is.character(.)), paste0(export_path, "/outputs/tibble_grains-",prefix,".csv"))
 }
 
 tibble_grains %<>% mutate(gbif_ndop_rate = (gbif_c / ndop_c))
@@ -208,8 +67,6 @@ tibble_grains_numeric <- tibble_grains %>% select_if(., is.numeric) # pro zákla
 # p.stats <- tibble_grains %>%  dplyr::select(ends_with(c(".Imp.ndop", ".Imp.gbif")))  %>%
 # get_summary_stats(., show = c("mean", "sd", "median", "iqr"))  %>% filter(median >= 0.03) %>%  arrange(variable)
 # print(p.stats, n = 100)
-
-
 
 
 
@@ -349,7 +206,7 @@ png_list <- list()
 
 #  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/Rp/dAUC-orig-base.R", encoding = "UTF-8")
 
-pdf(paste0(export_path, "/check-predictions-", prefix, "_10-0.5_-7728.pdf"), width = 18, height = 5) # -cor-0.75 -rmse-0.17 -D-0.85 -7728
+pdf(paste0(export_path, "/pdf/check-predictions-", prefix, "_10-0.5_-7728.pdf"), width = 18, height = 5) # -cor-0.75 -rmse-0.17 -D-0.85 -7728
 par(mar = c(5, 4, 4, 7))
 for (p in seq_along(tibble_grains.reduced.path$path)) {
     pt <- tibble_grains.reduced.path[p, ]
@@ -418,6 +275,7 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
 
 
     r.n.diff <- r.ndop - r.gbif
+    r.n.diff.s <- raster.standardize(r.ndop) - raster.standardize(r.gbif)
 
     # r.max <- abs(maxValue(r.n.diff))
     # r.min <- abs(minValue(r.n.diff))
@@ -427,7 +285,17 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
 
     r.max <- 1.0
 
+    # r.n.diff.s.na <- !is.na(r.n.diff.s[])
+    # r.n.diff.na <- !is.na(r.n.diff[])
+
+    # total_over_under_prediction.s.sum <- cellStats(abs(r.n.diff.s), stat = sum)
+    # total_over_under_prediction.sum <- cellStats(abs(r.n.diff), stat = sum)
+
+    # total_over_under_prediction.s <- round(total_over_under_prediction.s.sum / ncell(r.n.diff.s.na), 8)
+    # total_over_under_prediction <- round(total_over_under_prediction.sum / ncell(r.n.diff.na), 2)
+
     plot(r.n.diff,
+        # col = rev(topo.colors(20)),
         col = pal(pal_n), breaks = round(seq(-r.max, r.max, length.out = pal_n + 1), 2), legend.width = 1,
         main = paste0("difference (NDOP - GBIF)")
         # sub = paste0("geo.cor (Spearman): ", round(pt$gbif_ndop.geo.cor, digits = 2), " | geo.D (Schoener): ", round(pt$gbif_ndop.geo.D, digits = 2), " | RMSE: ", round(pt$gbif_ndop.geo.rmse, digits = 2), " | EPS: ", round(pt$gbif_ndop.geo.eps, digits = 2))

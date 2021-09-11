@@ -351,6 +351,160 @@ normalize <- function(x) {
 
 
 
+nepuvodni_problematicke <- function() {
+  nepuvodni <- c(
+    # C
+    "Phasianus colchicus",
+    "Syrmaticus reevesi",
+    "Branta canadensis",
+    "Columba livia",
+    "Alopochen aegyptiacus",
+    "Alopochen aegyptiaca",
+    "Threskiornis aethiopicus",
+    "Aix galericulata",
+    "Oxyura jamaicensis",
+    # D
+    "Bucephala albeola",
+    "Bucephala islandica",
+    "Lophodytes cucullatus",
+    "Histrionicus histrionicus",
+    "Gypaetus barbatus",
+    # E
+    "Phylloscopus sibilatrix",
+    "Aix sponsa",
+    "Platalea leucorodia"
+  )
+
+  problematicke <- c(
+    "Turdus merula", # lesní vs. městské populace
+    "Luscinia svecica", # dva poddruhy s odlišnými nároky, nejsem schopný je jednoduše odlišit...
+    "Luscinia luscinia" # problematické nálezy zejména z Červenohorského sedla (>1000mnm, ikdyž jsou vícekrát a dlouhodobě nezávisle potvrzené, možná jde jen o oblíbenou zastávku při průtahu (kam?) nebo záměny s L. mega.? Raději vyloučit.
+  )
+  return(list(nepuvodni = nepuvodni, problematicke = problematicke))
+}
+
+synonyms <- function() {
+  synonyms <- list(
+    "Spatula clypeata" = "Anas clypeata",
+    "Phylloscopus sibilatrix" = "Phylloscopus sibillatrix",
+    "Spatula querquedula" = "Anas querquedula",
+    "Mareca penelope" = "Anas penelope",
+    "Calidris pugnax" = "Philomachus pugnax",
+    "Dryobates minor" = "Dendrocopos minor",
+    # nové oproti traits
+    "Acanthis cabaret" = "Acanthis flammea",
+    "Mareca strepera" = "Anas strepera",
+    "Clanga pomarina" = "Aquila pomarina",
+    "Tetrastes bonasia" = "Bonasa bonasia",
+    "Linaria cannabina" = "Carduelis cannabina",
+    "Acanthis flammea" = "Carduelis flammea",
+    "Dendrocoptes medius" = "Dendrocopos medius",
+    "Dryobates minor" = "Dendrocopos minor",
+    "Ardea alba" = "Egretta alba",
+    "Ichthyaetus melanocephalus" = "Larus melanocephalus",
+    "Poecile montanus" = "Parus montanus",
+    "Saxicola rubicola" = "Saxicola torquata",
+    "Lyrurus tetrix" = "Tetrao tetrix",
+    "Chlidonias hybrida" = "Chlidonias hybridus"
+  )
+  return(synonyms)
+}
+
+
+
+join_outputs_rds <- function(export_path, prefix) {
+  rds_list <-
+    list.files(
+      path = paste0(export_path, "/outputs/rds"), # vse-v-jednom/outputs/rds/
+      pattern = paste0("^enmsr_", prefix, ".+\\.rds$"), # "^enmsr_glmE[0-9]_.+\\.rds$"  "^enmsr_xxx[0-9]_.+\\.rds$"   enmsr_glmF0_5000_3_1621355712.12381.rds       "^enmsr_glm2PATEST[0-9]_.+\\.rds$"
+      ignore.case = TRUE,
+      full.names = TRUE
+    )
+
+
+  rds_append <- readRDS(rds_list[[1]])
+  rds_list <- rds_list[-1]
+  for (i in seq_along(rds_list)) {
+    rds_append <- append(rds_append, readRDS(rds_list[[i]]))
+  }
+
+
+  # https://cs.wikipedia.org/wiki/Seznam_pt%C3%A1k%C5%AF_%C4%8Ceska
+  nepuvodni <- nepuvodni_problematicke()$nepuvodni
+  problematicke <- nepuvodni_problematicke()$problematicke
+
+
+  "%notin%" <- Negate("%in%")
+
+  for (i in seq_along(names(rds_append))) {
+    tibble <- rds_append[[i]] %>% # ttemp
+      map_depth(1, na.omit) %>%
+      map(as_tibble) %>%
+      bind_rows(.id = "species") %>%
+      # group_by(species) %>% dplyr::select(-r)
+      distinct(species, .keep_all = TRUE) %>%
+      filter(species %notin% nepuvodni)
+    # %>% filter(species %notin% problematicke)
+
+    tibble %<>% tibble %>% group_by(species, px_size_item) # sp = paste(species, px_size_item)
+
+    tibble_gbif <- tibble %>%
+      summarize(vip1.gbif, .groups = "keep") %>%
+      rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+      rename_all(paste0, ".gbif")
+
+    tibble_ndop <- tibble %>%
+      summarize(vip1.ndop, .groups = "keep") %>%
+      rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+      rename_all(paste0, ".ndop")
+
+
+    tibble_gbif_p <- tibble %>%
+      summarize(perf.gbif, .groups = "keep") %>%
+      rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+      rename_all(paste0, ".gbif")
+    tibble_ndop_p <- tibble %>%
+      summarize(perf.ndop, .groups = "keep") %>%
+      rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+      rename_all(paste0, ".ndop")
+
+
+    tibble.gbif_ndop.pa <- tibble %>%
+      summarize(gbif_ndop.pa, .groups = "keep") %>%
+      rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+      rename_all(paste0, ".gbif_ndop")
+    tibble.ndop_gbif.pa <- tibble %>%
+      summarize(ndop_gbif.pa, .groups = "keep") %>%
+      rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
+      rename_all(paste0, ".ndop_gbif")
+
+
+    tibble_result <- tibble %>%
+      left_join(tibble_gbif, by = c("species" = "species.gbif")) %>%
+      left_join(tibble_ndop, by = c("species" = "species.ndop")) %>%
+      left_join(tibble_gbif_p, by = c("species" = "species.gbif")) %>%
+      left_join(tibble_ndop_p, by = c("species" = "species.ndop")) %>%
+      left_join(tibble.gbif_ndop.pa, by = c("species" = "species.gbif_ndop")) %>%
+      left_join(tibble.ndop_gbif.pa, by = c("species" = "species.ndop_gbif")) %>%
+      ungroup() %>%
+      dplyr::select(-contains("vip")) %>%
+      dplyr::select(-contains("perf.")) %>%
+      dplyr::select(-contains(".pa"))
+
+    # spojím to až na konci!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!§§
+    if (i == 1) {
+      # založím novou tibble na základě vyprázdněné první
+      tibble_grains <- tibble_result[NULL, ]
+    }
+
+    tibble_grains %<>% add_row(tibble_result)
+  }
+
+  return(tibble_grains)
+}
+
+
+
 fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = FALSE) {
 
 

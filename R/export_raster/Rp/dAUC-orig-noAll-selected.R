@@ -13,130 +13,32 @@ lapply(required_packages, require, character.only = TRUE)
 # vede na git rgee
 wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee"
 setwd(wd)
+source(paste0(wd, "/R/export_raster/functions.R"))
 
 export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/LV"
 
-
 prefix <- "glm_LV_" # "OWNPFr" "maxent_thr" "glm_GB_"
 
-rds_list <-
-    list.files(
-        path = paste0(export_path, "/outputs/rds"), # vse-v-jednom/outputs/rds/
-        pattern = paste0("^enmsr_", prefix, ".+\\.rds$"), # "^enmsr_glmE[0-9]_.+\\.rds$"  "^enmsr_xxx[0-9]_.+\\.rds$"   enmsr_glmF0_5000_3_1621355712.12381.rds       "^enmsr_glm2PATEST[0-9]_.+\\.rds$"
-        ignore.case = TRUE,
-        full.names = TRUE
-    )
+if (file.exists(paste0(export_path, "/outputs/tibble_grains-", prefix, ".rds"))) {
+    tibble_grains <- readRDS(file = paste0(export_path, "/outputs/tibble_grains-", prefix, ".rds"))
+} else {
+    tibble_grains <- join_outputs_rds(export_path, prefix)
 
-
-rds_append <- readRDS(rds_list[[1]])
-rds_list <- rds_list[-1]
-for (i in seq_along(rds_list)) {
-    rds_append <- append(rds_append, readRDS(rds_list[[i]]))
+    ### uložit do rds a csv
+    # saveRDS(tibble_grains, file = paste0(export_path, "/outputs/tibble_grains-",prefix,".rds"))
+    # write_csv(tibble_grains %>% select_if(~ is.numeric(.) | is.character(.)), paste0(export_path, "/outputs/tibble_grains-",prefix,".csv"))
 }
 
 
-# https://cs.wikipedia.org/wiki/Seznam_pt%C3%A1k%C5%AF_%C4%8Ceska
-nepuvodni <- c(
-    # C
-    "Phasianus colchicus",
-    "Syrmaticus reevesi",
-    "Branta canadensis",
-    "Columba livia",
-    "Alopochen aegyptiacus",
-    "Alopochen aegyptiaca",
-    "Threskiornis aethiopicus",
-    "Aix galericulata",
-    "Oxyura jamaicensis",
-    # D
-    "Bucephala albeola",
-    "Bucephala islandica",
-    "Lophodytes cucullatus",
-    "Histrionicus histrionicus",
-    "Gypaetus barbatus",
-    # E
-    "Phylloscopus sibilatrix",
-    "Aix sponsa",
-    "Platalea leucorodia"
-)
+stop()
+summary(unique(tibble_grains %>% select(species)))
+summary(unique(tibble_grains %>% filter(auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.70 & gbif_ndop.geo.rmse <= 0.20 & gbif_ndop.geo.D >= 0.80) %>% select(species)))
+summary(unique(tibble_grains %>% filter(auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.75) %>% select(species)))
 
-problematicke <- c(
-    "Turdus merula", # lesní vs. městské populace
-    "Luscinia svecica", # dva poddruhy s odlišnými nároky, nejsem schopný je jednoduše odlišit...
-    "Luscinia luscinia" # problematické nálezy zejména z Červenohorského sedla (>1000mnm, ikdyž jsou vícekrát a dlouhodobě nezávisle potvrzené, možná jde jen o oblíbenou zastávku při průtahu (kam?) nebo záměny s L. mega.? Raději vyloučit.
-)
+tibble_grains %<>%
+    filter(auc.ndop.te >= 0.70 & gbif_ndop.geo.cor >= 0.70 & gbif_ndop.geo.rmse <= 0.20 & gbif_ndop.geo.D >= 0.80)
 
 
-"%notin%" <- Negate("%in%")
-for (i in seq_along(names(rds_append))) {
-    tibble <- rds_append[[i]] %>% # ttemp
-        map_depth(1, na.omit) %>%
-        map(as_tibble) %>%
-        bind_rows(.id = "species") %>%
-        # group_by(species) %>% dplyr::select(-r)
-        distinct(species, .keep_all = TRUE) %>%
-        filter(species %notin% nepuvodni)
-    # %>% filter(species %notin% problematicke)
-
-    tibble %<>% tibble %>% group_by(species, px_size_item) # sp = paste(species, px_size_item)
-
-    tibble_gbif <- tibble %>%
-        summarize(vip1.gbif, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".gbif")
-
-    tibble_ndop <- tibble %>%
-        summarize(vip1.ndop, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".ndop")
-
-
-
-
-    tibble_gbif_p <- tibble %>%
-        summarize(perf.gbif, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".gbif")
-    tibble_ndop_p <- tibble %>%
-        summarize(perf.ndop, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".ndop")
-
-
-
-
-    tibble.gbif_ndop.pa <- tibble %>%
-        summarize(gbif_ndop.pa, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".gbif_ndop")
-    tibble.ndop_gbif.pa <- tibble %>%
-        summarize(ndop_gbif.pa, .groups = "keep") %>%
-        rename_all(gsub, pattern = "_\\d+_", replacement = "_") %>%
-        rename_all(paste0, ".ndop_gbif")
-
-
-
-    tibble_result <- tibble %>%
-        left_join(tibble_gbif, by = c("species" = "species.gbif")) %>%
-        left_join(tibble_ndop, by = c("species" = "species.ndop")) %>%
-        left_join(tibble_gbif_p, by = c("species" = "species.gbif")) %>%
-        left_join(tibble_ndop_p, by = c("species" = "species.ndop")) %>%
-        left_join(tibble.gbif_ndop.pa, by = c("species" = "species.gbif_ndop")) %>%
-        left_join(tibble.ndop_gbif.pa, by = c("species" = "species.ndop_gbif")) %>%
-        ungroup() %>%
-        dplyr::select(-contains("vip")) %>%
-        dplyr::select(-contains("perf.")) %>%
-        dplyr::select(-contains(".pa"))
-
-
-
-    # spojím to až na konci!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!§§
-    if (i == 1) {
-        # založím novou tibble na základě vyprázdněné první
-        tibble_grains <- tibble_result[NULL, ]
-    }
-
-    tibble_grains %<>% add_row(tibble_result)
-}
 
 
 # 2km mediany: .cor 0.71; .eps 0.45; rmse 0.19
