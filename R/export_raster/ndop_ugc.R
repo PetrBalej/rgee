@@ -131,10 +131,10 @@ ndop_ugc <-
             st_transform(4326)
 
         # označení záznamů se souřadnicemi uvnitř polygonu Česka (T/F) a přidání jako samostatného sloupce
-        wgs84_czechia <- wgs84$geometry %>%
-            st_intersects(czechia) %>%
-            length() > 0
-        csv_ndop_filter <- csv_ndop_filter %>% mutate(wgs84_czechia)
+        # wgs84_czechia <- wgs84$geometry %>%
+        #     st_intersects(czechia) %>%
+        #     length() > 0
+        # csv_ndop_filter <- csv_ndop_filter %>% mutate(wgs84_czechia)
 
         if (is.null(res_crs)) {
             # vytvoření sloupců s WGS84 souřadnicemi - nebo raději jako sf geometrii typu POINT?
@@ -160,7 +160,7 @@ ndop_ugc <-
         # přidání sloupců s WGS84 souřadnicemi, výběr záznamů z polygonu a potřebných sloupců
         csv_ndop_s_wgs84 <- csv_ndop_filter %>%
             mutate(wgs84_coords) %>%
-            filter(wgs84_czechia == TRUE) %>%
+            # filter(wgs84_czechia == TRUE) %>%
             dplyr::select(ID_NALEZ, DRUH, lat, lon, KAT_TAX) %>%
             rename(
                 key = ID_NALEZ,
