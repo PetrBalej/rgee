@@ -2,7 +2,7 @@ ndop_ugc <-
     function(years_range = list(from = "2017-01-01", to = "2019-12-31"),
              season_months_range = list(from = 4, to = 7),
              import_path_ndop = "/../ndop/csv",
-             res_crs = 3035,
+             res_crs = 5514,
              presicion = 100) {
         # kontrola (do)instalace všech dodatečně potřebných balíčků
         required_packages <-
@@ -34,20 +34,6 @@ ndop_ugc <-
         # nastavení základních parametrů [konec]  #
         # # # # # # # # # # # # # # # # # # # # # #
 
-
-
-
-        set_cols <-
-            cols(
-                PORADI = "i",
-                ID_LOKAL = "c",
-                STRUKT_POZN = "c",
-                DATUM_OD = col_date("%Y%m%d"),
-                DATUM_DO = col_date("%Y%m%d"),
-                VEROH = "i",
-                ID_NALEZ = "n"
-            )
-
         col_types <- cols_only(
             DATUM_DO = col_date("%Y%m%d"),
             DATUM_OD = col_date("%Y%m%d"),
@@ -57,9 +43,6 @@ ndop_ugc <-
             VEROH = "i"
         )
 
-
-        # csv_ndop <- read_csv(paste0(import_path_ndop, "/Locustella_luscinioides_tab.csv"), col_types = set_cols, locale = locale("cs", decimal_mark = ","))
-
         # načte všechny *.csv z import_path_ndop
         csv_ndop <-
             list.files(
@@ -67,20 +50,15 @@ ndop_ugc <-
                 pattern = "*.csv",
                 full.names = T
             ) %>%
-            map_df(~ read_csv(., col_types = cols(.default = "c"))) %>%  # filter(X != "<i>Skrytá lokalizace</i>")  %>% drop_na(X, Y)
-
-     
-            filter(X != "<i>Skrytá lokalizace</i>") %>% 
-
+            map_df(~ read_csv(., col_types = cols(.default = "c"))) %>%
+            filter(X != "<i>Skrytá lokalizace</i>") %>%
+            distinct(ID_NALEZ, .keep_all = TRUE) %>%
             # filter(DAT_SADA != "iNaturalist - data ČR") %>%
             # filter(AUTOR != "iNaturalist uživatel") %>%
             type_convert(
                 col_types = col_types,
                 locale = locale("cs", decimal_mark = ",")
             )
-
-
-  
 
         # vypíše špatně rozparsované řádky
         # problems(csv_ndop)
@@ -115,65 +93,37 @@ ndop_ugc <-
                     CXPRESNOST <= presicion
             )
 
-        #
-        # převod souřadnic z S-JTSK do WGS 84 (přidání nových sloupců: lat, lon) a filtrace polygonem (Česko)
-        #
-
-
-        # načtení shapefile polygonu Česka (časem i možnost předání parametrem jiný shapefile nebo rovnou geometrii polygonu?)
-        shpPath <-
-            "shp/ne_10m_admin_0_countries/czechia/cz_4326.shp" # zjednodušený polygon Česka
-        czechia <- st_read(shpPath)
-
-        # převod souřadnic S-JTSK do WGS84
-        wgs84 <- csv_ndop_filter %>%
-            st_as_sf(coords = c("X", "Y"), crs = 5514) %>%
-            st_transform(4326)
-
-        # označení záznamů se souřadnicemi uvnitř polygonu Česka (T/F) a přidání jako samostatného sloupce
-        # wgs84_czechia <- wgs84$geometry %>%
-        #     st_intersects(czechia) %>%
-        #     length() > 0
-        # csv_ndop_filter <- csv_ndop_filter %>% mutate(wgs84_czechia)
 
         if (is.null(res_crs)) {
-            # vytvoření sloupců s WGS84 souřadnicemi - nebo raději jako sf geometrii typu POINT?
-            wgs84_coords <- wgs84 %>%
-                st_coordinates() %>%
-                as_tibble() %>%
-                rename(lat = Y, lon = X)
-
-            options(pillar.sigfig = 7) # jen pro případnou vizualizaci
-        } else {
-            # vytvoření sloupců s WGS84 souřadnicemi - nebo raději jako sf geometrii typu POINT?
-            wgs84_coords <- wgs84 %>%
-                st_as_sf(coords = c("X", "Y"), crs = 4326) %>%
-                st_transform(res_crs) %>%
-                st_coordinates() %>%
-                as_tibble() %>%
-                rename(lat = Y, lon = X)
-            wgs84_coords$lat %<>% as.integer
-            wgs84_coords$lon %<>% as.integer
+            res_crs <- 5514
         }
 
+        if (res_crs != 5514) {
+            csv_ndop_filter %<>%
+                mutate(
+                    csv_ndop_filter %>% st_as_sf(coords = c("X", "Y"), crs = 5514) %>%
+                        st_transform(res_crs) %>%
+                        st_coordinates() %>% as_tibble()
+                )
+        }
+
+        if (res_crs == 3035 || res_crs == 5514) {
+            csv_ndop_filter$X %<>% as.integer
+            csv_ndop_filter$Y %<>% as.integer
+        } else {
+            options(pillar.sigfig = 8) # jen pro případnou vizualizaci
+        }
 
         # přidání sloupců s WGS84 souřadnicemi, výběr záznamů z polygonu a potřebných sloupců
-        csv_ndop_s_wgs84 <- csv_ndop_filter %>%
-            mutate(wgs84_coords) %>%
-            # filter(wgs84_czechia == TRUE) %>%
-            dplyr::select(ID_NALEZ, DRUH, lat, lon, KAT_TAX) %>%
+        csv_ndop_filter %<>%
+            dplyr::select(ID_NALEZ, DRUH, X, Y, KAT_TAX) %>%
             rename(
                 key = ID_NALEZ,
                 species = DRUH,
-                latitude = lat,
-                longitude = lon,
                 cat = KAT_TAX
             )
 
-        # print(as_tibble(csv_ndop_s_wgs84), n = 10)
-        return(csv_ndop_s_wgs84)
+        return(csv_ndop_filter)
     }
-# res <- ndop(list(from = '2017-01-01', to = '2019-12-31'), list(from = 4, to = 7), paste0(getwd(), "/../ndop/csv"))
+# res <- ndop_ugc(list(from = "2010-01-01", to = "2021-12-31"), list(from = 1, to = 12), "/mnt/2AA56BAE3BB1EC2E/Downloads/uga/ndop-downloader/zal/spojit12-test", 4326)
 # print(as_tibble(res), n = 10)
-res <- ndop_ugc(list(from = '2010-01-01', to = '2021-12-31'), list(from = 1, to = 12), "/mnt/2AA56BAE3BB1EC2E/Downloads/uga/ndop-downloader/zal/spojit12-test")
-print(as_tibble(res), n = 10)
