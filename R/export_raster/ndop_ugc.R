@@ -52,6 +52,7 @@ ndop_ugc <-
             ) %>%
             map_df(~ read_csv(., col_types = cols(.default = "c"))) %>%
             filter(X != "<i>Skrytá lokalizace</i>") %>%
+            filter(CXPRESNOST != "") %>%
             distinct(ID_NALEZ, .keep_all = TRUE) %>%
             # filter(DAT_SADA != "iNaturalist - data ČR") %>%
             # filter(AUTOR != "iNaturalist uživatel") %>%
@@ -125,5 +126,6 @@ ndop_ugc <-
 
         return(csv_ndop_filter)
     }
-# res <- ndop_ugc(list(from = "2010-01-01", to = "2021-12-31"), list(from = 1, to = 12), "/mnt/2AA56BAE3BB1EC2E/Downloads/uga/ndop-downloader/zal/spojit12-test", 4326)
+# res <- ndop_ugc(list(from = "2010-01-01", to = "2020-12-31"), list(from = 1, to = 12), "/mnt/2AA56BAE3BB1EC2E/Downloads/uga/ndop-downloader/zal")
 # print(as_tibble(res), n = 10)
+# print(res %>% group_by(cat) %>% summarise(count = n_distinct(key)) %>% arrange(desc(count)))
