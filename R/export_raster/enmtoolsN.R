@@ -483,6 +483,12 @@ for (px_size_item in px_size) {
         # rr <- writeRaster(raster_stack, paste0(export_path, "/inputs/predictors/central-europe3-", px_size_item, ".grd"), format = "raster")
         # hdr(rr, format = "ENVI")
 
+        # # pro případ potřeby pouze pixelů celých uvnitř hranic ČR (nebo i pro GBIF kousek výše) - pracuje jen s Rasterlayer, ne RasterStack, nyní vybírám čtverce se středem uvnitř polygonu
+        # mask <- exactextractr::coverage_fraction(raster_stack_mask_czechia[[1]], czechia_3035)[[1]]
+        # mask[mask < 1] <- NA
+        # # plot(st_geometry(czechia_3035))
+        # # plot(mask * raster_stack_mask_czechia[[1]], add = TRUE)
+
         # ořez původního raster_stack na ČR pro lokální SDM
         raster_stack_crop <- crop(raster_stack, extent(czechia_3035))
         raster_stack_mask_czechia <- mask(raster_stack_crop, czechia_3035)
