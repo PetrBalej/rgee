@@ -581,6 +581,9 @@ for (px_size_item in px_size) {
                 bias_gbif <- ((bias_gbif - r.min) / (r.max - r.min))
                 crs(bias_gbif) <- rcrs
 
+                bias_gbif <- mask(crop(bias_gbif, extent(blocks_3035)), blocks_3035)
+                bias_gbif <- setMinMax(bias_gbif)
+
                 # # https://rdrr.io/cran/spatialEco/man/sp.kde.html # chcípne na nedostatek paměti (už při 1000m)
                 # pt.kde <- sp.kde(x = as_Spatial(cci_gbif_3035), bw = 10000, newdata = raster_stack[[1]], standardize = TRUE,  nr=xres(raster_stack[[1]]), nc=yres(raster_stack[[1]]) ) # , scale.factor = 10000
                 # dens <- kde2d(gbif_coords[,1], gbif_coords[,2], n = c(nrow(raster_stack[[1]]), ncol(raster_stack[[1]])))  # chcípne na nedostatek paměti (už při 1000m)
@@ -606,6 +609,10 @@ for (px_size_item in px_size) {
                 r.max <- maxValue(bias_all)
                 bias_all <- ((bias_all - r.min) / (r.max - r.min))
                 crs(bias_all) <- rcrs
+
+                bias_all <- mask(crop(bias_all, extent(blocks_3035)), blocks_3035)
+                bias_all <- setMinMax(bias_all)
+
                 writeRaster(bias_all, paste0(export_path, "/inputs/bias_rasters2/Xbias_all-density-", generate_bias_raster_version, "-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
 
                 # ppp <- rescale(ppp, 10, "km")
@@ -614,6 +621,10 @@ for (px_size_item in px_size) {
                 r.max <- maxValue(bias_ndop)
                 bias_ndop <- ((bias_ndop - r.min) / (r.max - r.min))
                 crs(bias_ndop) <- rcrs
+
+                bias_ndop <- mask(crop(bias_ndop, extent(czechia_3035)), czechia_3035)
+                bias_ndop <- setMinMax(bias_ndop)
+
                 writeRaster(bias_ndop, paste0(export_path, "/inputs/bias_rasters2/Xbias_ndop-density-", generate_bias_raster_version, "-", px_size_item, ".tif"), format = "GTiff", overwrite = TRUE)
             }
 
