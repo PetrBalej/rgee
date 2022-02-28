@@ -380,7 +380,24 @@ nepuvodni_problematicke <- function() {
     "Luscinia svecica", # dva poddruhy s odlišnými nároky, nejsem schopný je jednoduše odlišit...
     "Luscinia luscinia" # problematické nálezy zejména z Červenohorského sedla (>1000mnm, ikdyž jsou vícekrát a dlouhodobě nezávisle potvrzené, možná jde jen o oblíbenou zastávku při průtahu (kam?) nebo záměny s L. mega.? Raději vyloučit.
   )
-  return(list(nepuvodni = nepuvodni, problematicke = problematicke))
+
+  # https://www.ochranaprirody.cz/res/archive/372/058764.pdf - Nevhodný pro hodnocení – Not Applicable (NA)
+  nevhodne <- c(
+    "Anas penelope",
+    "Podiceps grisegena",
+    "Aquila chrysaetos",
+    "Larus cachinnans",
+    "Larus michahellis",
+    "Sternula albifrons",
+    "Chlidonias hybrida",
+    "Otus scops",
+    "Asio flammeus",
+    "Luscinia luscinia",
+    "Turdus iliacus",
+    "Motacilla citreola"
+  )
+
+  return(list(nepuvodni = nepuvodni, problematicke = problematicke, nevhodne = nevhodne))
 }
 
 synonyms <- function() {
