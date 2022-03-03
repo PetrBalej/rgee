@@ -18,7 +18,7 @@ setwd(wd)
 export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
 
 alg <- "glm" # "glm" "maxent" "gam"
-px_size <- c(10000) # 100, 500, 1000, 5000, 10000 # 10000, 5000, 1000, 500, 100
+px_size <- c(10000) # 100, 200, 500, 1000, 2000, 5000, 10000
 replicates <- 1 # 4 pro checkerboard2 (4foldy)
 pref <- "_LV_" # předpona png obrázků s predikcí a dalších outputů / OWNPFr /// _OF-ps80_ BFit
 test.prop <- 0.3 # "block" "checkerboard2" 0.3; pro bias fitting 0.0 - manuálně pro jistotu přehazuju ještě přímo na místě!!!
@@ -60,6 +60,8 @@ fit_gbif_crop <- TRUE # fitovat r.breadth až na výřezu ČR z GBIF dat, ne na 
 ###################################################################################
 
 cmd_arg <- commandArgs(trailingOnly = TRUE)
+# cmd_arg <- c()
+# cmd_arg[1] <- 10
 if (is.na(cmd_arg[1])) {
     limit_min_occurences <- 100 # 100, 10000, 20000,30000
     limit_max_occurences <- 70000
@@ -68,201 +70,9 @@ if (is.na(cmd_arg[1])) {
     print("nepředán žádný argument")
     cmd_arg_str <- 0
 } else {
-    #  s12 <- ptaci_intersect_distinct$count
-    #  intervals <- unique(cut(s12, breaks = quantile(s12, seq(0, 1, l=13)), include.lowest = TRUE,dig.lab=5))
-    #  intervals.l <- c(substring(str_extract(intervals, regex("[\\(|\\[]\\d+")),2), 70000)
-    #  sort( as.numeric(intervals.l))
-    # 123   341   649   1161  2013  2686  3551  4655  6265  8346  11697 18360 70000
-    # 123   204   341   512   649   901  1161  1432  2013  2350  2686  3207  3551  4165  4655  5597  6265  7096  8346  9509 11697 14828 18360 22399 70000
-
-    print("předán argument")
-    print(cmd_arg[1])
+    limit_min_occurences <- 100 # 100, 10000, 20000,30000
+    limit_max_occurences <- 70000
     cmd_arg_str <- cmd_arg[1]
-    if (alg == "glm" | alg == "gam" | alg == "maxent") {
-        # if (cmd_arg[1] == 1) {
-        #     limit_min_occurences <- 100 #
-        #     limit_max_occurences <- 1900
-        # }
-        # if (cmd_arg[1] == 2) {
-        #     limit_min_occurences <- 1901 #
-        #     limit_max_occurences <- 5600
-        # }
-        # if (cmd_arg[1] == 3) {
-        #     limit_min_occurences <- 5601 #
-        #     limit_max_occurences <- 11000
-        # }
-        # if (cmd_arg[1] == 4) {
-        #     limit_min_occurences <- 11001 #
-        #     limit_max_occurences <- 70000
-        # }
-
-        # 123   341   649   1161  2013  2686  3551  4655  6265  8346  11697 18360 70000
-        if (cmd_arg[1] == 1) {
-            limit_min_occurences <- 100 # 25
-            limit_max_occurences <- 400
-        }
-        if (cmd_arg[1] == 2) {
-            limit_min_occurences <- 401 # 24
-            limit_max_occurences <- 900
-        }
-        if (cmd_arg[1] == 3) {
-            limit_min_occurences <- 901 # 22
-            limit_max_occurences <- 1460
-        }
-        if (cmd_arg[1] == 4) {
-            limit_min_occurences <- 1461 # 21
-            limit_max_occurences <- 2400
-        }
-        if (cmd_arg[1] == 5) {
-            limit_min_occurences <- 2401 # 20
-            limit_max_occurences <- 3350
-        }
-        if (cmd_arg[1] == 6) {
-            limit_min_occurences <- 3351 # 19
-            limit_max_occurences <- 4300
-        }
-        if (cmd_arg[1] == 7) {
-            limit_min_occurences <- 4301 # 19
-            limit_max_occurences <- 5700
-        }
-        if (cmd_arg[1] == 8) {
-            limit_min_occurences <- 5701 # 18
-            limit_max_occurences <- 7200
-        }
-        if (cmd_arg[1] == 9) {
-            limit_min_occurences <- 7201 # 18
-            limit_max_occurences <- 9400
-        }
-        if (cmd_arg[1] == 10) {
-            limit_min_occurences <- 9401 # 17
-            limit_max_occurences <- 12500
-        }
-        if (cmd_arg[1] == 11) {
-            limit_min_occurences <- 12501 # 17
-            limit_max_occurences <- 20000
-        }
-        if (cmd_arg[1] == 12) {
-            limit_min_occurences <- 20001 # 16
-            limit_max_occurences <- 70000
-        }
-
-
-        # # 123   204   341   512   649   901  1161  1432  2013  2350  2686  3207  3551  4165  4655  5597  6265  7096  8346  9509 11697 14828 18360 22399 70000
-        # if (cmd_arg[1] == 1) {
-        #     limit_min_occurences <- 100 #
-        #     limit_max_occurences <- 204
-        # }
-        # if (cmd_arg[1] == 2) {
-        #     limit_min_occurences <- 205 #
-        #     limit_max_occurences <- 341
-        # }
-        # if (cmd_arg[1] == 3) {
-        #     limit_min_occurences <- 342 #
-        #     limit_max_occurences <- 512
-        # }
-        # if (cmd_arg[1] == 4) {
-        #     limit_min_occurences <- 513 #
-        #     limit_max_occurences <- 649
-        # }
-        # if (cmd_arg[1] == 5) {
-        #     limit_min_occurences <- 650 #
-        #     limit_max_occurences <- 901
-        # }
-        # if (cmd_arg[1] == 6) {
-        #     limit_min_occurences <- 902 #
-        #     limit_max_occurences <- 1161
-        # }
-        # if (cmd_arg[1] == 7) {
-        #     limit_min_occurences <- 1162 #
-        #     limit_max_occurences <- 1432
-        # }
-        # if (cmd_arg[1] == 8) {
-        #     limit_min_occurences <- 1433 #
-        #     limit_max_occurences <- 2013
-        # }
-        # if (cmd_arg[1] == 9) {
-        #     limit_min_occurences <- 2014 #
-        #     limit_max_occurences <- 2350
-        # }
-        # if (cmd_arg[1] == 10) {
-        #     limit_min_occurences <- 2351 #
-        #     limit_max_occurences <- 2686
-        # }
-        # if (cmd_arg[1] == 11) {
-        #     limit_min_occurences <- 2687 #
-        #     limit_max_occurences <- 3207
-        # }
-        # if (cmd_arg[1] == 12) {
-        #     limit_min_occurences <- 3208 #
-        #     limit_max_occurences <- 3551
-        # }
-        # if (cmd_arg[1] == 13) {
-        #     limit_min_occurences <- 3552 #
-        #     limit_max_occurences <- 4165
-        # }
-        # if (cmd_arg[1] == 14) {
-        #     limit_min_occurences <- 4166 #
-        #     limit_max_occurences <- 4655
-        # }
-        # if (cmd_arg[1] == 15) {
-        #     limit_min_occurences <- 4656 #
-        #     limit_max_occurences <- 5597
-        # }
-        # if (cmd_arg[1] == 16) {
-        #     limit_min_occurences <- 5598 #
-        #     limit_max_occurences <- 6265
-        # }
-        # if (cmd_arg[1] == 17) {
-        #     limit_min_occurences <- 6266 #
-        #     limit_max_occurences <- 7096
-        # }
-        # if (cmd_arg[1] == 18) {
-        #     limit_min_occurences <- 7097 #
-        #     limit_max_occurences <- 8346
-        # }
-        # if (cmd_arg[1] == 19) {
-        #     limit_min_occurences <- 8347 #
-        #     limit_max_occurences <- 9509
-        # }
-        # if (cmd_arg[1] == 20) {
-        #     limit_min_occurences <- 9510 #
-        #     limit_max_occurences <- 11697
-        # }
-        # if (cmd_arg[1] == 21) {
-        #     limit_min_occurences <- 11698 #
-        #     limit_max_occurences <- 14828
-        # }
-        # if (cmd_arg[1] == 22) {
-        #     limit_min_occurences <- 14829 #
-        #     limit_max_occurences <- 18360
-        # }
-        # if (cmd_arg[1] == 23) {
-        #     limit_min_occurences <- 18361 #
-        #     limit_max_occurences <- 22399
-        # }
-        # if (cmd_arg[1] == 24) {
-        #     limit_min_occurences <- 22400 #
-        #     limit_max_occurences <- 70000
-        # }
-    }
-    # if (alg == "maxent") {
-    #     if (cmd_arg[1] == 1) {
-    #         limit_min_occurences <- 100 #
-    #         limit_max_occurences <- 1800
-    #     }
-    #     if (cmd_arg[1] == 2) {
-    #         limit_min_occurences <- 1801 #
-    #         limit_max_occurences <- 4500
-    #     }
-    #     if (cmd_arg[1] == 3) {
-    #         limit_min_occurences <- 4501 #
-    #         limit_max_occurences <- 10000
-    #     }
-    #     if (cmd_arg[1] == 4) {
-    #         limit_min_occurences <- 10001 #
-    #         limit_max_occurences <- 70000
-    #     }
-    # }
 }
 
 
@@ -283,6 +93,16 @@ fm_all_f_i_c.t <- list()
 fm_gbif_f_i_c.t.c <- list()
 fm_ndop_f_i_c.t.c <- list()
 fm_all_f_i_c.t.c <- list()
+
+ntt_fm_gbif.overlap.D.t <- list()
+ntt_fm_gbif.overlap.I.t <- list()
+ntt_fm_gbif.overlap.cor.t <- list()
+ntt_fm_gbif.overlap.rmse.t <- list()
+
+ntt_fm_gbif.overlap.D.t.c <- list()
+ntt_fm_gbif.overlap.I.t.c <- list()
+ntt_fm_gbif.overlap.cor.t.c <- list()
+ntt_fm_gbif.overlap.rmse.t.c <- list()
 # fm_gbif_f_i_cSD <- list()
 # fm_ndop_f_i_cSD <- list()
 # fm_all_f_i_cSD <- list()
@@ -348,6 +168,12 @@ ptaci_gbif_distinct <- plot_gbif_csv %>%
     group_by(species) %>%
     summarise(count = n_distinct(key)) %>%
     arrange(desc(count))
+
+# Jen hnízdící druhy: http://fkcso.cz/fk/ptacicr.html
+fkcso_csv <- read_csv(paste0(wd, "/species/ndop/ptaci-hnizdeni-do-2020-fkcso.csv"))
+fkcso <- fkcso_csv %>%
+    filter(cat == "A") %>%
+    filter(grepl("h,|H,", type))
 
 # zjištění synonym a přejmenování druhů v GBIF datech podle NDOPu, aby se umožnila následná společná filtrace pro modelování dle druhů
 # 1) výběr druhů z NDOP které se nenavázaly na GBIF
@@ -429,12 +255,12 @@ for (px_size_item in px_size) {
     pres <- paste0(alg, pref, px_size_item, cmd_arg_str) # pres <- paste0(px_size_item, "_", pref, "_", alg, "_", cmd_arg_str)
 
     if (eval == TRUE & use_fitted_bias == TRUE & generate_bias_raster == FALSE) {
-        fm_gbif_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fm_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
-        fm_ndop_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fm_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
-        fm_all_f_i_c <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fm_all_", px_size_item, "-", cmd_arg_str, ".rds"))
-        # fm_gbif_f_i_cSD <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fmSD_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
-        # fm_ndop_f_i_cSD <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fmSD_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
-        # fm_all_f_i_cSD <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fmSD_all_", px_size_item, "-", cmd_arg_str, ".rds"))
+        fm_gbif_f_i_c <- readRDS(paste0(export_path, "/outputs/fitting/", alg, "_fm_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
+        fm_ndop_f_i_c <- readRDS(paste0(export_path, "/outputs/fitting/", alg, "_fm_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
+        fm_all_f_i_c <- readRDS(paste0(export_path, "/outputs/fitting/", alg, "_fm_all_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # fm_gbif_f_i_cSD <- readRDS(paste0(export_path, "/outputs/fitting/", alg, "_fmSD_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # fm_ndop_f_i_cSD <- readRDS(paste0(export_path, "/outputs/fitting/", alg, "_fmSD_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # fm_all_f_i_cSD <- readRDS(paste0(export_path, "/outputs/fitting/", alg, "_fmSD_all_", px_size_item, "-", cmd_arg_str, ".rds"))
     }
 
     # # původní načítání rasterů prediktorů, dočasná optimalizace aby se nemusel pokaždé skrz propisovat NA hodnoty
@@ -565,7 +391,7 @@ for (px_size_item in px_size) {
             ndop_ppp <- ppp(ndop_coords[, 1], ndop_coords[, 2], window = ow_ndop)
 
 
-            adj_prep <- seq(0.05, 1.00, by = 0.10)
+            adj_prep <- seq(0.05, 1.00, by = 0.10) # c(seq(0.05, 1.00, by = 0.01), 1.10, 1.50, 2.00, 5.00)
             # adj_prep <- adj_prep[round((adj_prep * 10), digits = 3) %% 0.5 != 0] # XXX jen dočasná úprava aby se negenerovaly znovu tytéž adjusty, možno pak odstranit
 
 
@@ -645,11 +471,21 @@ for (px_size_item in px_size) {
         next
     }
 
-
     # obrácení pořadí druhů, od nejméně početných pro urychlení prvních výsledků
-
+    "%notin%" <- Negate("%in%")
     ptaci_intersect_distinct <- ptaci_ndop_distinct %>%
-        filter(species %in% ptaci_gbif_distinct$species) # %>% filter(species != "Tichodroma muraria" & px_size_item != 10000)
+        filter(species %in% fkcso$species) %>%
+        filter(species %in% ptaci_gbif_distinct$species) %>%
+        filter(species %notin% nepuvodni_problematicke()$nepuvodni) %>%
+        filter(species %notin% nepuvodni_problematicke()$problematicke) %>%
+        filter(species %notin% nepuvodni_problematicke()$nevhodne) %>%
+        arrange(species)
+    if (cmd_arg_str != 0) {
+        print("výběr skupiny druhů podle argumentu ")
+        ptaci_groups <- read_csv(paste0(wd, "/species/ndop/new-ptaci-pocet-nalezu-sezona-3-10_2010-2020.csv")) %>% filter(order == cmd_arg_str)
+        ptaci_intersect_distinct <- ptaci_intersect_distinct %>% filter(species %in% ptaci_groups$species)
+    }
+    # %>% filter(species != "Tichodroma muraria" & px_size_item != 10000)
     # %>% filter(species == "Larus argentatus")
     # %>% filter(species == "Emberiza calandra")
     # %>% filter(species == "Podiceps grisegena")
@@ -657,7 +493,7 @@ for (px_size_item in px_size) {
     # %>% filter(species == "Lanius collurio")
     # %>% filter(species == "Hydroprogne caspia")
 
-    species <- rev(ptaci_intersect_distinct$species) # přepisuju původní seznam z ndop_top
+    species <- ptaci_intersect_distinct$species # přepisuju původní seznam z ndop_top
     species_time <- Sys.time()
     for (sp in species) { # sp in ptaci_gbif_distinct$species
         # foreach(sindex = 1:nrow(species), .combine=combine, .packages=c('dismo', "rJava")) %dopar% {
@@ -869,8 +705,8 @@ for (px_size_item in px_size) {
         }
 
         if (eval == FALSE) {
-            test.prop.fit <- 0.1 # pro jistotu manuální přepis proměnné, nasazení podílu testovacích nálezů se totiž mění při jednotlivých adjustech -> nestabilní
-            replicates.fit <- 5
+            test.prop.fit <- 0 # pro jistotu manuální přepis proměnné, nasazení podílu testovacích nálezů se totiž mění při jednotlivých adjustech -> nestabilní
+            replicates.fit <- 1
             gc()
             # intervals <- c(
             #     c(0.05, 0.15, 0.30, 0.40, 0.50),
@@ -880,7 +716,7 @@ for (px_size_item in px_size) {
             # )
             # intervals <- c(0.7, 0.75, 0.79, 0.85, 1.1, 1.7)
 
-            intervals <- c(seq(0.55, 0.65, by = 0.05), seq(0.67, 0.83, by = 0.02), seq(0.85, 0.95, by = 0.05)) # 75 modelů po 5
+            intervals <- c(seq(0.34, 0.76, by = 0.02), seq(0.75, 1.00, by = 0.05)) # 75 modelů po 5
 
             if (px_size_item == 5000 & alg == "glm") {
                 intervals <- c(seq(0.45, 0.55, by = 0.05), seq(0.57, 0.73, by = 0.02), seq(0.75, 0.95, by = 0.05)) # 85 modelů po 5
@@ -893,6 +729,9 @@ for (px_size_item in px_size) {
             if (px_size_item == 10000) {
                 intervals <- c(seq(0.05, 0.95, by = 0.10)) # 50 modelů po 5
             }
+
+            # na první místo nulová varianta bez biasu
+            intervals <- c(0.00, 0.20, intervals, 1.10, 1.50)
 
             # výběr ideální raster.breadth, vygenerování seznamu ideálních bias rasterů pro každý druh a pixel size
 
@@ -907,17 +746,29 @@ for (px_size_item in px_size) {
                 bvn <- format(round(s, 2), nsmall = 2)
                 bv <- paste0("scottIso-adj-", bvn)
                 ### volání / fitování modelů
-                bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"))
                 bias_ndop <- NA
                 bias_all <- NA
 
-                fm[[bvn]] <- fit_modelsN(alg, replicates.fit, eval, test.prop.fit, enm_mxt_gbif.s, NA, NA, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, TRUE, fit_gbif_crop, czechia_3035)
+                if (s == 0) {
+                    # přidání bias rasteru přetypovaného na 1 - background bude random - nulová varianta bez korekce
+                    bias_gbif1 <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", substr(bv, 1, nchar(bv) - 1), "5-", px_size_item, ".tif"))
+                    bias_gbif1[!is.na(bias_gbif1[])] <- 1
+                    fm[["0.00"]] <- fit_modelsN(alg, replicates.fit, eval, test.prop.fit, enm_mxt_gbif.s, NA, NA, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif1, bias_ndop, bias_all, nback_all, nback_ndop, FALSE, fit_gbif_crop, czechia_3035)
+                } else {
+                    bias_gbif <- raster(paste0(export_path, "/inputs/bias_rasters2/Xbias_gbif-density-", bv, "-", px_size_item, ".tif"))
+                    fm[[bvn]] <- fit_modelsN(alg, replicates.fit, eval, test.prop.fit, enm_mxt_gbif.s, NA, NA, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, FALSE, fit_gbif_crop, czechia_3035)
+                }
             }
+            print("r.breadth a překryvy pro jednotlivé kernel width")
 
             fm_all <- list()
             fm_gbif <- list()
             fm_ndop <- list()
 
+            fm_gbif.overlap.D <- list()
+            fm_gbif.overlap.I <- list()
+            fm_gbif.overlap.cor <- list()
+            fm_gbif.overlap.rmse <- list()
             # fm_all.md <- list()
             # fm_gbif.md <- list()
             # fm_ndop.md <- list()
@@ -928,8 +779,24 @@ for (px_size_item in px_size) {
                 # fm_all.md[[i]] <- fm[[i]]$enm_mxt_all.breadth.B2.md
                 # fm_gbif.md[[i]] <- fm[[i]]$enm_mxt_gbif.breadth.B2.md
                 # fm_ndop.md[[i]] <- fm[[i]]$enm_mxt_ndop.breadth.B2.md
-            }
 
+
+                # překryvé metriky nad ČR
+                ndop_res <- raster(paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.tif"))
+
+                gbif_res <- stack(sapply(fm[[i]]$enm_mxt_gbif, function(x) x$suitability))
+                gbif_res <- calc(gbif_res, fun = median)
+                gbif_res.crop <- crop(gbif_res, extent(czechia_3035))
+                gbif_res.crop.czechia <- mask(gbif_res.crop, czechia_3035)
+
+                gbif_res.crop.czechia.m <- raster.overlap(gbif_res.crop.czechia, ndop_res)
+
+                fm_gbif.overlap.D[[i]] <- gbif_res.crop.czechia.m$D
+                fm_gbif.overlap.I[[i]] <- gbif_res.crop.czechia.m$I
+                fm_gbif.overlap.cor[[i]] <- gbif_res.crop.czechia.m$rank.cor
+                fm_gbif.overlap.rmse[[i]] <- rRMSE(gbif_res.crop.czechia, ndop_res)
+            }
+            print("získání nej smoothingu")
 
             # # nejednoznačné
             #             fm_allE <- list()
@@ -955,7 +822,7 @@ for (px_size_item in px_size) {
                 arrange(nms)
 
             # quantile - výsledný počet prvků závislý na výchozím počtu prvků!
-            ntt_all_5 <- ntt_all %>% slice_max(V2, n = 1)
+            ntt_all_5 <- ntt_all[-1, ] %>% slice_max(V2, n = 1)
             # ntt_all_5[2, 1]
             # ntt_all_31 <- ntt_all_5[3,1] - ntt_all_5[1,1]
             # ntt_all_32 <- ntt_all_5[3,1] - ntt_all_5[2,1]
@@ -967,7 +834,7 @@ for (px_size_item in px_size) {
                 mutate(across(nms, as.numeric)) %>%
                 arrange(nms)
 
-            ntt_gbif_5 <- ntt_gbif %>% slice_max(V2, n = 1)
+            ntt_gbif_5 <- ntt_gbif[-1, ] %>% slice_max(V2, n = 1)
             # ntt_gbif_5[2, 1]
 
             nt_ndop <- as_tibble(fm_ndop)
@@ -976,7 +843,7 @@ for (px_size_item in px_size) {
                 mutate(across(nms, as.numeric)) %>%
                 arrange(nms)
 
-            ntt_ndop_5 <- ntt_ndop %>% slice_max(V2, n = 1)
+            ntt_ndop_5 <- ntt_ndop[-1, ] %>% slice_max(V2, n = 1)
             # ntt_ndop_5[2, 1]
 
 
@@ -986,6 +853,30 @@ for (px_size_item in px_size) {
                 select(nms)
             ndop_top_adj <- ntt_ndop_5 %>%
                 select(nms)
+
+            nt_fm_gbif.overlap.D <- as_tibble(fm_gbif.overlap.D)
+            ntt_fm_gbif.overlap.D <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.D), t(nt_fm_gbif.overlap.D))) %>%
+                mutate(across(V2, as.numeric)) %>%
+                mutate(across(nms, as.numeric)) %>%
+                arrange(nms)
+
+            nt_fm_gbif.overlap.I <- as_tibble(fm_gbif.overlap.I)
+            ntt_fm_gbif.overlap.I <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.I), t(nt_fm_gbif.overlap.I))) %>%
+                mutate(across(V2, as.numeric)) %>%
+                mutate(across(nms, as.numeric)) %>%
+                arrange(nms)
+
+            nt_fm_gbif.overlap.cor <- as_tibble(fm_gbif.overlap.cor)
+            ntt_fm_gbif.overlap.cor <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.cor), t(nt_fm_gbif.overlap.cor))) %>%
+                mutate(across(V2, as.numeric)) %>%
+                mutate(across(nms, as.numeric)) %>%
+                arrange(nms)
+
+            nt_fm_gbif.overlap.rmse <- as_tibble(fm_gbif.overlap.rmse)
+            ntt_fm_gbif.overlap.rmse <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.rmse), t(nt_fm_gbif.overlap.rmse))) %>%
+                mutate(across(V2, as.numeric)) %>%
+                mutate(across(nms, as.numeric)) %>%
+                arrange(nms)
 
             # předvýběr: který adjust koeficient má nejširší (nejvyšší B2) niku (největší heterogenitu prostředí)?
             # fm_gbif_f_i_c[[as.character(px_size_item)]][[as.character(sp)]] <- fm_gbif_c <- as.numeric(ntt_gbif_5[2, 1])
@@ -1001,10 +892,32 @@ for (px_size_item in px_size) {
             fm_ndop_f_i_c.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_ndop)), 4), collapse = ",")
             fm_all_f_i_c.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_all)), 4), collapse = ",")
 
+            ntt_fm_gbif.overlap.D.t[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.D
+            ntt_fm_gbif.overlap.I.t[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.I
+            ntt_fm_gbif.overlap.cor.t[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.cor
+            ntt_fm_gbif.overlap.rmse.t[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.rmse
 
+            ntt_fm_gbif.overlap.D.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.D)), 4), collapse = ",")
+            ntt_fm_gbif.overlap.I.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.I)), 4), collapse = ",")
+            ntt_fm_gbif.overlap.cor.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.cor)), 4), collapse = ",")
+            ntt_fm_gbif.overlap.rmse.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.rmse)), 4), collapse = ",")
 
-            png(paste0(export_path, "/outputs/png-adjust/", sp, "_", px_size_item, "_", pres, "_", replicates, "_gbif.png"))
-            plot(ntt_gbif, main = paste0(sp, " | GBIF, (", (px_size_item / 1000), "km)"), sub = paste0("1st: ", gbif_top_adj))
+            png(paste0(export_path, "/outputs/png-adjust/", sp, "_", px_size_item, "_", pres, "_", replicates, "_gbif.png"), width = 800, height = 600)
+            plot(ntt_gbif,
+                type = "b", pch = 19, cex = 2, main = paste0(sp, " | GBIF, (", (px_size_item / 1000), "km)"), sub = paste0("1st: ", gbif_top_adj),
+                xlab = "smoothing (sigma)", ylab = "raster breadth"
+            )
+            par(new = TRUE)
+            plot(ntt_fm_gbif.overlap.D, type = "b", pch = 2, col = "red", yaxt = "n", xlab = "", ylab = "")
+            axis(2, col.axis = "red", pos = 0.05)
+            par(new = TRUE)
+            plot(ntt_fm_gbif.overlap.cor, type = "b", pch = 0, col = "darkgreen", yaxt = "n", xlab = "", ylab = "")
+            axis(2, col.axis = "darkgreen", pos = 0.15)
+            par(new = TRUE)
+            plot(ntt_fm_gbif.overlap.rmse, type = "b", pch = 3, col = "blue", yaxt = "n", xlab = "", ylab = "")
+            axis(2, col.axis = "blue", pos = 0.25)
+            par(new = TRUE)
+            legend("bottomright", bg = "transparent", bty = "n", legend = c("Schoener D", "Spearman cor", "RMSE"), lty = 1:1, col = c("red", "darkgreen", "blue"))
             dev.off()
             if (do_all) {
                 png(paste0(export_path, "/outputs/png-adjust/", sp, "_", px_size_item, "_", pres, "_", replicates, "_all.png"))
@@ -1034,7 +947,7 @@ for (px_size_item in px_size) {
             if (use_bias) {
                 if (use_fitted_bias) {
                     # vyhlazení extrémně ujetých bodů plovoucím mediánem do tvaru pěknějších "křivek"
-                    gbif_t <- readRDS(paste0(export_path, "/inputs/occurrences/", alg, "_fmt_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
+                    gbif_t <- readRDS(paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
                     sp1 <- gbif_t[[as.character(px_size_item)]][[as.character(sp)]]
                     x <- sp1$V2
                     rmed <- stats::runmed(x, 5, endrule = "median")
@@ -1467,7 +1380,9 @@ for (px_size_item in px_size) {
                 } else {
                     b_g <- enm_mxt_gbif.vip.t[[1]]
                     b_n <- enm_mxt_ndop.vip.t[[1]]
-                    b_a <- enm_mxt_all.vip.t[[1]]
+                    if (do_all) {
+                        b_a <- enm_mxt_all.vip.t[[1]]
+                    }
                     for (n in 1:replicates) {
                         if (n > 1) {
                             b_g %<>% add_row(enm_mxt_gbif.vip.t[[n]])
@@ -1482,9 +1397,10 @@ for (px_size_item in px_size) {
 
                     enm_mxt_ndop.vip.s <- b_n %>%
                         summarise_if(is.numeric, median, na.rm = TRUE)
-
-                    enm_mxt_all.vip.s <- b_a %>%
-                        summarise_if(is.numeric, median, na.rm = TRUE)
+                    if (do_all) {
+                        enm_mxt_all.vip.s <- b_a %>%
+                            summarise_if(is.numeric, median, na.rm = TRUE)
+                    }
                 }
                 enm_mxt_gbif.vip.s.z <- enm_mxt_gbif.vip.s %>% unite("enm_mxt_gbif.vip", names(enm_mxt_gbif.vip.t[[1]])) # separate(xy, c("x", "y"))
                 enm_mxt_ndop.vip.s.z <- enm_mxt_ndop.vip.s %>% unite("enm_mxt_ndop.vip", names(enm_mxt_ndop.vip.t[[1]])) # separate(xy, c("x", "y"))
@@ -1818,27 +1734,49 @@ for (px_size_item in px_size) {
         enmsr <- list()
     } else {
         # uložení ideálních adjustovaných raster biasů podle pixel size a druhu
-        saveRDS(fm_gbif_f_i_c, file = paste0(export_path, "/inputs/occurrences/", alg, "_fm_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(fm_ndop_f_i_c, file = paste0(export_path, "/inputs/occurrences/", alg, "_fm_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(fm_all_f_i_c, file = paste0(export_path, "/inputs/occurrences/", alg, "_fm_all_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(fm_gbif_f_i_c, file = paste0(export_path, "/outputs/fitting/", alg, "_fm_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(fm_ndop_f_i_c, file = paste0(export_path, "/outputs/fitting/", alg, "_fm_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(fm_all_f_i_c, file = paste0(export_path, "/outputs/fitting/", alg, "_fm_all_", px_size_item, "-", cmd_arg_str, ".rds"))
         fm_gbif_f_i_c <- list()
         fm_ndop_f_i_c <- list()
         fm_all_f_i_c <- list()
-        saveRDS(fm_gbif_f_i_c.t, file = paste0(export_path, "/inputs/occurrences/", alg, "_fmt_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(fm_ndop_f_i_c.t, file = paste0(export_path, "/inputs/occurrences/", alg, "_fmt_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(fm_all_f_i_c.t, file = paste0(export_path, "/inputs/occurrences/", alg, "_fmt_all_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(fm_gbif_f_i_c.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(fm_ndop_f_i_c.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(fm_all_f_i_c.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_all_", px_size_item, "-", cmd_arg_str, ".rds"))
         fm_gbif_f_i_c.t <- list()
         fm_ndop_f_i_c.t <- list()
         fm_all_f_i_c.t <- list()
-        saveRDS(fm_gbif_f_i_c.t.c, file = paste0(export_path, "/inputs/occurrences/", alg, "_fmtc_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(fm_ndop_f_i_c.t.c, file = paste0(export_path, "/inputs/occurrences/", alg, "_fmtc_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(fm_all_f_i_c.t.c, file = paste0(export_path, "/inputs/occurrences/", alg, "_fmtc_all_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(fm_gbif_f_i_c.t.c, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(fm_ndop_f_i_c.t.c, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(fm_all_f_i_c.t.c, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_all_", px_size_item, "-", cmd_arg_str, ".rds"))
         fm_gbif_f_i_c.t.c <- list()
         fm_ndop_f_i_c.t.c <- list()
         fm_all_f_i_c.t.c <- list()
-        # saveRDS(fm_gbif_f_i_cSD, file = paste0(export_path, "/inputs/occurrences/", alg, "_fmSD_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
-        # saveRDS(fm_ndop_f_i_cSD, file = paste0(export_path, "/inputs/occurrences/", alg, "_fmSD_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
-        # saveRDS(fm_all_f_i_cSD, file = paste0(export_path, "/inputs/occurrences/", alg, "_fmSD_all_", px_size_item, "-", cmd_arg_str, ".rds"))
+
+
+        saveRDS(ntt_fm_gbif.overlap.D.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.D_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(ntt_fm_gbif.overlap.I.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.I_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(ntt_fm_gbif.overlap.cor.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.cor_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(ntt_fm_gbif.overlap.rmse.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.rmse_", px_size_item, "-", cmd_arg_str, ".rds"))
+
+        saveRDS(ntt_fm_gbif.overlap.D.t.c, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.D_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(ntt_fm_gbif.overlap.I.t.c, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.I_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(ntt_fm_gbif.overlap.cor.t.c, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.cor_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(ntt_fm_gbif.overlap.rmse.t.c, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.rmse_", px_size_item, "-", cmd_arg_str, ".rds"))
+
+        ntt_fm_gbif.overlap.D.t <- list()
+        ntt_fm_gbif.overlap.I.t <- list()
+        ntt_fm_gbif.overlap.cor.t <- list()
+        ntt_fm_gbif.overlap.rmse.t <- list()
+
+        ntt_fm_gbif.overlap.D.t.c <- list()
+        ntt_fm_gbif.overlap.I.t.c <- list()
+        ntt_fm_gbif.overlap.cor.t.c <- list()
+        ntt_fm_gbif.overlap.rmse.t.c <- list()
+
+        # saveRDS(fm_gbif_f_i_cSD, file = paste0(export_path, "/outputs/fitting/", alg, "_fmSD_gbif_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # saveRDS(fm_ndop_f_i_cSD, file = paste0(export_path, "/outputs/fitting/", alg, "_fmSD_ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # saveRDS(fm_all_f_i_cSD, file = paste0(export_path, "/outputs/fitting/", alg, "_fmSD_all_", px_size_item, "-", cmd_arg_str, ".rds"))
         # fm_gbif_f_i_cSD <- list()
         # fm_ndop_f_i_cSD <- list()
         # fm_all_f_i_cSD <- list()
