@@ -14,8 +14,15 @@ setwd(wd)
 # export_path <- "G:/balej/iga/vse-v-jednom"
 export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/UN"
 
-df <- data.frame(matrix(ncol = 6, nrow = 0))
-colnames(df) <- c("species", "px", "pxv", "md", "md.max", "ndop.auc")
+df <- data.frame(matrix(ncol = 15, nrow = 0))
+colnames(df) <- c(
+    "species", "px", "pxv",
+    "md", "md.max", "md.d.max", "md.cor.max", "md.rmse.max",
+    "d", "d.max",
+    "cor", "cor.max",
+    "rmse", "rmse.max",
+    "ndop.auc"
+)
 
 for (px in c(500, 1000, 2000, 5000, 10000)) {
     px <- px
@@ -55,9 +62,13 @@ for (px in c(500, 1000, 2000, 5000, 10000)) {
             md <- data.frame(nms = pv8.D$nms, V2 = pv8multiply$V2)
             md.max <- md[which.max(md$V2), ]
 
+            pv8.D.max <- pv8.D[which.max(pv8.D$V2), ]
+            pv8.cor.max <- pv8.cor[which.max(pv8.cor$V2), ]
+            pv8.rmse.max <- pv8.rmse[which.max(pv8.rmse$V2), ]
+
             pv8.D.selected <- pv8.D[pv8.D$nms == md.max$nms, ]$V2
-            pv8.cor.selected <- pv8.cor[pv8.D$nms == md.max$nms, ]$V2
-            pv8.rmse.selected <- 1 - pv8.rmse[pv8.D$nms == md.max$nms, ]$V2
+            pv8.cor.selected <- pv8.cor[pv8.cor$nms == md.max$nms, ]$V2
+            pv8.rmse.selected <- 1 - pv8.rmse[pv8.rmse$nms == md.max$nms, ]$V2
 
             # plot(pv8.D$nms, pv8multiply$V2,
             #     pch = 19, cex.lab = 0.7, cex.axis = 0.7, cex.main = 0.7, cex.sub = 0.7,
@@ -66,7 +77,14 @@ for (px in c(500, 1000, 2000, 5000, 10000)) {
             # )
             # points(md.max, pch = 19, col = "red")
 
-            df[nrow(df) + 1, ] <- c(name, px, pxv, md.max$nms, round(md.max$V2, 4), round(ndopCheckerboard2.auc, 4))
+            df[nrow(df) + 1, ] <- c(
+                name, px, pxv,
+                md.max$nms, round(md.max$V2, 4), round(pv8.D.selected, 4), round(pv8.cor.selected, 4), round(pv8.rmse.selected, 4),
+                pv8.D.max$nms, round(pv8.D.max$V2, 4),
+                pv8.cor.max$nms, round(pv8.cor.max$V2, 4),
+                pv8.rmse.max$nms, round(pv8.rmse.max$V2, 4),
+                round(ndopCheckerboard2.auc, 4)
+            )
             # select treshold: 0.7*0.8*0.8=0.448
         }
     }
@@ -74,7 +92,14 @@ for (px in c(500, 1000, 2000, 5000, 10000)) {
 
 
 df <- as_tibble(df) %>% type_convert(
-    col_types = cols(species = "f", px = "f", md = "d", md.max = "d", ndop.auc = "d")
+    col_types = cols(
+        species = "f", px = "f",
+        md = "d", md.max = "d", md.d.max = "d", md.cor.max = "d", md.rmse.max = "d",
+        d = "d", d.max = "d",
+        cor = "d", cor.max = "d",
+        rmse = "d", rmse.max = "d",
+        ndop.auc = "d"
+    )
 )
 stop()
 
