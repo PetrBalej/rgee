@@ -1022,6 +1022,15 @@ rEPS <- function(x, y) {
 }
 
 
+select_raster_by_kernel <- function(gbif_top_adj, fm, czechia_3035) {
+  nejAdj <- format(as.numeric(gbif_top_adj), nsmall = 2)
+  gbif_res <- stack(sapply(fm[[nejAdj]]$enm_mxt_gbif, function(x) x$suitability))
+  gbif_res <- calc(gbif_res, fun = median)
+  gbif_res.crop <- crop(gbif_res, extent(czechia_3035))
+  gbif_res.crop.czechia <- mask(gbif_res.crop, czechia_3035)
+  return(gbif_res.crop.czechia)
+}
+
 # is.defined <- function(sym) {
 #   # https://stackoverflow.com/a/43446356
 #   sym <- deparse(substitute(sym))

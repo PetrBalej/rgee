@@ -19,7 +19,7 @@ export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom"
 
 alg <- "glm" # "glm" "maxent" "gam"
 px_size <- c(10000) # 100, 200, 500, 1000, 2000, 5000, 10000
-replicates <- 1 # 4 pro checkerboard2 (4foldy)
+replicates <- 4 # 4 pro checkerboard2 (4foldy)
 pref <- "_LV_" # předpona png obrázků s predikcí a dalších outputů / OWNPFr /// _OF-ps80_ BFit
 test.prop <- 0.3 # "block" "checkerboard2" 0.3; pro bias fitting 0.0 - manuálně pro jistotu přehazuju ještě přímo na místě!!!
 generate_predictor_raster <- FALSE
@@ -28,7 +28,7 @@ adjust <- 0.65
 generate_bias_raster_version <- paste0("scottIso-adj-", format(round(adjust, 2), nsmall = 2)) # "scottIso-adj0.1"
 use_bias <- FALSE
 trans_coords <- FALSE # když mám předem uložené přetransformované souřadnice, můžu dát FALSE, šetří to čas, musím mít ale vygenerovaný předem celý rozsah druhů (100-70000)
-export_suitability_raster <- FALSE
+export_suitability_raster <- TRUE
 export_pa_raster <- FALSE
 eval <- FALSE # 1) bez evaluace si fituji bias rastery, 2) s evaluací dělám konečné modely
 use_fitted_bias <- FALSE
@@ -93,6 +93,11 @@ fm_all_f_i_c.t <- list()
 fm_gbif_f_i_c.t.c <- list()
 fm_ndop_f_i_c.t.c <- list()
 fm_all_f_i_c.t.c <- list()
+
+ntt_fm_gbif.overlap.D.adj <- list()
+ntt_fm_gbif.overlap.I.adj <- list()
+ntt_fm_gbif.overlap.cor.adj <- list()
+ntt_fm_gbif.overlap.rmse.adj <- list()
 
 ntt_fm_gbif.overlap.D.t <- list()
 ntt_fm_gbif.overlap.I.t <- list()
@@ -716,22 +721,7 @@ for (px_size_item in px_size) {
             # )
             # intervals <- c(0.7, 0.75, 0.79, 0.85, 1.1, 1.7)
 
-            intervals <- c(seq(0.34, 0.76, by = 0.02), seq(0.75, 1.00, by = 0.05)) # 75 modelů po 5
-
-            if (px_size_item == 5000 & alg == "glm") {
-                intervals <- c(seq(0.45, 0.55, by = 0.05), seq(0.57, 0.73, by = 0.02), seq(0.75, 0.95, by = 0.05)) # 85 modelů po 5
-            }
-
-            if (px_size_item == 5000 & alg == "maxent") {
-                intervals <- c(seq(0.45, 0.55, by = 0.05), seq(0.57, 0.83, by = 0.02), seq(0.85, 0.95, by = 0.05)) # 85 modelů po 5
-            }
-
-            if (px_size_item == 10000) {
-                intervals <- c(seq(0.05, 0.95, by = 0.10)) # 50 modelů po 5
-            }
-
-            # na první místo nulová varianta bez biasu
-            intervals <- c(0.00, 0.20, intervals, 1.10, 1.50)
+            intervals <- unique(c(seq(0.00, 0.30, by = 0.05), seq(0.30, 0.80, by = 0.02), seq(0.80, 1.00, by = 0.05), 1.10, 1.5, 2.00)) # 75 modelů po 5
 
             # výběr ideální raster.breadth, vygenerování seznamu ideálních bias rasterů pro každý druh a pixel size
 
@@ -822,7 +812,7 @@ for (px_size_item in px_size) {
                 arrange(nms)
 
             # quantile - výsledný počet prvků závislý na výchozím počtu prvků!
-            ntt_all_5 <- ntt_all[-1, ] %>% slice_max(V2, n = 1)
+            ntt_all_5 <- ntt_all %>% slice_max(V2, n = 1)
             # ntt_all_5[2, 1]
             # ntt_all_31 <- ntt_all_5[3,1] - ntt_all_5[1,1]
             # ntt_all_32 <- ntt_all_5[3,1] - ntt_all_5[2,1]
@@ -834,8 +824,7 @@ for (px_size_item in px_size) {
                 mutate(across(nms, as.numeric)) %>%
                 arrange(nms)
 
-            ntt_gbif_5 <- ntt_gbif[-1, ] %>% slice_max(V2, n = 1)
-            # ntt_gbif_5[2, 1]
+            ntt_gbif_5 <- ntt_gbif %>% slice_max(V2, n = 1)
 
             nt_ndop <- as_tibble(fm_ndop)
             ntt_ndop <- as_tibble(cbind(nms = names(nt_ndop), t(nt_ndop))) %>%
@@ -843,7 +832,7 @@ for (px_size_item in px_size) {
                 mutate(across(nms, as.numeric)) %>%
                 arrange(nms)
 
-            ntt_ndop_5 <- ntt_ndop[-1, ] %>% slice_max(V2, n = 1)
+            ntt_ndop_5 <- ntt_ndop %>% slice_max(V2, n = 1)
             # ntt_ndop_5[2, 1]
 
 
@@ -859,24 +848,63 @@ for (px_size_item in px_size) {
                 mutate(across(V2, as.numeric)) %>%
                 mutate(across(nms, as.numeric)) %>%
                 arrange(nms)
+            ntt_fm_gbif.overlap.D_5 <- ntt_fm_gbif.overlap.D %>% slice_max(V2, n = 1)
 
             nt_fm_gbif.overlap.I <- as_tibble(fm_gbif.overlap.I)
             ntt_fm_gbif.overlap.I <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.I), t(nt_fm_gbif.overlap.I))) %>%
                 mutate(across(V2, as.numeric)) %>%
                 mutate(across(nms, as.numeric)) %>%
                 arrange(nms)
+            ntt_fm_gbif.overlap.I_5 <- ntt_fm_gbif.overlap.I %>% slice_max(V2, n = 1)
 
             nt_fm_gbif.overlap.cor <- as_tibble(fm_gbif.overlap.cor)
             ntt_fm_gbif.overlap.cor <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.cor), t(nt_fm_gbif.overlap.cor))) %>%
                 mutate(across(V2, as.numeric)) %>%
                 mutate(across(nms, as.numeric)) %>%
                 arrange(nms)
+            ntt_fm_gbif.overlap.cor_5 <- ntt_fm_gbif.overlap.cor %>% slice_max(V2, n = 1)
 
             nt_fm_gbif.overlap.rmse <- as_tibble(fm_gbif.overlap.rmse)
             ntt_fm_gbif.overlap.rmse <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.rmse), t(nt_fm_gbif.overlap.rmse))) %>%
                 mutate(across(V2, as.numeric)) %>%
                 mutate(across(nms, as.numeric)) %>%
                 arrange(nms)
+            ntt_fm_gbif.overlap.rmse_5 <- ntt_fm_gbif.overlap.rmse %>% slice_min(V2, n = 1)
+
+
+            ntt_fm_gbif.overlap.D_5.top_adj <- ntt_fm_gbif.overlap.D_5 %>%
+                select(nms)
+            ntt_fm_gbif.overlap.I_5.top_adj <- ntt_fm_gbif.overlap.I_5 %>%
+                select(nms)
+            ntt_fm_gbif.overlap.cor_5.top_adj <- ntt_fm_gbif.overlap.cor_5 %>%
+                select(nms)
+            ntt_fm_gbif.overlap.rmse_5.top_adj <- ntt_fm_gbif.overlap.rmse_5 %>%
+                select(nms)
+
+
+            pv8multiply <- ntt_fm_gbif.overlap.D * ntt_fm_gbif.overlap.cor * (1 - ntt_fm_gbif.overlap.rmse)
+            md <- data.frame(nms = ntt_fm_gbif.overlap.D$nms, V2 = pv8multiply$V2)
+            md.max <- md[which.max(md$V2), ]
+
+            # bez korekce biasu
+            r <- select_raster_by_kernel("0.00", fm, czechia_3035)
+            writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-0_", "0.00", ".tif"), format = "GTiff", overwrite = TRUE)
+
+            # samostatně metriky
+            r <- select_raster_by_kernel(ntt_fm_gbif.overlap.D_5.top_adj, fm, czechia_3035)
+            writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-D_", format(as.numeric(ntt_fm_gbif.overlap.D_5.top_adj), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
+
+            r <- select_raster_by_kernel(ntt_fm_gbif.overlap.cor_5.top_adj, fm, czechia_3035)
+            writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-cor_", format(as.numeric(ntt_fm_gbif.overlap.cor_5.top_adj), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
+
+            r <- select_raster_by_kernel(ntt_fm_gbif.overlap.rmse_5.top_adj, fm, czechia_3035)
+            writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-rmse_", format(as.numeric(ntt_fm_gbif.overlap.rmse_5.top_adj), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
+
+            # multipy
+            r <- select_raster_by_kernel(md.max$nms, fm, czechia_3035)
+            writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-md_", format(as.numeric(md.max$nms), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
+
+
 
             # předvýběr: který adjust koeficient má nejširší (nejvyšší B2) niku (největší heterogenitu prostředí)?
             # fm_gbif_f_i_c[[as.character(px_size_item)]][[as.character(sp)]] <- fm_gbif_c <- as.numeric(ntt_gbif_5[2, 1])
@@ -891,6 +919,12 @@ for (px_size_item in px_size) {
             fm_gbif_f_i_c.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_gbif)), 4), collapse = ",")
             fm_ndop_f_i_c.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_ndop)), 4), collapse = ",")
             fm_all_f_i_c.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_all)), 4), collapse = ",")
+
+
+            ntt_fm_gbif.overlap.D.adj[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.D_5.top_adj)
+            ntt_fm_gbif.overlap.I.adj[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.I_5.top_adj)
+            ntt_fm_gbif.overlap.cor.adj[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.cor_5.top_adj)
+            ntt_fm_gbif.overlap.rmse.adj[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.rmse_5.top_adj)
 
             ntt_fm_gbif.overlap.D.t[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.D
             ntt_fm_gbif.overlap.I.t[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.I
@@ -1753,6 +1787,16 @@ for (px_size_item in px_size) {
         fm_ndop_f_i_c.t.c <- list()
         fm_all_f_i_c.t.c <- list()
 
+
+
+        saveRDS(ntt_fm_gbif.overlap.D.adj, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.D.adj_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(ntt_fm_gbif.overlap.I.adj, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.I.adj_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(ntt_fm_gbif.overlap.cor.adj, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.cor.adj_", px_size_item, "-", cmd_arg_str, ".rds"))
+        saveRDS(ntt_fm_gbif.overlap.rmse.adj, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.rmse.adj_", px_size_item, "-", cmd_arg_str, ".rds"))
+        ntt_fm_gbif.overlap.D.adj <- list()
+        ntt_fm_gbif.overlap.I.adj <- list()
+        ntt_fm_gbif.overlap.cor.adj <- list()
+        ntt_fm_gbif.overlap.rmse.adj <- list()
 
         saveRDS(ntt_fm_gbif.overlap.D.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.D_", px_size_item, "-", cmd_arg_str, ".rds"))
         saveRDS(ntt_fm_gbif.overlap.I.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.I_", px_size_item, "-", cmd_arg_str, ".rds"))
