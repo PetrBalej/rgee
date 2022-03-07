@@ -75,7 +75,7 @@ mm <- mm(wd, export_path, pxs = c(2000, 5000, 10000))
 
 
 tibble_grains.reduced1 <- mm %>%
-    filter(ndop.auc >= 0.70 & md.max >= 0.70)
+    filter(ndop.auc >= 0.90 & md.max >= 0.70)
 
 tibble_grains.reduced2 <- tibble_grains %>%
     select_if(~ is.numeric(.) | is.character(.))
@@ -106,7 +106,7 @@ png_list <- list()
 #
 # generování map do PDF
 #
-pdf(paste0(export_path, "/pdf/check-predictions-", prefix, "_10-0.5_-7728.pdf"), width = 18, height = 5) # -cor-0.75 -rmse-0.17 -D-0.85 -7728
+pdf(paste0(export_path, "/pdf/check-predictions-", prefix, "_10-0.5_-7728.pdf"), width = 30, height = 5) # -cor-0.75 -rmse-0.17 -D-0.85 -7728
 par(mar = c(5, 4, 4, 7))
 for (p in seq_along(tibble_grains.reduced.path$path)) {
     pt <- tibble_grains.reduced.path[p, ]
@@ -123,7 +123,7 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
     # dofiltrované 100m
     points <- per_pixel_df(as.data.frame(st_coordinates(cci_all_3035_czechia %>% filter(species == as.character(pt$species)))), 100)
 
-    par(mfrow = c(1, 3))
+    par(mfrow = c(1, 5))
     palU <- colorRampPalette(c("gray98", "limegreen", "darkgreen"))
     # NDOP
     # ořez původního raster_stack na ČR pro lokální SDM
@@ -180,16 +180,17 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
 
 
     # confusion matrix pro páry výsledných rasterů
-
-    threshold <- 0.7
+    # beru 75 % kvartil
+    threshold.ndop <- quantile(r.ndop)[4]
+    threshold.gbif <- quantile(r.gbif)[4]
     r.ndop.pa <- r.ndop
     r.gbif.pa <- r.gbif
 
-    r.ndop.pa[r.ndop.pa < threshold] <- 0
-    r.ndop.pa[r.ndop.pa >= threshold] <- 1
+    r.ndop.pa[r.ndop.pa < threshold.ndop] <- 0
+    r.ndop.pa[r.ndop.pa >= threshold.ndop] <- 1
 
-    r.gbif.pa[r.gbif.pa < threshold] <- 0
-    r.gbif.pa[r.gbif.pa >= threshold] <- 1
+    r.gbif.pa[r.gbif.pa < threshold.gbif] <- 0
+    r.gbif.pa[r.gbif.pa >= threshold.gbif] <- 1
 
     cm <- rasters_confusion(r.ndop.pa, r.gbif.pa)
 
@@ -225,8 +226,39 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
     plot(r.n.diff,
         # col = rev(topo.colors(20)),
         col = pal(pal_n), breaks = round(seq(-r.max, r.max, length.out = pal_n + 1), 2), legend.width = 1,
-        main = paste0("difference (GBIF - NDOP) ", round(total_over_under_prediction.s.sum, 3), " | ", total_over_under_prediction),
-        sub = paste0("thr=", threshold, ": Sorensen=", round(cm$Sorensen, 3), "; TSS=", round(cm$TSS, 3), "; Sens=", round(cm$Sensitivity, 3), "; Spec=", round(cm$Specificity, 3), "; OPR=", round(cm$OPR, 3), "; UPR=", round(cm$UPR, 3))
+        main = paste0("difference (GBIF - NDOP) ", round(total_over_under_prediction.s.sum, 3), " | ", total_over_under_prediction)
+        # sub = paste0("75 % kvartil: thrNDOP=", round(threshold.ndop, 2),", thrGBIF=", round(threshold.gbif, 2), "; Sorensen=", round(cm$Sorensen, 3), "; TSS=", round(cm$TSS, 3), "; Sens=", round(cm$Sensitivity, 3), "; Spec=", round(cm$Specificity, 3), "; OPR=", round(cm$OPR, 3), "; UPR=", round(cm$UPR, 3))
+    )
+    par(bg = NA)
+    plot(rivers_cz$geometry, add = TRUE, col = "blue")
+    par()
+    plot(czechia$geometry, add = TRUE)
+    par()
+    plot(places_cz$geometry, add = TRUE, col = "darkgray", pch = 0)
+
+
+    # PA NDOP
+    plot(r.ndop.pa,
+        # col = rev(topo.colors(20)),
+        # col = pal(pal_n), breaks = round(seq(-r.max, r.max, length.out = pal_n + 1), 2),
+        legend.width = 1,
+        main = paste0("presence/absence NDOP"),
+        sub = paste0("75 % kvartil: thrNDOP=", round(threshold.ndop, 2), ", thrGBIF=", round(threshold.gbif, 2))
+    )
+    par(bg = NA)
+    plot(rivers_cz$geometry, add = TRUE, col = "blue")
+    par()
+    plot(czechia$geometry, add = TRUE)
+    par()
+    plot(places_cz$geometry, add = TRUE, col = "darkgray", pch = 0)
+
+    # PA GBIF
+    plot(r.gbif.pa,
+        # col = rev(topo.colors(20)),
+        # col = pal(pal_n), breaks = round(seq(-r.max, r.max, length.out = pal_n + 1), 2),
+        legend.width = 1,
+        main = paste0("presence/absence GBIF"),
+        sub = paste0("Sorensen=", round(cm$Sorensen, 3), "; TSS=", round(cm$TSS, 3), "; Sens=", round(cm$Sensitivity, 3), "; Spec=", round(cm$Specificity, 3), "; OPR=", round(cm$OPR, 3), "; UPR=", round(cm$UPR, 3))
     )
     par(bg = NA)
     plot(rivers_cz$geometry, add = TRUE, col = "blue")
