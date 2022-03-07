@@ -238,6 +238,7 @@ maxtss2 <- function(x, t = "Test") {
 
 
 performance <- function(confusion) {
+  # https://onlinelibrary-wiley-com.infozdroje.czu.cz/doi/10.1111/jbi.13402
   tp <- confusion[1]
   fp <- confusion[2]
   fn <- confusion[3]
