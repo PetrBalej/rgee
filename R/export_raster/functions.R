@@ -265,7 +265,7 @@ performance <- function(confusion) {
 get_freq_by_cat <- function(freq.df, cat.id) {
   if (exists("freq.df") && !is.na(freq.df)) {
     # získání hodnot dle kategorie početnosti z freq()
-    if (is.empty(which(freq.df[, 1] == cat.id))) {
+    if (which(freq.df[, 1] == cat.id) == 0) {
       return(0)
     } else {
       return(unname(freq.df[which(freq.df[, 1] == cat.id), 2]))
