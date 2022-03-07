@@ -249,8 +249,8 @@ performance <- function(confusion) {
   Sensitivity <- TPR
   Specificity <- TNR
   TSS <- Sensitivity + Specificity - 1
-  Jaccard <- TPR / (FNR + TPR + FPR)
-  Sorensen <- 2 * TPR / (FNR + 2 * TPR + FPR)
+  Jaccard <- tp / (fn + tp + fp)
+  Sorensen <- 2 * tp / (fn + 2 * tp + fp)
   F_measure <- 2 * Jaccard
   OPR <- fp / (tp + fp)
   UPR <- 1 - Sensitivity
@@ -262,7 +262,7 @@ performance <- function(confusion) {
 
 
 get_freq_by_cat <- function(freq.df, cat.id) {
-  if (!is.na(freq.df)) {
+  if (exists("freq.df") && !is.na(freq.df)) {
     # získání hodnot dle kategorie početnosti z freq()
     if (is.empty(which(freq.df[, 1] == cat.id))) {
       return(0)
@@ -275,7 +275,7 @@ get_freq_by_cat <- function(freq.df, cat.id) {
 }
 
 rasters_confusion <- function(reality, prediction) {
-  if (!is.na(reality) && !is.na(prediction)) {
+  if (class(reality) == "RasterLayer" && class(prediction) == "RasterLayer") {
     # předpoklad je vstup binárních rasterů!!!
     overlap <- reality + (prediction * 2)
     classes <- freq(overlap)
