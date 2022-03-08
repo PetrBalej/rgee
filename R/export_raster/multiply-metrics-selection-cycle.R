@@ -1,10 +1,10 @@
 
 # spojí rds exporty z fittingu a vytvoří jednu tibble se všemi metrikami
 mm <- function(wd, export_path, pxs = c(10000)) {
-    df <- data.frame(matrix(ncol = 17, nrow = 0))
+    df <- data.frame(matrix(ncol = 18, nrow = 0))
     colnames(df) <- c(
         "species", "px", "pxv",
-        "md", "md.max", "md.d.max", "md.cor.max", "md.rmse.max",
+        "md", "md.max", "md.d.max", "md.i.max", "md.cor.max", "md.rmse.max",
         "d", "d.max",
         "i", "i.max",
         "cor", "cor.max",
@@ -53,10 +53,10 @@ mm <- function(wd, export_path, pxs = c(10000)) {
                 pv8.D.max <- pv8.D[which.max(pv8.D$V2), ]
                 pv8.I.max <- pv8.I[which.max(pv8.I$V2), ]
                 pv8.cor.max <- pv8.cor[which.max(pv8.cor$V2), ]
-                pv8.rmse.max <- pv8.rmse[which.max(pv8.rmse$V2), ]
+                pv8.rmse.max <- pv8.rmse[which.min(pv8.rmse$V2), ]
 
                 pv8.D.selected <- pv8.D[pv8.D$nms == md.max$nms, ]$V2
-                pv8.I.selected <- pv8.D[pv8.I$nms == md.max$nms, ]$V2
+                pv8.I.selected <- pv8.I[pv8.I$nms == md.max$nms, ]$V2
                 pv8.cor.selected <- pv8.cor[pv8.cor$nms == md.max$nms, ]$V2
                 pv8.rmse.selected <- 1 - pv8.rmse[pv8.rmse$nms == md.max$nms, ]$V2
 
@@ -69,7 +69,7 @@ mm <- function(wd, export_path, pxs = c(10000)) {
 
                 df[nrow(df) + 1, ] <- c(
                     name, px, pxv,
-                    md.max$nms, round(md.max$V2, 4), round(pv8.D.selected, 4), round(pv8.cor.selected, 4), round(pv8.rmse.selected, 4),
+                    md.max$nms, round(md.max$V2, 4), round(pv8.D.selected, 4), round(pv8.I.selected, 4), round(pv8.cor.selected, 4), round(pv8.rmse.selected, 4),
                     pv8.D.max$nms, round(pv8.D.max$V2, 4),
                     pv8.I.max$nms, round(pv8.I.max$V2, 4),
                     pv8.cor.max$nms, round(pv8.cor.max$V2, 4),
@@ -84,8 +84,8 @@ mm <- function(wd, export_path, pxs = c(10000)) {
 
     df <- as_tibble(df) %>% type_convert(
         col_types = cols(
-            species = "f", px = "f",
-            md = "d", md.max = "d", md.d.max = "d", md.cor.max = "d", md.rmse.max = "d",
+            species = "f", px = "i", pxv = "i",
+            md = "d", md.max = "d", md.d.max = "d", md.i.max = "d", md.cor.max = "d", md.rmse.max = "d",
             d = "d", d.max = "d",
             i = "d", i.max = "d",
             cor = "d", cor.max = "d",
