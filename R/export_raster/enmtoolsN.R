@@ -47,7 +47,7 @@ fit_gbif_crop <- TRUE # fitovat r.breadth až na výřezu ČR z GBIF dat, ne na 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 #  Rscript "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtoolsN.R" 1
 #
-#  "C:\Program Files\R\R-4.0.5\bin\x64\Rscript.exe" "G:\balej\rgee\R\export_raster\enmtoolsN.R" 1
+#  "C:\Program Files\R\R-4.0.5\bin\x64\Rscript.exe" "D:/PersonalWork/balej/rgee\R\export_raster\enmtoolsN.R" 1
 #  Rtools https://cran.r-project.org/bin/windows/Rtools/
 #  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/enmtoolsN.R", encoding = "UTF-8")
 #  source("D:/balej/rgee/R/export_raster/enmtoolsN.R", encoding = "UTF-8")
@@ -882,7 +882,7 @@ for (px_size_item in px_size) {
                 select(nms)
 
 
-            pv8multiply <- ntt_fm_gbif.overlap.D * ntt_fm_gbif.overlap.cor * (1 - ntt_fm_gbif.overlap.rmse)
+            pv8multiply <- ntt_fm_gbif.overlap.I * ntt_fm_gbif.overlap.cor * (1 - ntt_fm_gbif.overlap.rmse)
             md <- data.frame(nms = ntt_fm_gbif.overlap.D$nms, V2 = pv8multiply$V2)
             md.max <- md[which.max(md$V2), ]
 
@@ -891,8 +891,8 @@ for (px_size_item in px_size) {
             writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-0_", "0.00", ".tif"), format = "GTiff", overwrite = TRUE)
 
             # samostatně metriky
-            r <- select_raster_by_kernel(ntt_fm_gbif.overlap.D_5.top_adj, fm, czechia_3035)
-            writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-D_", format(as.numeric(ntt_fm_gbif.overlap.D_5.top_adj), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
+            r <- select_raster_by_kernel(ntt_fm_gbif.overlap.I_5.top_adj, fm, czechia_3035)
+            writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-I_", format(as.numeric(ntt_fm_gbif.overlap.I_5.top_adj), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
 
             r <- select_raster_by_kernel(ntt_fm_gbif.overlap.cor_5.top_adj, fm, czechia_3035)
             writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-cor_", format(as.numeric(ntt_fm_gbif.overlap.cor_5.top_adj), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
@@ -936,22 +936,28 @@ for (px_size_item in px_size) {
             ntt_fm_gbif.overlap.cor.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.cor)), 4), collapse = ",")
             ntt_fm_gbif.overlap.rmse.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.rmse)), 4), collapse = ",")
 
-            png(paste0(export_path, "/outputs/png-adjust/", sp, "_", px_size_item, "_", pres, "_", replicates, "_gbif.png"), width = 800, height = 600)
+            png(paste0(export_path, "/outputs/png-adjust/", sp, "_", px_size_item, "_", pres, "_", replicates, "_gbif.png"), width = 1000, height = 800)
             plot(ntt_gbif,
-                type = "b", pch = 19, cex = 2, main = paste0(sp, " | GBIF, (", (px_size_item / 1000), "km)"), sub = paste0("1st: ", gbif_top_adj),
+                type = "b", pch = 1, col = "gray", main = paste0(sp, " | GBIF, (", (px_size_item / 1000), "km)"), sub = paste0("ideal kernel width (I*cor*(1-RMSE)): ", md.max$nms, "; max: ", round(md.max$V2, 2)),
                 xlab = "smoothing (sigma)", ylab = "raster breadth"
             )
             par(new = TRUE)
+			plot(ntt_fm_gbif.overlap.D$nms, md$V2, type = "b", pch = 19, cex = 2, col = "black", yaxt = "n", xlab = "", ylab = "")
+            axis(2, col.axis = "black", pos = 1.85)
+			par(new = TRUE)
             plot(ntt_fm_gbif.overlap.D, type = "b", pch = 2, col = "red", yaxt = "n", xlab = "", ylab = "")
             axis(2, col.axis = "red", pos = 0.05)
+			 par(new = TRUE)
+            plot(ntt_fm_gbif.overlap.I, type = "b", pch = 6, col = "violet", yaxt = "n", xlab = "", ylab = "")
+            axis(2, col.axis = "violet", pos = 0.15)
             par(new = TRUE)
             plot(ntt_fm_gbif.overlap.cor, type = "b", pch = 0, col = "darkgreen", yaxt = "n", xlab = "", ylab = "")
-            axis(2, col.axis = "darkgreen", pos = 0.15)
+            axis(2, col.axis = "darkgreen", pos = 0.25)
             par(new = TRUE)
-            plot(ntt_fm_gbif.overlap.rmse, type = "b", pch = 3, col = "blue", yaxt = "n", xlab = "", ylab = "")
-            axis(2, col.axis = "blue", pos = 0.25)
-            par(new = TRUE)
-            legend("bottomright", bg = "transparent", bty = "n", legend = c("Schoener D", "Spearman cor", "RMSE"), lty = 1:1, col = c("red", "darkgreen", "blue"))
+            plot(ntt_fm_gbif.overlap.D$nms, (1 - ntt_fm_gbif.overlap.rmse$V2), type = "b", pch = 3, col = "blue", yaxt = "n", xlab = "", ylab = "")
+            axis(2, col.axis = "blue", pos = 0.35)
+			par(new = TRUE)
+            legend("bottomright", bg = "transparent", bty = "n", legend = c("Schoener D", "Warren I", "Spearman cor", "RMSE", "I*cor*(1-RMSE)"), lty = 1:1, col = c("red", "violet", "darkgreen", "blue", "black"))
             dev.off()
             if (do_all) {
                 png(paste0(export_path, "/outputs/png-adjust/", sp, "_", px_size_item, "_", pres, "_", replicates, "_all.png"))
