@@ -71,11 +71,13 @@ if (file.exists(paste0(export_path, "/outputs/tibble_grains-", prefix, ".rds")))
 tibble_grains_numeric <- tibble_grains %>% select_if(., is.numeric) # pro základní deskriptivní statistiku
 
 
-mm <- mm(wd, export_path, pxs = c(2000, 5000, 10000))
+mm <- mm(wd, export_path, pxs = c(500, 1000, 2000, 5000, 10000))
 
+# výběr "ideální" predikce podle maximální hodnoty metriky pro příslušnou kernel width
+mtype <- "md" # md, cor, I, rmse
 
 tibble_grains.reduced1 <- mm %>%
-    filter(ndop.auc >= 0.90 & md.max >= 0.70)
+    filter(ndop.auc >= 0.70 & md.max > 0.53)
 
 tibble_grains.reduced2 <- tibble_grains %>%
     select_if(~ is.numeric(.) | is.character(.))
@@ -106,7 +108,7 @@ png_list <- list()
 #
 # generování map do PDF
 #
-pdf(paste0(export_path, "/pdf/check-predictions-", prefix, "_10-0.5_-7728.pdf"), width = 30, height = 5) # -cor-0.75 -rmse-0.17 -D-0.85 -7728
+pdf(paste0(export_path, "/pdf/check-predictions-", prefix, "_10-0.5_-auc0.7-", mtype, ".pdf"), width = 30, height = 5) # -cor-0.75 -rmse-0.17 -D-0.85 -7728
 par(mar = c(5, 4, 4, 7))
 for (p in seq_along(tibble_grains.reduced.path$path)) {
     pt <- tibble_grains.reduced.path[p, ]
@@ -133,7 +135,13 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
     plot(raster_stack_mask_czechia,
         legend.width = 1, col = palU(20),
         main = paste0(pt$species, " | NDOP, AUC=", round(pt$ndop.auc, digits = 2), " (", (pt$px / 1000), "km)"),
-        sub = paste0("NDOP/NDOP100/GBIF: ", pt$ndop_c.f, "/", pt$ndop_c_thin, "/", pt$gbif_c.f, " | adj. kernel width/mm value: ", pt$md, "/", round(pt$md.max, digits = 2))
+        sub = paste0(
+            "NDOP/NDOP100/GBIF: ", pt$ndop_c.f, "/", pt$ndop_c_thin, "/", pt$gbif_c.f, " \nadj. kernel width/max (mm|cor|I|RMSE): ",
+            pt$md, "/", round(pt$md.max, digits = 2), " | ",
+            pt$cor, "/", round(pt$cor.max, digits = 2), " | ",
+            pt$i, "/", round(pt$i.max, digits = 2), " | ",
+            pt$rmse, "/", round(pt$rmse.max, digits = 2)
+        )
     )
     par(bg = NA)
     plot(rivers_cz$geometry, add = TRUE, col = "blue")
@@ -155,7 +163,7 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
             path = paste0(export_path, "/outputs/r"),
             # původní: "^glm_fmt_", d, "_.*\\.rds$"
             # "^glm_fmt_", d, "_.*[0-9]{4,5}-[0-9]{1,2}\\.rds$" - vše bez 500
-            pattern = paste0("^", tail(strsplit(gsub("_ndop.tif", "_gbif_ideal-md_[0-2]\\.[0-9][0-9]\\.tif", png_list[[pt$path]]), split = "/")[[1]], n = 1), "$"),
+            pattern = paste0("^", tail(strsplit(gsub("_ndop.tif", paste0("_gbif_ideal-", mtype, "_[0-2]\\.[0-9][0-9]\\.tif"), png_list[[pt$path]]), split = "/")[[1]], n = 1), "$"),
             ignore.case = TRUE,
             full.names = TRUE
         )
@@ -167,7 +175,7 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
     plot(raster_stack_mask_czechia,
         legend.width = 1, col = palU(20),
         main = paste0(pt$species, " | GBIF (centr. Europe) bias corrected predictions to CZ, (", (pt$px / 1000), "km)"),
-        sub = paste0("geo.cor (Spearman): ", round(pt$md.cor.max, digits = 2), " | geo.I (Warren): ", round(pt$md.i.max, digits = 2), " | RMSE: ", round(pt$md.rmse.max, digits = 2))
+        sub = paste0("(mm maxs) geo.cor (Spearman): ", round(pt$md.cor.max, digits = 2), " | geo.I (Warren): ", round(pt$md.i.max, digits = 2), " | RMSE: ", round(pt$md.rmse.max, digits = 2))
     )
     par(bg = NA)
     plot(rivers_cz$geometry, add = TRUE, col = "blue")
@@ -226,8 +234,8 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
     plot(r.n.diff,
         # col = rev(topo.colors(20)),
         col = pal(pal_n), breaks = round(seq(-r.max, r.max, length.out = pal_n + 1), 2), legend.width = 1,
-        main = paste0("difference (GBIF - NDOP) ", round(total_over_under_prediction.s.sum, 3), " | ", total_over_under_prediction)
-        # sub = paste0("75 % kvartil: thrNDOP=", round(threshold.ndop, 2),", thrGBIF=", round(threshold.gbif, 2), "; Sorensen=", round(cm$Sorensen, 3), "; TSS=", round(cm$TSS, 3), "; Sens=", round(cm$Sensitivity, 3), "; Spec=", round(cm$Specificity, 3), "; OPR=", round(cm$OPR, 3), "; UPR=", round(cm$UPR, 3))
+        main = paste0("difference (GBIF - NDOP) ", round(total_over_under_prediction.s.sum, 3), " | ", total_over_under_prediction),
+        sub = paste0("geo.cor (Spearman): ", round(pt$cor.max, digits = 2), " | geo.I (Warren): ", round(pt$i.max, digits = 2), " | RMSE: ", round(pt$rmse.max, digits = 2))
     )
     par(bg = NA)
     plot(rivers_cz$geometry, add = TRUE, col = "blue")
@@ -258,7 +266,7 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
         # col = pal(pal_n), breaks = round(seq(-r.max, r.max, length.out = pal_n + 1), 2),
         legend.width = 1,
         main = paste0("presence/absence GBIF"),
-        sub = paste0("Sorensen=", round(cm$Sorensen, 3), "; TSS=", round(cm$TSS, 3), "; Sens=", round(cm$Sensitivity, 3), "; Spec=", round(cm$Specificity, 3), "; OPR=", round(cm$OPR, 3), "; UPR=", round(cm$UPR, 3))
+        sub = paste0("Sorensen=", round(cm$Sorensen, 3), "; TSS=", round(cm$TSS, 3), "; Sens=", round(cm$Sensitivity, 3), "; Spec=", round(cm$Specificity, 3), "; OPR=", round(cm$OPR, 3), ", UPR=", round(cm$UPR, 3))
     )
     par(bg = NA)
     plot(rivers_cz$geometry, add = TRUE, col = "blue")
