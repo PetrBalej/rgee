@@ -1,7 +1,7 @@
 options(scipen = 999)
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
-    c("raster", "tidyverse", "sf", "sp", "magrittr", "dplyr", "ggplot2", "rstatix", "ggpubr", "gridExtra", "viridis", "ENMToolsPB")
+    c("raster", "tidyverse", "sf", "sp", "magrittr", "dplyr", "ggplot2", "rstatix", "ggpubr", "gridExtra", "viridis", "ENMToolsPB", "ecospat")
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
 # načte všechny požadované knihovny jako dělá jednotlivě library()
@@ -15,7 +15,7 @@ lapply(required_packages, require, character.only = TRUE)
 wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee"
 setwd(wd)
 
-export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/UN"
+export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/UN2"
 
 # pomocné funkce
 source(paste0(wd, "/R/export_raster/functions.R"))
@@ -44,7 +44,7 @@ rivers_cz <- st_read(paste0(wd, "/shp/ne_10m_rivers_lake_centerlines/ne_10m_rive
 # cci_all_3035 <- readRDS(paste0("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/inputs/occurrences/cci_all_3035.rds")) # %>% filter(species %in% ptaci_gbif_distinct$species)
 # cci_all_3035_czechia <- st_intersection(cci_all_3035, st_transform(czechia, st_crs(cci_all_3035)))
 # saveRDS(cci_all_3035_czechia, file = "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/inputs/occurrences/cci_all_3035_czechia.rds")
-cci_all_3035_czechia <- readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom-minimum/inputs/occurrences/cci_all_3035_czechia.rds")
+cci_all_3035_czechia <- readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom-minimum/inputs/occurrences/cci_ndop_3035.rds")
 
 prefix <- "glm_UN_" # "OWNPFr" "maxent_thr" "glm_GB_"
 
@@ -76,18 +76,29 @@ mm <- mm(wd, export_path, pxs = c(500, 1000, 2000, 5000, 10000))
 # výběr "ideální" predikce podle maximální hodnoty metriky pro příslušnou kernel width
 mtype <- "md" # md, cor, I, rmse
 
-tibble_grains.reduced1 <- mm %>%
-    filter(ndop.auc >= 0.70 & md.max > 0.53)
+tibble_grains.reduced1 <- mm # %>% filter(ndop.auc >= 0.85 & md.max > 0.63)
+
+
+# nutné prozatimně, kvůli získání boyce indexu z NDOP, který nemám vypočtený (aý v novější verzi enmtoolsN)
+tibble_boyce.ndop <- readRDS(file = paste0(export_path, "/outputs/boyce.ndop.rds"))
+tibble_boyce.ndop <- as_tibble(tibble_boyce.ndop) %>% type_convert(
+    col_types = cols(
+        species = "f", px = "i", species = "f"
+    )
+)
 
 tibble_grains.reduced2 <- tibble_grains %>%
     select_if(~ is.numeric(.) | is.character(.))
 
-tibble_grains.reduced <- tibble_grains.reduced1 %>%
+tibble_grains.reduced3 <- tibble_grains.reduced1 %>%
     left_join(tibble_grains.reduced2, by = c("species" = "species", "px" = "px_size_item"), suffix = c("", "_nj")) %>%
     arrange(desc(md.max))
 
+tibble_grains.reduced4 <- tibble_grains.reduced3 %>%
+    left_join(tibble_boyce.ndop, by = c("species" = "species", "px" = "px"), suffix = c("", "_ndop")) %>%
+    arrange(desc(boyce.ndop))
 
-
+tibble_grains.reduced <- tibble_grains.reduced4 %>% filter(ndop.auc >= 0.85 & md.max > 0.73)
 # # NDOP závislost AUC na r.breadth
 # plot(tibble_grains$ndop.breadth.B2, tibble_grains$auc.ndop.te)
 # plot(tibble_grains.reduced$ndop.breadth.B2, tibble_grains.reduced$auc.ndop.te)
@@ -102,13 +113,18 @@ tibble_grains.reduced.path <- tibble_grains.reduced %>%
 png_list <- list()
 
 
+boyce.ndop <- data.frame(matrix(ncol = 3, nrow = 0))
+colnames(boyce.ndop) <- c(
+    "species", "px", "boyce.ndop"
+)
+
 
 #  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/Rp/dAUC-orig-base.R", encoding = "UTF-8")
 
 #
 # generování map do PDF
 #
-pdf(paste0(export_path, "/pdf/check-predictions-", prefix, "_10-0.5_-auc0.7-", mtype, ".pdf"), width = 30, height = 5) # -cor-0.75 -rmse-0.17 -D-0.85 -7728
+pdf(paste0(export_path, "/pdf/check-predictions-", prefix, "_10-0.5_-auc0.7-", mtype, ".pdf"), width = 36, height = 5) # -cor-0.75 -rmse-0.17 -D-0.85 -7728
 par(mar = c(5, 4, 4, 7))
 for (p in seq_along(tibble_grains.reduced.path$path)) {
     pt <- tibble_grains.reduced.path[p, ]
@@ -123,18 +139,77 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
         )
 
     # dofiltrované 100m
-    points <- per_pixel_df(as.data.frame(st_coordinates(cci_all_3035_czechia %>% filter(species == as.character(pt$species)))), 100)
 
-    par(mfrow = c(1, 5))
+    par(mfrow = c(1, 6))
     palU <- colorRampPalette(c("gray98", "limegreen", "darkgreen"))
     # NDOP
     # ořez původního raster_stack na ČR pro lokální SDM
     raster_stack <- raster(png_list[[pt$path]])
     raster_stack_crop <- crop(raster_stack, extent(czechia))
-    r.ndop <- raster_stack_mask_czechia <- normalize(raster.standardize(mask(raster_stack_crop, czechia)))
-    plot(raster_stack_mask_czechia,
+    r.ndop <- raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
+
+
+    # ořez bodů rasterem dané px_size
+    ndop.sp <- as(cci_all_3035_czechia %>% filter(species == as.character(pt$species)), "Spatial")
+    spatialPoints.ndop <- extract(r.ndop, ndop.sp)
+    ndop_f.f <- ndop.sp[which(!is.na(spatialPoints.ndop)), ]
+    points <- unique(per_pixel_df(as.data.frame(st_coordinates(st_as_sf(ndop_f.f))), 100))
+
+
+
+    # # vygenerování Boyce pro NDOP, zatím jsem neukládal, až v novější verzi enmtoolsN
+    # points.suitab <- raster::extract(r.ndop, as.vector(na.omit(points)))
+    # boyce <- ecospat.boyce(r.ndop, points.suitab, nclass = 0, PEplot = FALSE)
+    # # boyce.ndop[[as.character(pt$px)]][[as.character(pt$species)]] <- boyce$Spearman.cor
+    # boyce.ndop[nrow(boyce.ndop) + 1, ] <- c(
+    #     as.character(pt$species), as.character(pt$px), boyce$Spearman.cor
+    # )
+    # next
+    # # # na konci po projetí cyklu:
+    # # boyce.ndop <- as_tibble(boyce.ndop) %>% type_convert(
+    # #     col_types = cols(
+    # #         species = "f", px = "i", species = "f"
+    # #     )
+    # # )
+    # # saveRDS(boyce.ndop, file = paste0(export_path, "/outputs/boyce.ndop.rds"))
+
+
+
+    # GBIF nulová varianta -UNcorrected
+    # ořez původního raster_stack na ČR pro lokální SDM
+
+    raster_stack <- raster(gsub("_ndop.tif", paste0("_gbif_ideal-0_0.00.tif"), png_list[[pt$path]]))
+    raster_stack_crop <- crop(raster_stack, extent(czechia))
+    r.gbif <- raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
+
+
+    plot(r.gbif,
         legend.width = 1, col = palU(20),
-        main = paste0(pt$species, " | NDOP, AUC=", round(pt$ndop.auc, digits = 2), " (", (pt$px / 1000), "km)"),
+        main = paste0("GBIF (centr. Europe) bias UNcorrected predictions to CZ, ", "Boyce=", round(pt$md0.boyce.max, digits = 3))
+    )
+    par(bg = NA)
+    plot(rivers_cz$geometry, add = TRUE, col = "blue")
+    par()
+    plot(czechia$geometry, add = TRUE)
+    par()
+    plot(places_cz$geometry, add = TRUE, col = "darkgray", pch = 0)
+    par()
+    points(points, col = rgb(red = 1, green = 0, blue = 0, alpha = 0.5), pch = 16, cex = 0.5)
+
+
+
+
+
+
+    # NDOP
+
+    # points.suitab <- raster::extract(r.ndop, as.vector(na.omit(points)))
+    # boyce <- ecospat.boyce(r.ndop, points.suitab, nclass = 0, PEplot = FALSE)
+
+
+    plot(r.ndop,
+        legend.width = 1, col = palU(20),
+        main = paste0(pt$species, " | NDOP, AUC=", round(pt$ndop.auc, digits = 2), ", Boyce=", round(pt$boyce.ndop, digits = 3), " (", (pt$px / 1000), "km)"),
         sub = paste0(
             "NDOP/NDOP100/GBIF: ", pt$ndop_c.f, "/", pt$ndop_c_thin, "/", pt$gbif_c.f, " \nadj. kernel width/max (mm|cor|I|RMSE): ",
             pt$md, "/", round(pt$md.max, digits = 2), " | ",
@@ -171,10 +246,11 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
 
     raster_stack <- raster(r)
     raster_stack_crop <- crop(raster_stack, extent(czechia))
-    r.gbif <- raster_stack_mask_czechia <- normalize(raster.standardize(mask(raster_stack_crop, czechia)))
-    plot(raster_stack_mask_czechia,
+    r.gbif <- raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
+
+    plot(r.gbif,
         legend.width = 1, col = palU(20),
-        main = paste0(pt$species, " | GBIF (centr. Europe) bias corrected predictions to CZ, (", (pt$px / 1000), "km)"),
+        main = paste0("GBIF (centr. Europe) bias corrected predictions to CZ, ", "Boyce=", round(pt$md.boyce.max, digits = 3)),
         sub = paste0("(mm maxs) geo.cor (Spearman): ", round(pt$md.cor.max, digits = 2), " | geo.I (Warren): ", round(pt$md.i.max, digits = 2), " | RMSE: ", round(pt$md.rmse.max, digits = 2))
     )
     par(bg = NA)
