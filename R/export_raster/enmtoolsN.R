@@ -977,6 +977,10 @@ for (px_size_item in px_size) {
             r <- select_raster_by_kernel("0.00", fm, czechia_3035)
             writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-0_", "0.00", ".tif"), format = "GTiff", overwrite = TRUE)
 
+            # defaultní "1" varianta
+            r <- select_raster_by_kernel("1.00", fm, czechia_3035)
+            writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-1_", "1.00", ".tif"), format = "GTiff", overwrite = TRUE)
+
             # samostatně metriky
             r <- select_raster_by_kernel(ntt_fm_gbif.overlap.I_5.top_adj, fm, czechia_3035)
             writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-I_", format(as.numeric(ntt_fm_gbif.overlap.I_5.top_adj), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
