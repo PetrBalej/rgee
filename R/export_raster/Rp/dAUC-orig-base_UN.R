@@ -15,7 +15,7 @@ lapply(required_packages, require, character.only = TRUE)
 wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee"
 setwd(wd)
 
-export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/UN2"
+export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/UN3"
 
 # pomocné funkce
 source(paste0(wd, "/R/export_raster/functions.R"))
@@ -71,21 +71,22 @@ if (file.exists(paste0(export_path, "/outputs/tibble_grains-", prefix, ".rds")))
 tibble_grains_numeric <- tibble_grains %>% select_if(., is.numeric) # pro základní deskriptivní statistiku
 
 
-mm <- mm(wd, export_path, pxs = c(500, 1000, 2000, 5000, 10000))
+mm <- mm(wd, export_path, pxs = c(2000)) # 500, 1000, 2000, 5000, 10000
 
 # výběr "ideální" predikce podle maximální hodnoty metriky pro příslušnou kernel width
-mtype <- "md" # md, cor, I, rmse
+mtype <- "cor" # md, cor, I, rmse
+mtype.boyce <- "cor.boyce.max" # md, cor, I, rmse
 
 tibble_grains.reduced1 <- mm # %>% filter(ndop.auc >= 0.85 & md.max > 0.63)
 
 
-# nutné prozatimně, kvůli získání boyce indexu z NDOP, který nemám vypočtený (aý v novější verzi enmtoolsN)
-tibble_boyce.ndop <- readRDS(file = paste0(export_path, "/outputs/boyce.ndop.rds"))
-tibble_boyce.ndop <- as_tibble(tibble_boyce.ndop) %>% type_convert(
-    col_types = cols(
-        species = "f", px = "i", species = "f"
-    )
-)
+# # nutné prozatimně, kvůli získání boyce indexu z NDOP, který nemám vypočtený (až v novější verzi enmtoolsN)
+# tibble_boyce.ndop <- readRDS(file = paste0(export_path, "/outputs/boyce.ndop.rds"))
+# tibble_boyce.ndop <- as_tibble(tibble_boyce.ndop) %>% type_convert(
+#     col_types = cols(
+#         species = "f", px = "i", boyce.ndop = "d"
+#     )
+# )
 
 tibble_grains.reduced2 <- tibble_grains %>%
     select_if(~ is.numeric(.) | is.character(.))
@@ -94,15 +95,28 @@ tibble_grains.reduced3 <- tibble_grains.reduced1 %>%
     left_join(tibble_grains.reduced2, by = c("species" = "species", "px" = "px_size_item"), suffix = c("", "_nj")) %>%
     arrange(desc(md.max))
 
-tibble_grains.reduced4 <- tibble_grains.reduced3 %>%
-    left_join(tibble_boyce.ndop, by = c("species" = "species", "px" = "px"), suffix = c("", "_ndop")) %>%
-    arrange(desc(boyce.ndop))
+# tibble_grains.reduced4 <- tibble_grains.reduced3 %>%
+#     left_join(tibble_boyce.ndop, by = c("species" = "species", "px" = "px"), suffix = c("", "_ndop")) %>%
+#     arrange(desc(md.cor.max))
 
-tibble_grains.reduced <- tibble_grains.reduced4 %>% filter(ndop.auc >= 0.85 & md.max > 0.73)
+tibble_grains.reduced <- tibble_grains.reduced4 <- tibble_grains.reduced3 %>% filter(species == "Certhia familiaris") # boyce.ndop >= 0.990 & cor.max > 0.90
+
+# tibble_grains.reduced4 %>% select(species, px, ndop.auc, boyce.ndop, md.boyce.max)
+# tibble_grains.reduced5 <- tibble_grains.reduced4 %>% filter(px == 2000 & ndop.auc >= 0.75)
+# tibble_grains.reduced4 %>% filter(species == "Perdix perdix") %>% select(species, px, md.boyce.max, boyce.ndop, auc.ndop.te)
+
 # # NDOP závislost AUC na r.breadth
 # plot(tibble_grains$ndop.breadth.B2, tibble_grains$auc.ndop.te)
 # plot(tibble_grains.reduced$ndop.breadth.B2, tibble_grains.reduced$auc.ndop.te)
 
+
+# tibble_grains.reducedN <- tibble_grains.reduced4 %>% filter(px == 2000)
+# plot(tibble_grains.reducedN$ndop.auc, tibble_grains.reducedN$boyce.ndop)
+
+# boxplot(tibble_grains.reducedN$boyce.ndop - tibble_grains.reducedN$cor.boyce.max)
+# boxplot(tibble_grains.reducedN$boyce.ndop - tibble_grains.reducedN$md.boyce.max)
+
+# boxplot(tibble_grains.reducedN$cor.boyce.max)
 
 
 png_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/UN/outputs/r"
@@ -113,10 +127,10 @@ tibble_grains.reduced.path <- tibble_grains.reduced %>%
 png_list <- list()
 
 
-boyce.ndop <- data.frame(matrix(ncol = 3, nrow = 0))
-colnames(boyce.ndop) <- c(
-    "species", "px", "boyce.ndop"
-)
+# boyce.ndop <- data.frame(matrix(ncol = 3, nrow = 0))
+# colnames(boyce.ndop) <- c(
+#     "species", "px", "boyce.ndop"
+# )
 
 
 #  source("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/R/export_raster/Rp/dAUC-orig-base.R", encoding = "UTF-8")
@@ -124,7 +138,7 @@ colnames(boyce.ndop) <- c(
 #
 # generování map do PDF
 #
-pdf(paste0(export_path, "/pdf/check-predictions-", prefix, "_10-0.5_-auc0.7-", mtype, ".pdf"), width = 36, height = 5) # -cor-0.75 -rmse-0.17 -D-0.85 -7728
+pdf(paste0(export_path, "/pdf/check-predictions-", prefix, "_10-0.5_-bez5000-", mtype, ".pdf"), width = 36, height = 5) # -cor-0.75 -rmse-0.17 -D-0.85 -7728
 par(mar = c(5, 4, 4, 7))
 for (p in seq_along(tibble_grains.reduced.path$path)) {
     pt <- tibble_grains.reduced.path[p, ]
@@ -147,7 +161,33 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
     raster_stack <- raster(png_list[[pt$path]])
     raster_stack_crop <- crop(raster_stack, extent(czechia))
     r.ndop <- raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
+    r.ndop.s <- raster.standardize(r.ndop)
 
+    # GBIF0
+    raster_stack <- raster(gsub("_ndop.tif", paste0("_gbif_ideal-0_0.00.tif"), png_list[[pt$path]]))
+    raster_stack_crop <- crop(raster_stack, extent(czechia))
+    r.gbif0 <- raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
+    r.gbif0.s <- raster.standardize(r.gbif0)
+
+
+
+
+    # GBIF
+    r <-
+        list.files(
+            path = paste0(export_path, "/outputs/r"),
+            # původní: "^glm_fmt_", d, "_.*\\.rds$"
+            # "^glm_fmt_", d, "_.*[0-9]{4,5}-[0-9]{1,2}\\.rds$" - vše bez 500
+            pattern = paste0("^", tail(strsplit(gsub("_ndop.tif", paste0("_gbif_ideal-", mtype, "_[0-2]\\.[0-9][0-9]\\.tif"), png_list[[pt$path]]), split = "/")[[1]], n = 1), "$"),
+            ignore.case = TRUE,
+            full.names = TRUE
+        )
+
+
+    raster_stack <- raster(r)
+    raster_stack_crop <- crop(raster_stack, extent(czechia))
+    r.gbif <- raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
+    r.gbif.s <- raster.standardize(r.gbif)
 
     # ořez bodů rasterem dané px_size
     ndop.sp <- as(cci_all_3035_czechia %>% filter(species == as.character(pt$species)), "Spatial")
@@ -156,35 +196,56 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
     points <- unique(per_pixel_df(as.data.frame(st_coordinates(st_as_sf(ndop_f.f))), 100))
 
 
+    raster.minMax <- c()
+    for (rs in c(r.ndop.s, r.gbif.s)) {
+        raster.minMax <- append(raster.minMax, c(abs(maxValue(rs)), abs(minValue(rs))))
+    }
+    raster.max <- max(raster.minMax)
+    pal_n <- 10
+    multiply <- 1000
+
+
+
+
+    # r <-
+    #     list.files(
+    #         path = paste0(export_path, "/outputs/r"),
+    #         # původní: "^glm_fmt_", d, "_.*\\.rds$"
+    #         # "^glm_fmt_", d, "_.*[0-9]{4,5}-[0-9]{1,2}\\.rds$" - vše bez 500
+    #         pattern = paste0("^", tail(strsplit(gsub("_ndop.tif", paste0("_gbif_ideal-md_[0-2]\\.[0-9][0-9]\\.tif"), png_list[[pt$path]]), split = "/")[[1]], n = 1), "$"),
+    #         ignore.case = TRUE,
+    #         full.names = TRUE
+    #     )
+
+    # raster_stack <- raster(r)
+    # raster_stack_crop <- crop(raster_stack, extent(czechia))
+    # r.gbif <- raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
 
     # # vygenerování Boyce pro NDOP, zatím jsem neukládal, až v novější verzi enmtoolsN
-    # points.suitab <- raster::extract(r.ndop, as.vector(na.omit(points)))
-    # boyce <- ecospat.boyce(r.ndop, points.suitab, nclass = 0, PEplot = FALSE)
+    # points.suitab <- raster::extract(r.gbif, as.vector(na.omit(points)))
+    # boyce <- ecospat.boyce2(r.gbif, points.suitab, nclass = 0, PEplot = FALSE, method="kendall")
     # # boyce.ndop[[as.character(pt$px)]][[as.character(pt$species)]] <- boyce$Spearman.cor
     # boyce.ndop[nrow(boyce.ndop) + 1, ] <- c(
-    #     as.character(pt$species), as.character(pt$px), boyce$Spearman.cor
+    #     as.character(pt$species), as.character(pt$px), boyce$cor
     # )
     # next
-    # # # na konci po projetí cyklu:
+    # # # # na konci po projetí cyklu:
     # # boyce.ndop <- as_tibble(boyce.ndop) %>% type_convert(
     # #     col_types = cols(
-    # #         species = "f", px = "i", species = "f"
-    # #     )
+    # #         species = "f", px = "i", boyce.ndop = "d"
+    # #  )
     # # )
-    # # saveRDS(boyce.ndop, file = paste0(export_path, "/outputs/boyce.ndop.rds"))
+    # # saveRDS(boyce.ndop, file = paste0(export_path, "/outputs/boyce.ndop.kendall.rds"))
+
+    # # cor(boyce.ndop$boyce.ndop, (tibble_boyce.ndop %>% filter(px == 2000))$boyce.ndop)
+    # # plot(boyce.ndop$boyce.ndop - (tibble_boyce.ndop %>% filter(px == 2000))$boyce.ndop)
+    # # GBIF nulová varianta -UNcorrected
+    # # ořez původního raster_stack na ČR pro lokální SDM
 
 
-
-    # GBIF nulová varianta -UNcorrected
-    # ořez původního raster_stack na ČR pro lokální SDM
-
-    raster_stack <- raster(gsub("_ndop.tif", paste0("_gbif_ideal-0_0.00.tif"), png_list[[pt$path]]))
-    raster_stack_crop <- crop(raster_stack, extent(czechia))
-    r.gbif <- raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
-
-
-    plot(r.gbif,
+    plot(r.gbif0.s * multiply,
         legend.width = 1, col = palU(20),
+        # col = palU(pal_n), breaks = round(seq(0, raster.max, length.out = pal_n + raster.max), 8), legend.width = 1,
         main = paste0("GBIF (centr. Europe) bias UNcorrected predictions to CZ, ", "Boyce=", round(pt$md0.boyce.max, digits = 3))
     )
     par(bg = NA)
@@ -199,23 +260,30 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
 
 
 
-
-
     # NDOP
 
+    # # points.suitab <- raster::extract(r.ndop, as.vector(na.omit(points)))
+    # # boyce1 <- ecospat.boyce(r.ndop, points, nclass = 0, PEplot = FALSE)
+    # # points.suitab <- raster::extract(r.ndop, as.vector(na.omit(points)))
+    # # boyce2 <- ecospat.boyce(as.numeric(na.omit(as.vector(r.ndop))), points.suitab, nclass = 0, PEplot = FALSE)
+    # library(enmSdm)
     # points.suitab <- raster::extract(r.ndop, as.vector(na.omit(points)))
-    # boyce <- ecospat.boyce(r.ndop, points.suitab, nclass = 0, PEplot = FALSE)
+    # boyce1 <- contBoyce(points.suitab, as.numeric(na.omit(as.vector(r.ndop))))
+    #     points.suitab <- raster::extract(r.ndop, as.vector(na.omit(points)))
+    # boyce2 <- contBoyce2x(points.suitab, as.numeric(na.omit(as.vector(r.ndop))))
+    # # " / ",round(boyce1$Spearman.cor, digits = 3) ,  " / ",round(boyce2$Spearman.cor, digits = 3) ,
 
-
-    plot(r.ndop,
-        legend.width = 1, col = palU(20),
+    plot(r.ndop.s * multiply,
+        # legend.width = 1, col = palU(20),
+        col = palU(pal_n), breaks = round(seq(0, raster.max, length.out = pal_n + raster.max), 8) * multiply, legend.width = 1,
         main = paste0(pt$species, " | NDOP, AUC=", round(pt$ndop.auc, digits = 2), ", Boyce=", round(pt$boyce.ndop, digits = 3), " (", (pt$px / 1000), "km)"),
         sub = paste0(
-            "NDOP/NDOP100/GBIF: ", pt$ndop_c.f, "/", pt$ndop_c_thin, "/", pt$gbif_c.f, " \nadj. kernel width/max (mm|cor|I|RMSE): ",
+            "NDOP/NDOP100/GBIF: ", pt$ndop_c.f, "/", pt$ndop_c_thin, "/", pt$gbif_c.f, " \nadj. kernel width/max (mm|cor|I|RMSE|Boyce): ",
             pt$md, "/", round(pt$md.max, digits = 2), " | ",
             pt$cor, "/", round(pt$cor.max, digits = 2), " | ",
             pt$i, "/", round(pt$i.max, digits = 2), " | ",
-            pt$rmse, "/", round(pt$rmse.max, digits = 2)
+            pt$rmse, "/", round(pt$rmse.max, digits = 2), " | ",
+            pt$boyce, "/", round(pt$boyce.max, digits = 2)
         )
     )
     par(bg = NA)
@@ -233,24 +301,12 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
     # ořez původního raster_stack na ČR pro lokální SDM
 
 
-    r <-
-        list.files(
-            path = paste0(export_path, "/outputs/r"),
-            # původní: "^glm_fmt_", d, "_.*\\.rds$"
-            # "^glm_fmt_", d, "_.*[0-9]{4,5}-[0-9]{1,2}\\.rds$" - vše bez 500
-            pattern = paste0("^", tail(strsplit(gsub("_ndop.tif", paste0("_gbif_ideal-", mtype, "_[0-2]\\.[0-9][0-9]\\.tif"), png_list[[pt$path]]), split = "/")[[1]], n = 1), "$"),
-            ignore.case = TRUE,
-            full.names = TRUE
-        )
 
 
-    raster_stack <- raster(r)
-    raster_stack_crop <- crop(raster_stack, extent(czechia))
-    r.gbif <- raster_stack_mask_czechia <- mask(raster_stack_crop, czechia)
-
-    plot(r.gbif,
-        legend.width = 1, col = palU(20),
-        main = paste0("GBIF (centr. Europe) bias corrected predictions to CZ, ", "Boyce=", round(pt$md.boyce.max, digits = 3)),
+    plot(r.gbif.s * multiply,
+        # legend.width = 1, col = palU(20),
+        col = palU(pal_n), breaks = round(seq(0, raster.max, length.out = pal_n + raster.max), 8) * multiply, legend.width = 1,
+        main = paste0("GBIF (centr. Europe) bias corrected predictions to CZ, ", "Boyce=", round(pt[[mtype.boyce]], digits = 3)),
         sub = paste0("(mm maxs) geo.cor (Spearman): ", round(pt$md.cor.max, digits = 2), " | geo.I (Warren): ", round(pt$md.i.max, digits = 2), " | RMSE: ", round(pt$md.rmse.max, digits = 2))
     )
     par(bg = NA)
@@ -290,13 +346,13 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
     r.n.diff <- r.gbif - r.ndop
     r.n.diff.s <- raster.standardize(r.gbif) - raster.standardize(r.ndop)
 
-    # r.max <- abs(maxValue(r.n.diff))
-    # r.min <- abs(minValue(r.n.diff))
-    # if(r.max < r.min){
-    # r.max <- r.min
-    # }
+    r.max <- abs(maxValue(r.n.diff.s))
+    r.min <- abs(minValue(r.n.diff.s))
+    if (r.max < r.min) {
+        r.max <- r.min
+    }
 
-    r.max <- 1.0
+    # r.max <- 0.001
 
     r.n.diff.s.na <- !is.na(r.n.diff.s[])
     r.n.diff.na <- !is.na(r.n.diff[])
@@ -307,9 +363,9 @@ for (p in seq_along(tibble_grains.reduced.path$path)) {
     total_over_under_prediction.s <- round(total_over_under_prediction.s.sum / ncell(r.n.diff.s.na), 8)
     total_over_under_prediction <- round(total_over_under_prediction.sum / ncell(r.n.diff.na), 3)
 
-    plot(r.n.diff,
+    plot(r.n.diff.s * multiply,
         # col = rev(topo.colors(20)),
-        col = pal(pal_n), breaks = round(seq(-r.max, r.max, length.out = pal_n + 1), 2), legend.width = 1,
+        col = pal(pal_n), breaks = round(seq(-r.max, r.max, length.out = pal_n + r.max), 8) * multiply, legend.width = 1,
         main = paste0("difference (GBIF - NDOP) ", round(total_over_under_prediction.s.sum, 3), " | ", total_over_under_prediction),
         sub = paste0("geo.cor (Spearman): ", round(pt$cor.max, digits = 2), " | geo.I (Warren): ", round(pt$i.max, digits = 2), " | RMSE: ", round(pt$rmse.max, digits = 2))
     )

@@ -1,24 +1,22 @@
 
 # spojí rds exporty z fittingu a vytvoří jednu tibble se všemi metrikami
 mm <- function(wd, export_path, pxs = c(10000)) {
-    df <- data.frame(matrix(ncol = 18, nrow = 0))
+    df <- data.frame(matrix(ncol = 33, nrow = 0))
     colnames(df) <- c(
         "species", "px", "pxv",
-        "md", "md.max", "md.d.max", "md.i.max", "md.cor.max", "md.rmse.max",
+        "md", "md.max", "md.d.max", "md.i.max", "md.cor.max", "md.rmse.max", "md.boyce.max",
+        "md0.d.max", "md0.i.max", "md0.cor.max", "md0.rmse.max", "md0.boyce.max",
+        "md1.d.max", "md1.i.max", "md1.cor.max", "md1.rmse.max", "md1.boyce.max",
         "d", "d.max",
         "i", "i.max",
-        "cor", "cor.max",
+        "cor", "cor.max", "cor.boyce.max",
         "rmse", "rmse.max",
-        "ndop.auc"
+        "boyce", "boyce.max",
+        "ndop.auc", "boyce.ndop"
     )
 
     for (px in pxs) {
         for (pxv in 1:10) {
-            if (px == 500 && pxv == 8) {
-                # není vygenerováno...proč?
-                next
-            }
-
             rds <-
                 list.files(
                     path = paste0(export_path, "/outputs/rds"),
@@ -34,6 +32,8 @@ mm <- function(wd, export_path, pxs = c(10000)) {
             n8.I <- readRDS(paste0(export_path, "/outputs/fitting/glm_fmt_gbif.I_", px, "-", pxv, ".rds"))
             n8.rmse <- readRDS(paste0(export_path, "/outputs/fitting/glm_fmt_gbif.rmse_", px, "-", pxv, ".rds"))
             n8.cor <- readRDS(paste0(export_path, "/outputs/fitting/glm_fmt_gbif.cor_", px, "-", pxv, ".rds"))
+            n8.boyce <- readRDS(paste0(export_path, "/outputs/fitting/glm_fmt_gbif.boyce_", px, "-", pxv, ".rds"))
+            n8.boyce.ndop <- readRDS(paste0(export_path, "/outputs/fitting/glm_fmt_gbif.boyce.ndop_", px, "-", pxv, ".rds"))
 
             pv8.D.names <- names(n8.D[[as.character(px)]])
 
@@ -42,6 +42,9 @@ mm <- function(wd, export_path, pxs = c(10000)) {
                 pv8.I <- n8.I[[as.character(px)]][[as.character(name)]]
                 pv8.cor <- n8.cor[[as.character(px)]][[as.character(name)]]
                 pv8.rmse <- n8.rmse[[as.character(px)]][[as.character(name)]]
+                pv8.boyce <- n8.boyce[[as.character(px)]][[as.character(name)]]
+                pv8.boyce.ndop <- n8.boyce.ndop[[as.character(px)]][[as.character(name)]]
+
 
                 ndopCheckerboard2.auc <- ndopCheckerboard2[[as.character(px)]][[as.character(name)]]$auc.ndop.te
 
@@ -54,11 +57,29 @@ mm <- function(wd, export_path, pxs = c(10000)) {
                 pv8.I.max <- pv8.I[which.max(pv8.I$V2), ]
                 pv8.cor.max <- pv8.cor[which.max(pv8.cor$V2), ]
                 pv8.rmse.max <- pv8.rmse[which.min(pv8.rmse$V2), ]
+                pv8.boyce.max <- pv8.boyce[which.max(pv8.boyce$V2), ]
 
                 pv8.D.selected <- pv8.D[pv8.D$nms == md.max$nms, ]$V2
                 pv8.I.selected <- pv8.I[pv8.I$nms == md.max$nms, ]$V2
                 pv8.cor.selected <- pv8.cor[pv8.cor$nms == md.max$nms, ]$V2
                 pv8.rmse.selected <- 1 - pv8.rmse[pv8.rmse$nms == md.max$nms, ]$V2
+                pv8.boyce.selected <- pv8.boyce[pv8.boyce$nms == md.max$nms, ]$V2
+
+
+                pv8.D.selected0 <- pv8.D[which(pv8.D[, 1] == 0.00), ]$V2
+                pv8.I.selected0 <- pv8.I[which(pv8.I[, 1] == 0.00), ]$V2
+                pv8.cor.selected0 <- pv8.cor[which(pv8.cor[, 1] == 0.00), ]$V2
+                pv8.rmse.selected0 <- 1 - pv8.rmse[which(pv8.rmse[, 1] == 0.00), ]$V2
+                pv8.boyce.selected0 <- pv8.boyce[which(pv8.boyce[, 1] == 0.00), ]$V2
+
+                pv8.D.selected1 <- pv8.D[which(pv8.D[, 1] == 1.00), ]$V2
+                pv8.I.selected1 <- pv8.I[which(pv8.I[, 1] == 1.00), ]$V2
+                pv8.cor.selected1 <- pv8.cor[which(pv8.cor[, 1] == 1.00), ]$V2
+                pv8.rmse.selected1 <- 1 - pv8.rmse[which(pv8.rmse[, 1] == 1.00), ]$V2
+                pv8.boyce.selected1 <- pv8.boyce[which(pv8.boyce[, 1] == 1.00), ]$V2
+
+                pv8.boyce.selected.cor <- pv8.boyce[pv8.boyce$nms == pv8.cor.max$nms, ]$V2
+
 
                 # plot(pv8.D$nms, pv8multiply$V2,
                 #     pch = 19, cex.lab = 0.7, cex.axis = 0.7, cex.main = 0.7, cex.sub = 0.7,
@@ -69,12 +90,15 @@ mm <- function(wd, export_path, pxs = c(10000)) {
 
                 df[nrow(df) + 1, ] <- c(
                     name, px, pxv,
-                    md.max$nms, round(md.max$V2, 4), round(pv8.D.selected, 4), round(pv8.I.selected, 4), round(pv8.cor.selected, 4), round(pv8.rmse.selected, 4),
+                    md.max$nms, round(md.max$V2, 4), round(pv8.D.selected, 4), round(pv8.I.selected, 4), round(pv8.cor.selected, 4), round(pv8.rmse.selected, 4), round(pv8.boyce.selected, 4),
+                    round(pv8.D.selected0, 4), round(pv8.I.selected0, 4), round(pv8.cor.selected0, 4), round(pv8.rmse.selected0, 4), round(pv8.boyce.selected0, 4),
+                    round(pv8.D.selected1, 4), round(pv8.I.selected1, 4), round(pv8.cor.selected1, 4), round(pv8.rmse.selected1, 4), round(pv8.boyce.selected1, 4),
                     pv8.D.max$nms, round(pv8.D.max$V2, 4),
                     pv8.I.max$nms, round(pv8.I.max$V2, 4),
-                    pv8.cor.max$nms, round(pv8.cor.max$V2, 4),
+                    pv8.cor.max$nms, round(pv8.cor.max$V2, 4), round(pv8.boyce.selected.cor, 4),
                     pv8.rmse.max$nms, round(pv8.rmse.max$V2, 4),
-                    round(ndopCheckerboard2.auc, 4)
+                    pv8.boyce.max$nms, round(pv8.boyce.max$V2, 4),
+                    round(ndopCheckerboard2.auc, 4), round(pv8.boyce.ndop[which(pv8.boyce.ndop[, 1] == 0.00), ]$V2, 3)
                 )
                 # select treshold: 0.7*0.8*0.8=0.448
             }
@@ -85,12 +109,15 @@ mm <- function(wd, export_path, pxs = c(10000)) {
     df <- as_tibble(df) %>% type_convert(
         col_types = cols(
             species = "f", px = "i", pxv = "i",
-            md = "d", md.max = "d", md.d.max = "d", md.i.max = "d", md.cor.max = "d", md.rmse.max = "d",
+            md = "d", md.max = "d", md.d.max = "d", md.i.max = "d", md.cor.max = "d", md.rmse.max = "d", md.boyce.max = "d",
+            md0.d.max = "d", md0.i.max = "d", md0.cor.max = "d", md0.rmse.max = "d", md0.boyce.max = "d",
+            md1.d.max = "d", md1.i.max = "d", md1.cor.max = "d", md1.rmse.max = "d", md1.boyce.max = "d",
             d = "d", d.max = "d",
             i = "d", i.max = "d",
-            cor = "d", cor.max = "d",
+            cor = "d", cor.max = "d", cor.boyce.max = "d",
             rmse = "d", rmse.max = "d",
-            ndop.auc = "d"
+            boyce = "d", boyce.max = "d",
+            ndop.auc = "d", boyce.ndop = "d"
         )
     )
     return(df)
@@ -107,7 +134,7 @@ mm <- function(wd, export_path, pxs = c(10000)) {
 # setwd(wd)
 
 # # export_path <- "G:/balej/iga/vse-v-jednom"
-# export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/UN"
+# export_path <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/vse-v-jednom/UN2"
 
 # df <- mm(wd, export_path, c(2000, 5000, 10000))
 # stop()

@@ -98,9 +98,9 @@ ntt_fm_gbif.overlap.D.adj <- list()
 ntt_fm_gbif.overlap.I.adj <- list()
 ntt_fm_gbif.overlap.cor.adj <- list()
 ntt_fm_gbif.overlap.rmse.adj <- list()
-ntt_fm_gbif.overlap.rmse.adj.n <- list()
-ntt_fm_gbif.overlap.eps.adj <- list()
-ntt_fm_gbif.overlap.eps.adj.n <- list()
+# ntt_fm_gbif.overlap.rmse.adj.n <- list()
+# ntt_fm_gbif.overlap.eps.adj <- list()
+# ntt_fm_gbif.overlap.eps.adj.n <- list()
 ntt_fm_gbif.overlap.boyce.adj <- list()
 ntt_fm_gbif.overlap.boyce.adj.ndop <- list()
 
@@ -108,9 +108,9 @@ ntt_fm_gbif.overlap.D.t <- list()
 ntt_fm_gbif.overlap.I.t <- list()
 ntt_fm_gbif.overlap.cor.t <- list()
 ntt_fm_gbif.overlap.rmse.t <- list()
-ntt_fm_gbif.overlap.rmse.t.n <- list()
-ntt_fm_gbif.overlap.eps.t <- list()
-ntt_fm_gbif.overlap.eps.t.n <- list()
+# ntt_fm_gbif.overlap.rmse.t.n <- list()
+# ntt_fm_gbif.overlap.eps.t <- list()
+# ntt_fm_gbif.overlap.eps.t.n <- list()
 ntt_fm_gbif.overlap.boyce.t <- list()
 ntt_fm_gbif.overlap.boyce.t.ndop <- list()
 
@@ -118,9 +118,9 @@ ntt_fm_gbif.overlap.D.t.c <- list()
 ntt_fm_gbif.overlap.I.t.c <- list()
 ntt_fm_gbif.overlap.cor.t.c <- list()
 ntt_fm_gbif.overlap.rmse.t.c <- list()
-ntt_fm_gbif.overlap.rmse.t.c.n <- list()
-ntt_fm_gbif.overlap.eps.t.c <- list()
-ntt_fm_gbif.overlap.eps.t.c.n <- list()
+# ntt_fm_gbif.overlap.rmse.t.c.n <- list()
+# ntt_fm_gbif.overlap.eps.t.c <- list()
+# ntt_fm_gbif.overlap.eps.t.c.n <- list()
 ntt_fm_gbif.overlap.boyce.t.c <- list()
 ntt_fm_gbif.overlap.boyce.t.c.ndop <- list()
 # fm_gbif_f_i_cSD <- list()
@@ -420,8 +420,9 @@ for (px_size_item in px_size) {
 
                 # ppp <- rescale(ppp, 10, "km")
                 # https://www.rdocumentation.org/packages/spatstat/versions/1.64-1/topics/density.ppp
+                # !!! ???
                 bias_gbif <- resample(raster(density.ppp(gbif_ppp, sigma = bw.scott.iso(gbif_ppp), adjust = adjust)), raster_stack[[1]], method = "bilinear") # sigma = bw.scott.iso(gbif_ppp), adjust=0.5)
-
+                # !!! ???
                 r.min <- minValue(bias_gbif)
                 r.max <- maxValue(bias_gbif)
                 bias_gbif <- ((bias_gbif - r.min) / (r.max - r.min))
@@ -775,9 +776,9 @@ for (px_size_item in px_size) {
             fm_gbif.overlap.I <- list()
             fm_gbif.overlap.cor <- list()
             fm_gbif.overlap.rmse <- list()
-            fm_gbif.overlap.rmse.n <- list()
-            fm_gbif.overlap.eps <- list()
-            fm_gbif.overlap.eps.n <- list()
+            # fm_gbif.overlap.rmse.n <- list()
+            # fm_gbif.overlap.eps <- list()
+            # fm_gbif.overlap.eps.n <- list()
             fm_gbif.overlap.boyce <- list()
             fm_gbif.overlap.boyce.ndop <- list()
             # fm_all.md <- list()
@@ -788,7 +789,7 @@ for (px_size_item in px_size) {
             ndop_res <- raster(paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_ndop.tif"))
             ndop_res.n <- normalize(ndop_res)
             points.suitab.ndop <- raster::extract(ndop_res, as.vector(na.omit(enm_mxt_ndop.pp.orig)))
-            boyce.ndop <- ecospat.boyce(ndop_res, points.suitab.ndop , nclass = 0, PEplot = FALSE)
+            boyce.ndop <- ecospat.boyce2(ndop_res, points.suitab.ndop , nclass = 0, PEplot = FALSE, method="kendall")
 
             for (i in names(fm)) {
                 fm_all[[i]] <- fm[[i]]$enm_mxt_all.breadth.B2
@@ -812,18 +813,18 @@ for (px_size_item in px_size) {
                 fm_gbif.overlap.I[[i]] <- gbif_res.crop.czechia.m$I
                 fm_gbif.overlap.cor[[i]] <- gbif_res.crop.czechia.m$rank.cor
                 fm_gbif.overlap.rmse[[i]] <- rRMSE(gbif_res.crop.czechia, ndop_res)
-                fm_gbif.overlap.rmse.n[[i]] <- rRMSE(gbif_res.crop.czechia.n, ndop_res.n)
+                # fm_gbif.overlap.rmse.n[[i]] <- rRMSE(gbif_res.crop.czechia.n, ndop_res.n)
 
 
-                fm_gbif.overlap.eps[[i]] <- rEPS(gbif_res.crop.czechia, ndop_res)
-                fm_gbif.overlap.eps.n[[i]] <- rEPS(gbif_res.crop.czechia.n, ndop_res.n)
+                # fm_gbif.overlap.eps[[i]] <- rEPS(gbif_res.crop.czechia, ndop_res)
+                # fm_gbif.overlap.eps.n[[i]] <- rEPS(gbif_res.crop.czechia.n, ndop_res.n)
 
                 points.suitab <- raster::extract(gbif_res.crop.czechia, as.vector(na.omit(enm_mxt_ndop.pp.orig)))
-                boyce <- ecospat.boyce(gbif_res.crop.czechia, points.suitab, nclass = 0, PEplot = FALSE)
+                boyce <- ecospat.boyce2(gbif_res.crop.czechia, points.suitab, nclass = 0, PEplot = FALSE, method="kendall")
 
-                fm_gbif.overlap.boyce[[i]] <- boyce$Spearman.cor
+                fm_gbif.overlap.boyce[[i]] <- boyce$cor
 
-                fm_gbif.overlap.boyce.ndop[[i]] <- boyce.ndop$Spearman.cor # dávám ke všem fittingům, ikdyž je hodnota stejná pro jednodušší přístup
+                fm_gbif.overlap.boyce.ndop[[i]] <- boyce.ndop$cor # dávám ke všem fittingům, ikdyž je hodnota stejná pro jednodušší přístup
             }
             print("získání nej smoothingu")
 
@@ -921,27 +922,27 @@ for (px_size_item in px_size) {
                 dplyr::select(nms)
 
 
-            nt_fm_gbif.overlap.rmse.n <- as_tibble(fm_gbif.overlap.rmse.n)
-            ntt_fm_gbif.overlap.rmse.n <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.rmse.n), t(nt_fm_gbif.overlap.rmse.n))) %>%
-                mutate(across(V2, as.numeric)) %>%
-                mutate(across(nms, as.numeric)) %>%
-                arrange(nms)
-            ntt_fm_gbif.overlap.rmse_5.n <- ntt_fm_gbif.overlap.rmse.n %>% slice_min(V2, n = 1) %>% slice_max(nms, n = 1)
+            # nt_fm_gbif.overlap.rmse.n <- as_tibble(fm_gbif.overlap.rmse.n)
+            # ntt_fm_gbif.overlap.rmse.n <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.rmse.n), t(nt_fm_gbif.overlap.rmse.n))) %>%
+            #     mutate(across(V2, as.numeric)) %>%
+            #     mutate(across(nms, as.numeric)) %>%
+            #     arrange(nms)
+            # ntt_fm_gbif.overlap.rmse_5.n <- ntt_fm_gbif.overlap.rmse.n %>% slice_min(V2, n = 1) %>% slice_max(nms, n = 1)
 
 
-            nt_fm_gbif.overlap.eps <- as_tibble(fm_gbif.overlap.eps)
-            ntt_fm_gbif.overlap.eps <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.eps), t(nt_fm_gbif.overlap.eps))) %>%
-                mutate(across(V2, as.numeric)) %>%
-                mutate(across(nms, as.numeric)) %>%
-                arrange(nms)
-            ntt_fm_gbif.overlap.eps_5 <- ntt_fm_gbif.overlap.eps %>% slice_max(V2, n = 1) %>% slice_max(nms, n = 1)
+            # nt_fm_gbif.overlap.eps <- as_tibble(fm_gbif.overlap.eps)
+            # ntt_fm_gbif.overlap.eps <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.eps), t(nt_fm_gbif.overlap.eps))) %>%
+            #     mutate(across(V2, as.numeric)) %>%
+            #     mutate(across(nms, as.numeric)) %>%
+            #     arrange(nms)
+            # ntt_fm_gbif.overlap.eps_5 <- ntt_fm_gbif.overlap.eps %>% slice_max(V2, n = 1) %>% slice_max(nms, n = 1)
 
-            nt_fm_gbif.overlap.eps.n <- as_tibble(fm_gbif.overlap.eps.n)
-            ntt_fm_gbif.overlap.eps.n <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.eps.n), t(nt_fm_gbif.overlap.eps.n))) %>%
-                mutate(across(V2, as.numeric)) %>%
-                mutate(across(nms, as.numeric)) %>%
-                arrange(nms)
-            ntt_fm_gbif.overlap.eps_5.n <- ntt_fm_gbif.overlap.eps.n %>% slice_max(V2, n = 1) %>% slice_max(nms, n = 1)
+            # nt_fm_gbif.overlap.eps.n <- as_tibble(fm_gbif.overlap.eps.n)
+            # ntt_fm_gbif.overlap.eps.n <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.eps.n), t(nt_fm_gbif.overlap.eps.n))) %>%
+            #     mutate(across(V2, as.numeric)) %>%
+            #     mutate(across(nms, as.numeric)) %>%
+            #     arrange(nms)
+            # ntt_fm_gbif.overlap.eps_5.n <- ntt_fm_gbif.overlap.eps.n %>% slice_max(V2, n = 1) %>% slice_max(nms, n = 1)
 
             nt_fm_gbif.overlap.boyce <- as_tibble(fm_gbif.overlap.boyce)
             ntt_fm_gbif.overlap.boyce <- as_tibble(cbind(nms = names(nt_fm_gbif.overlap.boyce), t(nt_fm_gbif.overlap.boyce))) %>%
@@ -958,12 +959,12 @@ for (px_size_item in px_size) {
             ntt_fm_gbif.overlap.boyce_5.ndop <- ntt_fm_gbif.overlap.boyce.ndop %>% slice_max(V2, n = 1) %>% slice_max(nms, n = 1)
 
 
-            ntt_fm_gbif.overlap.rmse_5.top_adj.n <- ntt_fm_gbif.overlap.rmse_5.n %>%
-                dplyr::select(nms)
-            ntt_fm_gbif.overlap.eps_5.top_adj <- ntt_fm_gbif.overlap.eps_5 %>%
-                dplyr::select(nms)
-            ntt_fm_gbif.overlap.eps_5.top_adj.n <- ntt_fm_gbif.overlap.eps_5.n %>%
-                dplyr::select(nms)
+            # ntt_fm_gbif.overlap.rmse_5.top_adj.n <- ntt_fm_gbif.overlap.rmse_5.n %>%
+            #     dplyr::select(nms)
+            # ntt_fm_gbif.overlap.eps_5.top_adj <- ntt_fm_gbif.overlap.eps_5 %>%
+            #     dplyr::select(nms)
+            # ntt_fm_gbif.overlap.eps_5.top_adj.n <- ntt_fm_gbif.overlap.eps_5.n %>%
+            #     dplyr::select(nms)
             ntt_fm_gbif.overlap.boyce_5.top_adj <- ntt_fm_gbif.overlap.boyce_5 %>%
                 dplyr::select(nms)
             ntt_fm_gbif.overlap.boyce_5.top_adj.ndop <- ntt_fm_gbif.overlap.boyce_5.ndop %>%
@@ -991,14 +992,14 @@ for (px_size_item in px_size) {
             r <- select_raster_by_kernel(ntt_fm_gbif.overlap.rmse_5.top_adj, fm, czechia_3035)
             writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-rmse_", format(as.numeric(ntt_fm_gbif.overlap.rmse_5.top_adj), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
 
-            r <- select_raster_by_kernel(ntt_fm_gbif.overlap.rmse_5.top_adj.n, fm, czechia_3035)
-            writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-rmse.n_", format(as.numeric(ntt_fm_gbif.overlap.rmse_5.top_adj.n), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
+            # r <- select_raster_by_kernel(ntt_fm_gbif.overlap.rmse_5.top_adj.n, fm, czechia_3035)
+            # writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-rmse.n_", format(as.numeric(ntt_fm_gbif.overlap.rmse_5.top_adj.n), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
 
-            r <- select_raster_by_kernel(ntt_fm_gbif.overlap.eps_5.top_adj, fm, czechia_3035)
-            writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-eps_", format(as.numeric(ntt_fm_gbif.overlap.eps_5.top_adj), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
+            # r <- select_raster_by_kernel(ntt_fm_gbif.overlap.eps_5.top_adj, fm, czechia_3035)
+            # writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-eps_", format(as.numeric(ntt_fm_gbif.overlap.eps_5.top_adj), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
 
-            r <- select_raster_by_kernel(ntt_fm_gbif.overlap.eps_5.top_adj.n, fm, czechia_3035)
-            writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-eps.n_", format(as.numeric(ntt_fm_gbif.overlap.eps_5.top_adj.n), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
+            # r <- select_raster_by_kernel(ntt_fm_gbif.overlap.eps_5.top_adj.n, fm, czechia_3035)
+            # writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-eps.n_", format(as.numeric(ntt_fm_gbif.overlap.eps_5.top_adj.n), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
 
             r <- select_raster_by_kernel(ntt_fm_gbif.overlap.boyce_5.top_adj, fm, czechia_3035)
             writeRaster(r, paste0(export_path, "/outputs/r/", pres, "_", sp, "_", px_size_item, "_", replicates, "_gbif_ideal-boyce_", format(as.numeric(ntt_fm_gbif.overlap.boyce_5.top_adj), nsmall = 2), ".tif"), format = "GTiff", overwrite = TRUE)
@@ -1029,9 +1030,9 @@ for (px_size_item in px_size) {
             ntt_fm_gbif.overlap.I.adj[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.I_5.top_adj)
             ntt_fm_gbif.overlap.cor.adj[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.cor_5.top_adj)
             ntt_fm_gbif.overlap.rmse.adj[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.rmse_5.top_adj)
-            ntt_fm_gbif.overlap.rmse.adj.n[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.rmse_5.top_adj.n)
-            ntt_fm_gbif.overlap.eps.adj[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.eps_5.top_adj)
-            ntt_fm_gbif.overlap.eps.adj.n[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.eps_5.top_adj.n)
+            # ntt_fm_gbif.overlap.rmse.adj.n[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.rmse_5.top_adj.n)
+            # ntt_fm_gbif.overlap.eps.adj[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.eps_5.top_adj)
+            # ntt_fm_gbif.overlap.eps.adj.n[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.eps_5.top_adj.n)
             ntt_fm_gbif.overlap.boyce.adj[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.boyce_5.top_adj)
             ntt_fm_gbif.overlap.boyce.adj.ndop[[as.character(px_size_item)]][[as.character(sp)]] <- as.numeric(ntt_fm_gbif.overlap.boyce_5.top_adj.ndop)
 
@@ -1039,9 +1040,9 @@ for (px_size_item in px_size) {
             ntt_fm_gbif.overlap.I.t[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.I
             ntt_fm_gbif.overlap.cor.t[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.cor
             ntt_fm_gbif.overlap.rmse.t[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.rmse
-            ntt_fm_gbif.overlap.rmse.t.n[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.rmse.n
-            ntt_fm_gbif.overlap.eps.t[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.eps
-            ntt_fm_gbif.overlap.eps.t.n[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.eps.n
+            # ntt_fm_gbif.overlap.rmse.t.n[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.rmse.n
+            # ntt_fm_gbif.overlap.eps.t[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.eps
+            # ntt_fm_gbif.overlap.eps.t.n[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.eps.n
             ntt_fm_gbif.overlap.boyce.t[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.boyce
             ntt_fm_gbif.overlap.boyce.t.ndop[[as.character(px_size_item)]][[as.character(sp)]] <- ntt_fm_gbif.overlap.boyce.ndop
 
@@ -1049,16 +1050,16 @@ for (px_size_item in px_size) {
             ntt_fm_gbif.overlap.I.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.I)), 4), collapse = ",")
             ntt_fm_gbif.overlap.cor.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.cor)), 4), collapse = ",")
             ntt_fm_gbif.overlap.rmse.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.rmse)), 4), collapse = ",")
-            ntt_fm_gbif.overlap.rmse.t.c.n[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.rmse.n)), 4), collapse = ",")
-            ntt_fm_gbif.overlap.eps.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.eps)), 4), collapse = ",")
-            ntt_fm_gbif.overlap.eps.t.c.n[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.eps.n)), 4), collapse = ",")
+            # ntt_fm_gbif.overlap.rmse.t.c.n[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.rmse.n)), 4), collapse = ",")
+            # ntt_fm_gbif.overlap.eps.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.eps)), 4), collapse = ",")
+            # ntt_fm_gbif.overlap.eps.t.c.n[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.eps.n)), 4), collapse = ",")
             ntt_fm_gbif.overlap.boyce.t.c[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.boyce)), 4), collapse = ",")
             ntt_fm_gbif.overlap.boyce.t.c.ndop[[as.character(px_size_item)]][[as.character(sp)]] <- paste(round(unname(unlist(ntt_fm_gbif.overlap.boyce.ndop)), 4), collapse = ",")
 
             png(paste0(export_path, "/outputs/png-adjust/", sp, "_", px_size_item, "_", pres, "_", replicates, "_gbif.png"), width = 1000, height = 800)
             plot(ntt_gbif,
                 type = "b", pch = 1, col = "gray", main = paste0(sp, " | GBIF, (", (px_size_item / 1000), "km)"), 
-                sub = paste0("ideal kernel width (I*cor*(1-RMSE)): ", md.max$nms, "; max: ", round(md.max$V2, 2), " | Boyce NDOP=", round(boyce.ndop$Spearman.cor, 3)),
+                sub = paste0("ideal kernel width (I*cor*(1-RMSE)): ", md.max$nms, "; max: ", round(md.max$V2, 2), " | Boyce NDOP=", round(boyce.ndop$cor, 3)),
                 xlab = "smoothing (sigma)", ylab = "raster breadth"
             )
             par(new = TRUE)
@@ -1077,14 +1078,14 @@ for (px_size_item in px_size) {
             plot(ntt_fm_gbif.overlap.D$nms, (1 - ntt_fm_gbif.overlap.rmse$V2), type = "b", pch = 3, col = "blue", yaxt = "n", xlab = "", ylab = "")
             axis(2, col.axis = "blue", pos = 0.35)
             par(new = TRUE)
-            plot(ntt_fm_gbif.overlap.eps, type = "b", pch = 2, col = "#00FFFF", yaxt = "n", xlab = "", ylab = "")
-            axis(2, col.axis = "#00FFFF", pos = 1.75)
-            par(new = TRUE)
-            plot(ntt_fm_gbif.overlap.eps.n, type = "b", pch = 6, col = "#008080", yaxt = "n", xlab = "", ylab = "")
-            axis(2, col.axis = "#008080", pos = 1.65)
-            par(new = TRUE)
+            # plot(ntt_fm_gbif.overlap.eps, type = "b", pch = 2, col = "#00FFFF", yaxt = "n", xlab = "", ylab = "")
+            # axis(2, col.axis = "#00FFFF", pos = 1.75)
+            # par(new = TRUE)
+            # plot(ntt_fm_gbif.overlap.eps.n, type = "b", pch = 6, col = "#008080", yaxt = "n", xlab = "", ylab = "")
+            # axis(2, col.axis = "#008080", pos = 1.65)
+            # par(new = TRUE)
 
-            legend("bottomright", bg = "transparent", bty = "n", legend = c("Boyce", "Warren I", "Spearman cor", "RMSE", "I*cor*(1-RMSE)", "EPS", "EPSn"), lty = 1:1, col = c("red", "violet", "darkgreen", "blue", "black", "#00FFFF", "#008080"))
+            legend("bottomright", bg = "transparent", bty = "n", legend = c("Boyce", "Warren I", "Spearman cor", "RMSE", "I*cor*(1-RMSE)"), lty = 1:1, col = c("red", "violet", "darkgreen", "blue", "black"))
             dev.off()
             if (do_all) {
                 png(paste0(export_path, "/outputs/png-adjust/", sp, "_", px_size_item, "_", pres, "_", replicates, "_all.png"))
@@ -1926,18 +1927,18 @@ for (px_size_item in px_size) {
         saveRDS(ntt_fm_gbif.overlap.I.adj, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.I.adj_", px_size_item, "-", cmd_arg_str, ".rds"))
         saveRDS(ntt_fm_gbif.overlap.cor.adj, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.cor.adj_", px_size_item, "-", cmd_arg_str, ".rds"))
         saveRDS(ntt_fm_gbif.overlap.rmse.adj, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.rmse.adj_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(ntt_fm_gbif.overlap.rmse.adj.n, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.rmse.adj.n_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(ntt_fm_gbif.overlap.eps.adj, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.eps.adj_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(ntt_fm_gbif.overlap.eps.adj.n, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.eps.adj.n_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # saveRDS(ntt_fm_gbif.overlap.rmse.adj.n, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.rmse.adj.n_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # saveRDS(ntt_fm_gbif.overlap.eps.adj, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.eps.adj_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # saveRDS(ntt_fm_gbif.overlap.eps.adj.n, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.eps.adj.n_", px_size_item, "-", cmd_arg_str, ".rds"))
         saveRDS(ntt_fm_gbif.overlap.boyce.adj, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.boyce.adj_", px_size_item, "-", cmd_arg_str, ".rds"))
         saveRDS(ntt_fm_gbif.overlap.boyce.adj.ndop, file = paste0(export_path, "/outputs/fitting/", alg, "_ntt_fm_gbif.overlap.boyce.adj.ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
         ntt_fm_gbif.overlap.D.adj <- list()
         ntt_fm_gbif.overlap.I.adj <- list()
         ntt_fm_gbif.overlap.cor.adj <- list()
         ntt_fm_gbif.overlap.rmse.adj <- list()
-        ntt_fm_gbif.overlap.rmse.adj.n <- list()
-        ntt_fm_gbif.overlap.eps.adj <- list()
-        ntt_fm_gbif.overlap.eps.adj.n <- list()
+        # ntt_fm_gbif.overlap.rmse.adj.n <- list()
+        # ntt_fm_gbif.overlap.eps.adj <- list()
+        # ntt_fm_gbif.overlap.eps.adj.n <- list()
         ntt_fm_gbif.overlap.boyce.adj <- list()
         ntt_fm_gbif.overlap.boyce.adj.ndop <- list()
 
@@ -1945,9 +1946,9 @@ for (px_size_item in px_size) {
         saveRDS(ntt_fm_gbif.overlap.I.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.I_", px_size_item, "-", cmd_arg_str, ".rds"))
         saveRDS(ntt_fm_gbif.overlap.cor.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.cor_", px_size_item, "-", cmd_arg_str, ".rds"))
         saveRDS(ntt_fm_gbif.overlap.rmse.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.rmse_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(ntt_fm_gbif.overlap.rmse.t.n, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.rmse.n_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(ntt_fm_gbif.overlap.eps.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.eps_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(ntt_fm_gbif.overlap.eps.t.n, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.eps.n_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # saveRDS(ntt_fm_gbif.overlap.rmse.t.n, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.rmse.n_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # saveRDS(ntt_fm_gbif.overlap.eps.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.eps_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # saveRDS(ntt_fm_gbif.overlap.eps.t.n, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.eps.n_", px_size_item, "-", cmd_arg_str, ".rds"))
         saveRDS(ntt_fm_gbif.overlap.boyce.t, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.boyce_", px_size_item, "-", cmd_arg_str, ".rds"))
         saveRDS(ntt_fm_gbif.overlap.boyce.t.ndop, file = paste0(export_path, "/outputs/fitting/", alg, "_fmt_gbif.boyce.ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
 
@@ -1955,9 +1956,9 @@ for (px_size_item in px_size) {
         saveRDS(ntt_fm_gbif.overlap.I.t.c, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.I_", px_size_item, "-", cmd_arg_str, ".rds"))
         saveRDS(ntt_fm_gbif.overlap.cor.t.c, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.cor_", px_size_item, "-", cmd_arg_str, ".rds"))
         saveRDS(ntt_fm_gbif.overlap.rmse.t.c, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.rmse_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(ntt_fm_gbif.overlap.rmse.t.c.n, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.rmse.n_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(ntt_fm_gbif.overlap.eps.t.c, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.eps_", px_size_item, "-", cmd_arg_str, ".rds"))
-        saveRDS(ntt_fm_gbif.overlap.eps.t.c.n, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.eps.n_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # saveRDS(ntt_fm_gbif.overlap.rmse.t.c.n, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.rmse.n_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # saveRDS(ntt_fm_gbif.overlap.eps.t.c, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.eps_", px_size_item, "-", cmd_arg_str, ".rds"))
+        # saveRDS(ntt_fm_gbif.overlap.eps.t.c.n, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.eps.n_", px_size_item, "-", cmd_arg_str, ".rds"))
         saveRDS(ntt_fm_gbif.overlap.boyce.t.c, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.boyce_", px_size_item, "-", cmd_arg_str, ".rds"))
         saveRDS(ntt_fm_gbif.overlap.boyce.t.c.ndop, file = paste0(export_path, "/outputs/fitting/", alg, "_fmtc_gbif.boyce.ndop_", px_size_item, "-", cmd_arg_str, ".rds"))
 
@@ -1965,9 +1966,9 @@ for (px_size_item in px_size) {
         ntt_fm_gbif.overlap.I.t <- list()
         ntt_fm_gbif.overlap.cor.t <- list()
         ntt_fm_gbif.overlap.rmse.t <- list()
-        ntt_fm_gbif.overlap.rmse.t.n <- list()
-        ntt_fm_gbif.overlap.eps.t <- list()
-        ntt_fm_gbif.overlap.eps.t.n <- list()
+        # ntt_fm_gbif.overlap.rmse.t.n <- list()
+        # ntt_fm_gbif.overlap.eps.t <- list()
+        # ntt_fm_gbif.overlap.eps.t.n <- list()
         ntt_fm_gbif.overlap.boyce.t <- list()
         ntt_fm_gbif.overlap.boyce.t.ndop <- list()
 
@@ -1975,9 +1976,9 @@ for (px_size_item in px_size) {
         ntt_fm_gbif.overlap.I.t.c <- list()
         ntt_fm_gbif.overlap.cor.t.c <- list()
         ntt_fm_gbif.overlap.rmse.t.c <- list()
-        ntt_fm_gbif.overlap.rmse.t.c.n <- list()
-        ntt_fm_gbif.overlap.eps.t.c <- list()
-        ntt_fm_gbif.overlap.eps.t.c.n <- list()
+        # ntt_fm_gbif.overlap.rmse.t.c.n <- list()
+        # ntt_fm_gbif.overlap.eps.t.c <- list()
+        # ntt_fm_gbif.overlap.eps.t.c.n <- list()
         ntt_fm_gbif.overlap.boyce.t.c <- list()
         ntt_fm_gbif.overlap.boyce.t.c.ndop <- list()
 
