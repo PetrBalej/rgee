@@ -1107,29 +1107,62 @@ library(factoextra)
 library(dendextend)
 
 # permImp <- read_delim(paste0(path.igaD, "/result_AUCs_sentinel.all.csv"), delim=",")
-permImp <- read_delim(paste0(path.igaD, "/lsdHod-result_AUCs_kfme16-glm-131-remove-lessPreds-nsim100.csv"), delim = ",")
+# permImp <- read_delim(paste0(path.igaD, "/lsdHod-result_AUCs_kfme16-glm-131-remove-lessPreds-nsim100.csv"), delim = ",")
+#  permImp <- read_delim(paste0(path.igaD, "/lsdHod-result_AUCs_kfme16-glm-131-test-delete.csv"), delim = ",")
+#  permImp <- read_delim(paste0(path.igaD, "/ndop-kfme16-test.csv"), delim = ",")
+permImp <- read_delim(paste0(path.igaD, "/ndop-train_lsdHod-test_RF18.csv"), delim = ",")
 
 permImp.auc75 <- permImp %>%
-  filter(sentinel_bio >= 0.75) %>%
+  filter(sentinel_bio >= 0.70) %>%
   arrange(species)
 ### vybrat jen druhy z předchozího csv bez biasu, aby to bylo srovnatelné!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 # permImp.auc75.species <- permImp.auc75$species
 # permImp.auc75 <- permImp %>% filter(species %in% permImp.auc75.species)
 
-permImp.test <- drop_na(subset(permImp.auc75, select = -c(predictors_count, `1km_occupied_count`, `1km_unoccupied_count`, sentinel_bio, Migration, Distribution, Habitat, Protection)))
+
+
+
+
+traits2 <- read_excel(paste0(path.igaD, "/functional_traits_GEB_Pearman.xlsx"), skip = 6)
+traits2 %<>% mutate(species = gsub("_", " ", sp.names))
+
+# sjednocení synonym
+syns <- synonyms()
+
+for (s in names(syns)) {
+  matched <- traits2 %>% filter(species == syns[[s]])
+  if (nrow(matched) > 0) {
+    traits2[traits2$species == syns[[s]], "species"] <- s
+  }
+}
+
+###
+# join bird traits
+permImp.traits2 <- permImp.auc75 %>%
+  left_join(traits2, by = c("species" = "species"))
+# %>% filter(!is.na(Habitat))
+permImp.traits2 <- as_tibble(permImp.traits2)
+# joined_traits_anti <- species.filtry %>%
+#    anti_join(traits, by = c("species" = "species"))
+
+
+permImp.auc75 <- permImp.traits2 %>%
+  arrange(species)
+
+
+permImp.test <- drop_na(subset(permImp.auc75, select = -c(
+  # predictors_used,
+  # `1km_occupied_count`, `1km_unoccupied_count`,
+  presence.ndop, presence, absence,
+
+  sentinel_bio, Migration, Distribution, Habitat, Protection, sp.names, code
+))) %>% dplyr::select(-starts_with(c("e.", "f.", "b.", "3.")))
 permImp.test.names <- permImp.test %>% column_to_rownames(var = "species")
-
-
-
-
-
 permImp.test.names.dist <- dist(permImp.test.names, method = "euclidean")
 
 
 # dissimilarity  <- 1 - permImp.test.names.dist
 # permImp.test.names.dist <- distance  <- as.dist(dissimilarity)
-
-
 
 
 # plot(hclust(as.dist(1 - permImp.test.names.dist) ), main="permImp.test.names.dist")
@@ -1140,17 +1173,225 @@ plot(hc, main = "permImp.test.names.dist")
 
 # hclust do formátu dendrogramu, aby šel upravit
 dend <- as.dendrogram(hc)
-# nutné seřadit druhy (s vazbou na habitat) tak aby odpovídaly řazení v dendrogramu a podbarvily se podle habitatu
-labels_colors(dend) <- as.numeric(as.factor(permImp.auc75$Habitat[order.dendrogram(dend)]))
 
-plot(dend, main = "permImp.test.names.dist")
+permImp.auc75.f <- permImp.auc75 %>% filter(species %in% permImp.test$species)
+
+traits.all <- subset(permImp.auc75.f, select = -c(
+  # predictors_used,
+  # `1km_occupied_count`, `1km_unoccupied_count`,
+  presence.ndop, presence, absence,
 
 
+  sentinel_bio, sp.names, code, species, `e.bodymass(g)`
+)) %>% dplyr::select(-starts_with(c("kfme16.", "l8_", "wc_")))
 
-pdf(paste0(path.igaD, "lsdHod-result_AUCs_kfme16-glm-131-remove-lessPreds-nsim100.pdf"), width = 14, height = 6)
-par(cex = 0.7, mar = c(10, 2, 2, 2))
-plot(dend, main = "permImp.test.names.dist")
+
+pdf(paste0(path.igaD, "ndop-train_lsdHod-test_RF18-070.pdf"), width = 14, height = 6)
+
+for (t in names(traits.all)) {
+  # nutné seřadit druhy (s vazbou na habitat) tak aby odpovídaly řazení v dendrogramu a podbarvily se podle habitatu
+  # labels_colors(dend) <- as.numeric(as.factor(permImp.auc75$Habitat[order.dendrogram(dend)]))
+
+  labels_colors(dend) <- as.numeric(as.factor(permImp.auc75.f[[`t`]][order.dendrogram(dend)]))
+  # as.numeric(as.factor(permImp.auc75[["Habitat"]][order.dendrogram(dend)]))
+  # permImp.auc75$Habitat
+  par(cex = 0.7, mar = c(10, 2, 2, 2))
+  plot(dend, main = t)
+}
+
 dev.off()
+
+
+
+
+
+
+
+
+
+### hclust čistě s lokalitami
+
+
+library(cluster)
+library(factoextra)
+library(dendextend)
+
+csv.name <- "test-PA-lsdHod-binary.csv"
+"%notin%" <- Negate("%in%")
+res <- readRDS(paste0(path.igaD, "export-avif-lsd-2018-2022_utf8_3-6.rds"))
+res.hodinovky <- readRDS(paste0(path.igaD, "exportavif--hodinovky-2018-2022_utf_3-6.rds"))
+
+res$species %<>% as.character
+res.hodinovky$species %<>% as.character
+
+# sjednocení synonym
+syns <- synonyms()
+
+for (s in names(syns)) {
+  matched <- res %>% filter(species == syns[[s]])
+  if (nrow(matched) > 0) {
+    res[res$species == syns[[s]], "species"] <- s
+  }
+}
+
+for (s in names(syns)) {
+  matched <- res.hodinovky %>% filter(species == syns[[s]])
+  if (nrow(matched) > 0) {
+    res.hodinovky[res.hodinovky$species == syns[[s]], "species"] <- s
+  }
+}
+
+
+
+res %<>% dplyr::select(POLE, species, ObsListsID)
+res.hodinovky %<>% dplyr::select(POLE, species, ObsListsID)
+res %<>% add_row(res.hodinovky)
+res %<>% st_transform(st_crs(4326))
+
+
+# počet ObsListsID (jednotlivých LSD akcí) na POLE, alespoň 10 má 113 subkvadrátů
+ObsListsID_per_sq <- res %>%
+  group_by(POLE) %>%
+  summarise(count = n_distinct(ObsListsID)) %>%
+  arrange(desc(count)) %>%
+  filter(count >= 10) %>%
+  filter(!is.na(POLE)) %>%
+  ungroup()
+
+POLE.unique <- sort(as.vector(unique(ObsListsID_per_sq$POLE)))
+
+res %<>% filter(POLE %in% POLE.unique)
+
+# počet POLE na species
+species <- res %>%
+  filter(POLE %in% POLE.unique) %>%
+  group_by(species) %>%
+  summarise(count = n_distinct(POLE)) %>%
+  arrange(desc(count)) %>%
+  filter(count >= 30) %>%
+  filter(count < 110) %>% # celkem je (183) (113) 141 subkvadrátů, potřebuju nějaké absence na ověření...
+  filter(!is.na(species))
+
+species.unique <- sort(as.vector(unique(species$species)))
+
+res %<>% filter(species %in% species.unique)
+cn <- TRUE
+
+for (sp in unique(res$species)) {
+  res.species <- res %>% filter(species == sp)
+  res.species.presence <- as.vector(unique(res.species$POLE))
+  res.species.absence <- setdiff(POLE.unique, res.species.presence)
+
+  res.species.presence.v <- rep(1, length(res.species.presence))
+  res.species.absence.v <- rep(0, length(res.species.absence))
+
+  names(res.species.presence.v) <- res.species.presence
+  names(res.species.absence.v) <- res.species.absence
+
+  res.species.row <- append(
+    append(res.species.presence.v, res.species.absence.v),
+    list(species = sp, p = length(res.species.presence), a = length(res.species.absence))
+  )
+  res.species.row <- res.species.row[sort(names(res.species.row))]
+
+  write.table(res.species.row,
+    file = paste0(path.igaD, csv.name), sep = ",", append = TRUE, quote = TRUE,
+    col.names = cn, row.names = FALSE
+  )
+  if (cn == TRUE) {
+    # col.names jen poprvé
+    cn <- FALSE
+  }
+}
+
+# permImp <- read_delim(paste0(path.igaD, "/result_AUCs_sentinel.all.csv"), delim=",")
+# permImp <- read_delim(paste0(path.igaD, "/lsdHod-result_AUCs_kfme16-glm-131-remove-lessPreds-nsim100.csv"), delim = ",")
+#  permImp <- read_delim(paste0(path.igaD, "/lsdHod-result_AUCs_kfme16-glm-131-test-delete.csv"), delim = ",")
+#  permImp <- read_delim(paste0(path.igaD, "/ndop-kfme16-test.csv"), delim = ",")
+permImp <- read_delim(paste0(path.igaD, csv.name), delim = ",")
+
+
+permImp.test <- permImp %>%
+  relocate(species) %>%
+  dplyr::select(-c(p, a)) %>%
+  arrange(species)
+
+
+
+### read bird traits table (traits according to Kolecek et al 2010)
+traits <- read_delim(paste0(wd, "/R/export_raster/Rp/birds_traits_K.csv"), delim = ";")
+
+for (s in names(syns)) {
+  matched <- traits %>% filter(species == syns[[s]])
+  if (nrow(matched) > 0) {
+    traits[traits$species == syns[[s]], "species"] <- s
+  }
+}
+###
+# join bird traits
+permImp.test.traits <- permImp.test %>%
+  dplyr::select(species) %>%
+  left_join(traits, by = c("species" = "species")) %>%
+  filter(!is.na(Habitat))
+
+
+### read bird traits table 2
+traits2 <- read_excel(paste0(path.igaD, "/functional_traits_GEB_Pearman.xlsx"), skip = 6)
+traits2 %<>% mutate(species = gsub("_", " ", sp.names))
+
+for (s in names(syns)) {
+  matched <- traits2 %>% filter(species == syns[[s]])
+  if (nrow(matched) > 0) {
+    traits2[traits2$species == syns[[s]], "species"] <- s
+  }
+}
+###
+# join bird traits2
+permImp.test.traits <- permImp.test.traits %>%
+  left_join(traits2, by = c("species" = "species"))
+
+
+# výběr sloupců s traits
+traits.all <- permImp.test.traits %>%
+  filter(species %in% permImp.test.traits$species) %>%
+  dplyr::select(starts_with(c("Habitat", "Migration", "Distribution", "Protection", "e.", "f.", "b.", "3.")))
+
+
+
+# dodatečná selekce zmizelých druhů po připojení traits
+permImp.test.names <- permImp.test %>%
+  filter(species %in% permImp.test.traits$species) %>%
+  column_to_rownames(var = "species")
+permImp.test.names.dist <- dist(permImp.test.names, method = "binary")
+# dissimilarity  <- 1 - permImp.test.names.dist
+# permImp.test.names.dist <- distance  <- as.dist(dissimilarity)
+# plot(hclust(as.dist(1 - permImp.test.names.dist) ), main="permImp.test.names.dist")
+hc <- hclust(permImp.test.names.dist)
+plot(hc, main = "permImp.test.names.dist")
+# hclust do formátu dendrogramu, aby šel upravit
+dend <- as.dendrogram(hc)
+
+
+
+pdf(paste0(path.igaD, csv.name, ".pdf"), width = 14, height = 6)
+for (t in names(traits.all)) {
+  # nutné seřadit druhy (s vazbou na habitat) tak aby odpovídaly řazení v dendrogramu a podbarvily se podle habitatu
+  # labels_colors(dend) <- as.numeric(as.factor(permImp.auc75$Habitat[order.dendrogram(dend)]))
+
+  labels_colors(dend) <- as.numeric(as.factor(permImp.test.traits[[`t`]][order.dendrogram(dend)]))
+  # as.numeric(as.factor(permImp.auc75[["Habitat"]][order.dendrogram(dend)]))
+  # permImp.auc75$Habitat
+  par(cex = 0.7, mar = c(10, 2, 2, 2))
+  plot(dend, main = t)
+}
+
+dev.off()
+
+
+
+
+
+
 
 
 
@@ -1504,7 +1745,7 @@ avif.m %<>% st_transform(st_crs(3035))
 # env.sentinel_bio <- stack(paste0(path.igaD, "lsd-3km1-czechia-sentinelbio-all.vif.grd"))
 # env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor05-vidstep2.grd"))
 env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor03-vidstep15.grd"))
-
+env.sentinel_bio <- stack(paste0(path.igaD, "igaD-1km-czechia-l8-all-07-2.grd"))
 
 # # vyberu X nejlepších prediktorů
 # predictors.top10 <- c("kfme16.l8_30_4_ndvi_cv.nd",
@@ -1597,16 +1838,26 @@ ObsListsID_per_sq <- res %>%
 
 
 
-# #####################################################################
-# # doplnění nálezů z NDOPu do použitých kvadrátů s cílem omezení false absence
+#####################################################################
+# doplnění nálezů z NDOPu do použitých kvadrátů s cílem omezení false absence
 # sf.grid <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_3035.shp"))
+sf.grid <- st_read(paste0(path.igaD, "EEA_site/EEA_1km.shp"))
 
 # sf.grid %<>% filter(POLE %in% ObsListsID_per_sq$POLE)
 
-# res.ndop <- readRDS(paste0(path.igaD, "ptaci_ndop_2018-2021_3-6.rds"))
+res.ndop <- readRDS(paste0(path.igaD, "ptaci_ndop_2018-2021_3-6.rds"))
 
-# res.ndop %<>% filter(precision <= 1000)  %>%
-# st_as_sf(coords = c("X", "Y"), crs = 4326)
+res.ndop %<>% filter(precision <= 1000) %>%
+  st_as_sf(coords = c("X", "Y"), crs = 3035)
+
+syns <- synonyms()
+for (s in names(syns)) {
+  matched <- res.ndop %>% filter(species == syns[[s]])
+  if (nrow(matched) > 0) {
+    res.ndop[res.ndop$species == syns[[s]], "species"] <- s
+  }
+}
+
 
 # grid.intersection <- st_intersection(sf.grid, res.ndop)
 
@@ -1624,17 +1875,24 @@ ObsListsID_per_sq <- res %>%
 
 
 
-
+# # počet POLE na species
+# species <- res %>%
+#   filter(POLE %in% ObsListsID_per_sq$POLE) %>%
+#   group_by(species) %>%
+#   summarise(count = n_distinct(POLE)) %>%
+#   arrange(desc(count)) %>%
+#   filter(count >= 30) %>%
+#   filter(count < 110) %>% # celkem je (183) (113) 141 subkvadrátů, potřebuju nějaké absence na ověření...
+#   filter(!is.na(species))
 
 # počet POLE na species
-species <- res %>%
-  filter(POLE %in% ObsListsID_per_sq$POLE) %>%
+species <- res.ndop %>%
   group_by(species) %>%
-  summarise(count = n_distinct(POLE)) %>%
+  summarise(count = n_distinct(key)) %>%
   arrange(desc(count)) %>%
   filter(count >= 30) %>%
-  filter(count < 110) %>% # celkem je (183) (113) 141 subkvadrátů, potřebuju nějaké absence na ověření...
   filter(!is.na(species))
+# %>% st_transform(st_crs(4326))
 
 
 # st_write(species, paste0(path.igaD, "delete-test-LSD-110_2018-2022.shp"))
@@ -1660,7 +1918,7 @@ species$species %<>% as.character
 # st_write(grid.intersection, paste0(path.igaD, "delete-intersection-subq-ndop.shp"))
 
 # results_name <- "lsdHod-result_AUCs_kfme16-glm-131-remove-lessPreds-nsim100"
-results_name <- "lsdHod-result_AUCs_kfme16-glm-131-gam03"
+results_name <- "ndop-1km3035-test"
 
 
 write.table(
@@ -1751,16 +2009,16 @@ write.table(
     # "kfme16.wc_30_6_mean.bio02",
     # "kfme16.wc_30_6_mean.bio15",
 
-    "kfme16.l8_30_4_raw_cv.B5",
-    "kfme16.l8_30_5_raw_mean.B10",
-    "kfme16.l8_30_6_raw_cv.B1",
-    "kfme16.l8_30_4_mndwi_cv.nd",
-    "kfme16.l8_30_4_ndvi_cv.nd",
-    "kfme16.l8_30_5_mndwi_cv.nd",
-    "kfme16.l8_30_6_mndwi_cv.nd",
-    "kfme16.wc_30_6_cv.bio06",
-    "kfme16.wc_30_6_cv.bio11",
-    "kfme16.wc_30_6_mean.bio15",
+    # "kfme16.l8_30_4_raw_cv.B5",
+    # "kfme16.l8_30_5_raw_mean.B10",
+    # "kfme16.l8_30_6_raw_cv.B1",
+    # "kfme16.l8_30_4_mndwi_cv.nd",
+    # "kfme16.l8_30_4_ndvi_cv.nd",
+    # "kfme16.l8_30_5_mndwi_cv.nd",
+    # "kfme16.l8_30_6_mndwi_cv.nd",
+    # "kfme16.wc_30_6_cv.bio06",
+    # "kfme16.wc_30_6_cv.bio11",
+    # "kfme16.wc_30_6_mean.bio15",
 
 
     # "kfme16.l8_30_4_ndvi_cv.nd",
@@ -1771,6 +2029,16 @@ write.table(
     # "kfme16.l8_30_5_raw_mean.B5",
     # "kfme16.wc_30_6_mean.bio02",
     # "kfme16.l8_30_5_raw_mean.B10",
+
+
+
+    "l8_3.5_1000_B10",
+    "l8_9.11_1000_B5",
+    "l8_3.5_1000_MNDWI",
+    "l8_3.5_1000_NDWI",
+    "wc_1000_bio02",
+    "wc_1000_bio13",
+    "wc_1000_bio15",
 
 
     "1km_occupied_count",
@@ -1930,7 +2198,7 @@ permImp_remove_last <- function(species.selected, env.sentinel_bio, replicates, 
   }
 }
 
-
+# sf.grid <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_4326.shp"))
 for (sp in species.filtry.joined_traits$species) {
   species.name <- sp #  Ciconia nigra, Coturnix coturnix, Mergus merganser, Crex crex, Falco subbuteo, Jynx torquilla, Asio otus, "Vanellus vanellus"
 
@@ -1940,26 +2208,26 @@ for (sp in species.filtry.joined_traits$species) {
   # res.species.a <- res %>% filter(POLE %notin% res.species$POLE)
 
 
-  subqs <- res %>% filter(POLE %in% ObsListsID_per_sq$POLE)
+  # subqs <- res %>% filter(POLE %in% ObsListsID_per_sq$POLE)
 
-  # presence druhu
-  res.species <- subqs %>% filter(species == species.name)
-  # absence druhu (kvadráty kde nejsou presence)
-  res.species.a <- subqs %>%
-    filter(POLE %notin% res.species$POLE) %>%
-    filter(species != species.name)
+  # # presence druhu
+  # res.species <- subqs %>% filter(species == species.name)
+  # # absence druhu (kvadráty kde nejsou presence)
+  # res.species.a <- subqs %>%
+  #   filter(POLE %notin% res.species$POLE) %>%
+  #   filter(species != species.name)
 
   # ### udělat (rychlejším způsobem - svým dříve) per pixel z funkcí, pokud nepotřebuju absence
-  # grid.intersects <- st_intersects(sf.grid, res.species)
+  grid.intersects <- st_intersects(sf.grid, res.ndop %>% filter(species == species.name))
 
-  # sf.grid.true <- lengths(grid.intersects) > 0 # Finds only countries where intersection is TRUE
-  # sf.grid.presence <- sf.grid[sf.grid.true, ]
-  # presence <- st_centroid(sf.grid.presence)
+  sf.grid.true <- lengths(grid.intersects) > 0 # Finds only countries where intersection is TRUE
+  sf.grid.presence <- sf.grid[sf.grid.true, ]
+  presence <- st_centroid(sf.grid.presence)
 
 
-  presence <- as_tibble(res.species) %>%
-    dplyr::distinct(POLE, .keep_all = TRUE) %>%
-    dplyr::distinct(geometry)
+  # presence <- as_tibble(res.species) %>%
+  #   dplyr::distinct(POLE, .keep_all = TRUE) %>%
+  #   dplyr::distinct(geometry)
   # if (nrow(presence) < 30) {
   #   next
   # }
@@ -1974,16 +2242,19 @@ for (sp in species.filtry.joined_traits$species) {
   #   sf.grid.absence <- sf.grid[sf.grid.false, ]
   #   absence <- st_centroid(sf.grid.absence)
 
-  absence <- as_tibble(res.species.a) %>%
-    dplyr::distinct(POLE, .keep_all = TRUE) %>%
-    dplyr::distinct(geometry)
+  # absence <- as_tibble(res.species.a) %>%
+  #   dplyr::distinct(POLE, .keep_all = TRUE) %>%
+  #   dplyr::distinct(geometry)
   # if (nrow(absence) < 100) {
   #   next
   # }
 
 
   # při 1km nemůžu používat absence z neobsazených kvadrátů!!!
-  species.selected <- ENMToolsPB::enmtools.species(env.sentinel_bio[[1]], as.data.frame(st_coordinates(presence$geometry)), as.data.frame(st_coordinates(absence$geometry)), species.name)
+  species.selected <- ENMToolsPB::enmtools.species(env.sentinel_bio[[1]], as.data.frame(st_coordinates(presence$geometry)),
+    # background.points=as.data.frame(st_coordinates(absence$geometry)),
+    species.name = species.name
+  )
 
   replicates <- 4
 
@@ -1997,12 +2268,13 @@ for (sp in species.filtry.joined_traits$species) {
 
   m <- list()
   for (r in 1:replicates) {
-    m[[r]] <- ENMToolsPB::enmtools.gam(
+    m[[r]] <- ENMToolsPB::enmtools.glm(
       species = species.selected, env = env.sentinel_bio,
-      test.prop = "block",
-      # nback = 10000,
+      test.prop = "checkerboard2",
+      nback = 10000,
       # bias = bias_czechia,
-      bg.source = "points",
+      # bg.source = "points",
+      bg.source = "range",
       corner = r,
       verbose = TRUE
     )
@@ -2216,16 +2488,16 @@ for (sp in species.filtry.joined_traits$species) {
       # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.wc_30_6_mean.bio02.Importance),round(best.model$permImp$kfme16.wc_30_6_mean.bio02.Importance, digits = 3),0)),
       # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.wc_30_6_mean.bio15.Importance),round(best.model$permImp$kfme16.wc_30_6_mean.bio15.Importance, digits = 3),0)),
 
-      round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_raw_cv.B5.Importance, digits = 3),
-      round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_mean.B10.Importance, digits = 3),
-      round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_raw_cv.B1.Importance, digits = 3),
-      round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_mndwi_cv.nd.Importance, digits = 3),
-      round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_ndvi_cv.nd.Importance, digits = 3),
-      round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_mndwi_cv.nd.Importance, digits = 3),
-      round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_mndwi_cv.nd.Importance, digits = 3),
-      round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_cv.bio06.Importance, digits = 3),
-      round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_cv.bio11.Importance, digits = 3),
-      round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_mean.bio15.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_raw_cv.B5.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_mean.B10.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_raw_cv.B1.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_mndwi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_ndvi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_mndwi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_mndwi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_cv.bio06.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_cv.bio11.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_mean.bio15.Importance, digits = 3),
 
 
       # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_ndvi_cv.nd.Importance, digits = 3),
@@ -2237,6 +2509,16 @@ for (sp in species.filtry.joined_traits$species) {
       # round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_mean.bio02.Importance, digits = 3),
       # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_mean.B10.Importance, digits = 3),
 
+
+
+
+      round(enm_mxt_gbif.vip.s$l8_3.5_1000_B10.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$l8_9.11_1000_B5.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$l8_3.5_1000_MNDWI.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$l8_3.5_1000_NDWI.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$wc_1000_bio02.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$wc_1000_bio13.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$wc_1000_bio15.Importance, digits = 3),
 
       nrow(presence),
       nrow(absence),
@@ -2285,3 +2567,1035 @@ for (k in 1:10) {
   }
   # print(k.list[[k]])
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#################################################################################################################################################
+# NDOP data evaluována lsdHod nad kfme16
+#################################################################################################################################################
+
+results_name <- "ndop-train_lsdHod-test_RF-bias01"
+
+# obrácení pořadí druhů, od nejméně početných pro urychlení prvních výsledků
+"%notin%" <- Negate("%in%")
+
+sf.grid <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_4326.shp"))
+#  env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor05-vidstep2.grd"))
+env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor03-vidstep15.grd"))
+# env.sentinel_bio <- dropLayer(env.sentinel_bio, which(names(env.sentinel_bio) == "kfme16.l8_30_5_mndwi_cv.nd") )
+
+bias_czechia <- stack(paste0(path.igaD, "bias-ptaci-adj-0.1-kfme16.tif"))
+
+# sjednocení LSD s hodinovkama****************************************************************************
+res <- readRDS(paste0(path.igaD, "export-avif-lsd-2018-2022_utf8_3-6.rds"))
+res.hodinovky <- readRDS(paste0(path.igaD, "exportavif--hodinovky-2018-2022_utf_3-6.rds"))
+
+res$species %<>% as.character
+res.hodinovky$species %<>% as.character
+
+# sjednocení synonym
+syns <- synonyms()
+
+for (s in names(syns)) {
+  matched <- res %>% filter(species == syns[[s]])
+  if (nrow(matched) > 0) {
+    res[res$species == syns[[s]], "species"] <- s
+  }
+}
+
+for (s in names(synonyms)) {
+  matched <- res.hodinovky %>% filter(species == synonyms[[s]])
+  if (nrow(matched) > 0) {
+    res.hodinovky[res.hodinovky$species == synonyms[[s]], "species"] <- s
+  }
+}
+
+
+
+res %<>% dplyr::select(POLE, species, ObsListsID)
+res.hodinovky %<>% dplyr::select(POLE, species, ObsListsID)
+res %<>% add_row(res.hodinovky)
+res %<>% st_transform(st_crs(4326))
+
+
+# počet ObsListsID (jednotlivých LSD akcí) na POLE, alespoň 10 má 113 subkvadrátů
+ObsListsID_per_sq <- res %>%
+  group_by(POLE) %>%
+  summarise(count = n_distinct(ObsListsID)) %>%
+  arrange(desc(count)) %>%
+  filter(count >= 10) %>%
+  filter(!is.na(POLE)) %>%
+  ungroup()
+
+
+# počet POLE na species
+species <- res %>%
+  filter(POLE %in% ObsListsID_per_sq$POLE) %>%
+  group_by(species) %>%
+  summarise(count = n_distinct(POLE)) %>%
+  arrange(desc(count)) %>%
+  filter(count >= 30) %>%
+  filter(count < 110) %>% # celkem je (183) (113) 141 subkvadrátů, potřebuju nějaké absence na ověření...
+  filter(!is.na(species))
+
+
+res %<>% filter(POLE %in% ObsListsID_per_sq$POLE)
+
+# st_write(
+#   # res %>% dplyr::distinct(geometry),
+#   res %>% filter(POLE %in% ObsListsID_per_sq$POLE),
+#  paste0(path.igaD, "delete-distinct-geom-lds-hodinovky.shp"))
+
+
+
+#####################################################################
+# doplnění nálezů z NDOPu do použitých kvadrátů s cílem omezení false absence
+
+
+res.ndop <- readRDS(paste0(path.igaD, "ptaci_ndop_2018-2021_3-6.rds"))
+
+res.ndop %<>% filter(precision <= 1000) %>%
+  st_as_sf(coords = c("X", "Y"), crs = 3035)
+
+
+for (s in names(syns)) {
+  matched <- res.ndop %>% filter(species == syns[[s]])
+  if (nrow(matched) > 0) {
+    res.ndop[res.ndop$species == syns[[s]], "species"] <- s
+  }
+}
+
+res.ndop %<>% st_transform(st_crs(4326))
+res.ndop %<>% st_intersection(sf.grid, res.ndop)
+
+# for (s in names(synonyms)) {
+#   matched <- grid.intersection %>% filter(species == synonyms[[s]])
+#   if (nrow(matched) > 0) {
+#     grid.intersection[grid.intersection$species == synonyms[[s]], "species"] <- s
+#   }
+# }
+
+# res %<>% dplyr::select(POLE, species, ObsListsID)
+# grid.intersection %<>% dplyr::select(POLE, species, ObsListsID)
+
+# res  %<>% add_row(grid.intersection)
+
+
+
+
+
+# počet POLE na species
+species.ndop <- res.ndop %>%
+  group_by(species) %>%
+  summarise(count = n_distinct(key)) %>%
+  arrange(desc(count)) %>%
+  filter(count >= 30) %>%
+  filter(!is.na(species))
+# %>% st_transform(st_crs(4326))
+
+
+# st_write(species, paste0(path.igaD, "delete-test-LSD-110_2018-2022.shp"))
+# st_write(species, paste0(path.igaD, "delete-test-hodinovkyLSD-131_2018-2022.shp"))
+
+species$species %<>% as.character
+
+# # počet ObsItemsID (nálezů) na POLE
+# # jsou tu i pole s méně než 30 nálezy!!! !!!!!!!!!!!!!!!!!!!!!!!!!!! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! !!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# species <- res %>%
+#   group_by(POLE) %>%
+#   summarise(count = n_distinct(ObsItemsID)) %>%
+#   arrange(desc(count)) %>%
+#   filter(count >= 30) %>%
+#   filter(count < 17000) %>%
+#   filter(!is.na(POLE))
+
+
+
+
+# st_write(sf.grid, paste0(path.igaD, "delete-subq.shp"))
+# st_write(res.ndop, paste0(path.igaD, "delete-ndop.shp"))
+# st_write(grid.intersection, paste0(path.igaD, "delete-intersection-subq-ndop.shp"))
+
+# results_name <- "lsdHod-result_AUCs_kfme16-glm-131-remove-lessPreds-nsim100"
+
+
+
+write.table(
+  data.frame(
+    "species", "sentinel_bio",
+    # "predictors_used",
+
+
+
+
+    # "kfme16.l8_30_4_raw_cv.B10",
+    # "kfme16.l8_30_4_raw_cv.B5",
+    # "kfme16.l8_30_5_raw_cv.B10",
+    # "kfme16.l8_30_5_raw_cv.B7",
+    # "kfme16.l8_30_5_raw_mean.B10",
+    # "kfme16.l8_30_5_raw_mean.B5",
+    # "kfme16.l8_30_6_raw_cv.B1",
+    # "kfme16.l8_30_6_raw_cv.B10",
+    # "kfme16.l8_30_4_mndwi_cv.nd",
+    # "kfme16.l8_30_4_mndwi_mean.nd",
+    # "kfme16.l8_30_4_ndvi_cv.nd",
+    # "kfme16.l8_30_4_ndvi_mean.nd",
+    # "kfme16.l8_30_5_mndwi_cv.nd",
+    # "kfme16.l8_30_6_mndwi_cv.nd",
+    # "kfme16.wc_30_6_cv.bio06",
+    # "kfme16.wc_30_6_cv.bio11",
+    # "kfme16.wc_30_6_mean.bio02",
+    # "kfme16.wc_30_6_mean.bio15",
+
+    "kfme16.l8_30_4_raw_cv.B5",
+    "kfme16.l8_30_5_raw_mean.B10",
+    "kfme16.l8_30_6_raw_cv.B1",
+    "kfme16.l8_30_4_mndwi_cv.nd",
+    "kfme16.l8_30_4_ndvi_cv.nd",
+    "kfme16.l8_30_5_mndwi_cv.nd",
+    "kfme16.l8_30_6_mndwi_cv.nd",
+    "kfme16.wc_30_6_cv.bio06",
+    "kfme16.wc_30_6_cv.bio11",
+    "kfme16.wc_30_6_mean.bio15",
+
+
+    # "kfme16.l8_30_4_ndvi_cv.nd",
+    # "kfme16.l8_30_5_mndwi_cv.nd",
+    # "kfme16.l8_30_6_mndwi_cv.nd",
+    # "kfme16.l8_30_4_mndwi_cv.nd",
+    # "kfme16.l8_30_4_mndwi_mean.nd",
+    # "kfme16.l8_30_5_raw_mean.B5",
+    # "kfme16.wc_30_6_mean.bio02",
+    # "kfme16.l8_30_5_raw_mean.B10",
+    "presence.ndop",
+    "presence",
+    "absence",
+    "Habitat",
+    "Migration",
+    "Protection",
+    "Distribution"
+  ),
+  file = paste0(path.igaD, results_name, ".csv"), sep = ",", append = TRUE, quote = TRUE,
+  col.names = FALSE, row.names = FALSE
+)
+
+
+
+
+### Jen hnízdící druhy: http://fkcso.cz/fk/ptacicr.html
+fkcso_csv <- read_csv(paste0(wd, "/species/ndop/ptaci-hnizdeni-do-2020-fkcso.csv"))
+fkcso <- fkcso_csv %>%
+  filter(cat == "A") %>%
+  filter(grepl("h,|H,", type))
+
+### read bird traits table (traits according to Kolecek et al 2010)
+traits <- read_delim(paste0(wd, "/R/export_raster/Rp/birds_traits_K.csv"), delim = ";")
+
+
+
+
+
+
+
+
+for (s in names(synonyms)) {
+  matched <- fkcso %>% filter(species == synonyms[[s]])
+  if (nrow(matched) > 0) {
+    fkcso[fkcso$species == synonyms[[s]], "species"] <- s
+  }
+}
+
+# nahrazení názvů traits druhů novějšími názvy z NDOPu
+for (s in names(synonyms)) {
+  matched <- traits %>% filter(species == synonyms[[s]])
+  if (nrow(matched) > 0) {
+    traits[traits$species == synonyms[[s]], "species"] <- s
+  }
+}
+
+# fkcso %>% anti_join(species, by = c("species" = "species"))
+
+species.filtry <- species %>%
+  filter(species %in% fkcso$species) %>%
+  filter(species %notin% nepuvodni_problematicke()$nepuvodni) %>%
+  filter(species %notin% nepuvodni_problematicke()$problematicke) %>%
+  filter(species %notin% nepuvodni_problematicke()$nevhodne) %>%
+  arrange(species)
+
+
+###
+# join bird traits
+species.filtry.joined_traits <- species.filtry %>%
+  left_join(traits, by = c("species" = "species")) %>%
+  filter(!is.na(Habitat))
+species.filtry.joined_traits <- as_tibble(species.filtry.joined_traits)
+# joined_traits_anti <- species.filtry %>%
+#    anti_join(traits, by = c("species" = "species"))
+
+species.filtry.joined_traits$species %<>% as.character
+species.filtry.joined_traits$Habitat %<>% as.factor
+species.filtry.joined_traits$Migration %<>% as.factor
+species.filtry.joined_traits$Distribution %<>% as.factor
+species.filtry.joined_traits$Protection %<>% as.factor
+# saveRDS(permImp.auc75.filtry.joined_traits$species, paste0(path.igaD,"vybrane-druhy.rds"))
+
+
+for (sp in species.filtry.joined_traits$species) {
+  species.name <- sp #  Ciconia nigra, Coturnix coturnix, Mergus merganser, Crex crex, Falco subbuteo, Jynx torquilla, Asio otus, "Vanellus vanellus"
+
+  # presence druhu lsdHod
+  res.species.p <- res %>% filter(species == species.name)
+  res.species.p.intersects <- st_intersects(sf.grid, res.species.p)
+  res.species.p.intersects.true <- lengths(res.species.p.intersects) > 0 # where intersection is TRUE
+  res.species.p.intersects.presence <- sf.grid[res.species.p.intersects.true, ]
+  res.species.presence <- st_centroid(res.species.p.intersects.presence) %>% dplyr::distinct(POLE, .keep_all = TRUE)
+
+
+
+  # absence druhu lsdHod (kvadráty kde nejsou presence)
+  res.species.a <- res %>% filter(POLE %notin% res.species.p$POLE)
+  res.species.a.intersects <- st_intersects(sf.grid, res.species.a)
+  res.species.a.intersects.true <- lengths(res.species.a.intersects) > 0 # where intersection is TRUE
+  res.species.a.intersects.absence <- sf.grid[res.species.a.intersects.true, ]
+  res.species.absence <- st_centroid(res.species.a.intersects.absence) %>% dplyr::distinct(POLE, .keep_all = TRUE)
+
+
+
+  # presence druhu NDOP
+  res.ndop.species.p <- res.ndop %>% filter(species == species.name)
+  res.ndop.species.p.intersects <- st_intersects(sf.grid, res.ndop.species.p)
+  res.ndop.species.p.intersects.true <- lengths(res.ndop.species.p.intersects) > 0 # where intersection is TRUE
+  res.ndop.species.p.intersects.presence <- sf.grid[res.ndop.species.p.intersects.true, ]
+  res.ndop.species.presence <- st_centroid(res.ndop.species.p.intersects.presence) %>% dplyr::distinct(POLE, .keep_all = TRUE)
+
+
+
+
+
+  # presence <- as_tibble(res.species) %>%
+  #   dplyr::distinct(POLE, .keep_all = TRUE) %>%
+  #   dplyr::distinct(geometry)
+  # if (nrow(presence) < 30) {
+  #   next
+  # }
+  if (nrow(res.species.presence) < 30 | nrow(res.ndop.species.presence) < 30) {
+    print("******************************************************************************************************************************************")
+    print(species.name)
+    print(nrow(res.species.presence))
+    print(nrow(res.ndop.species.presence))
+    next
+  }
+  # grid.intersects.a <- st_intersects(sf.grid, res.species.a)
+  #   sf.grid.false <- lengths(grid.intersects.a) > 0 # Finds only countries where intersection is TRUE
+  #   sf.grid.absence <- sf.grid[sf.grid.false, ]
+  #   absence <- st_centroid(sf.grid.absence)
+
+  # absence <- as_tibble(res.species.a) %>%
+  #   dplyr::distinct(POLE, .keep_all = TRUE) %>%
+  #   dplyr::distinct(geometry)
+  # if (nrow(absence) < 100) {
+  #   next
+  # }
+
+
+  # při 1km nemůžu používat absence z neobsazených kvadrátů!!!
+  species.selected <- ENMToolsPB::enmtools.species(env.sentinel_bio[[1]], as.data.frame(st_coordinates(res.species.presence$geometry)),
+    background.points = as.data.frame(st_coordinates(res.species.absence$geometry)),
+    species.name = species.name
+  )
+
+  # při 1km nemůžu používat absence z neobsazených kvadrátů!!!
+  species.selected.ndop <- ENMToolsPB::enmtools.species(env.sentinel_bio[[1]], as.data.frame(st_coordinates(res.ndop.species.presence$geometry)),
+    # background.points=as.data.frame(st_coordinates(absence$geometry)),
+    species.name = species.name
+  )
+
+
+  replicates <- 1
+
+
+  m <- list()
+  for (r in 1:replicates) {
+    # m[[r]] <- ENMToolsPB::enmtools.glm(
+    #   species = species.selected, env = env.sentinel_bio,
+    #   test.prop = "checkerboard2",
+    #   nback = 10000,
+    #   # bias = bias_czechia,
+    #   # bg.source = "points",
+    #   bg.source = "range",
+    #   corner = r,
+    #   verbose = TRUE
+    # )
+    m[[r]] <- ENMToolsPB::enmtools.rf(
+      species.selected.ndop,
+      eval = TRUE,
+      env.sentinel_bio,
+      test.prop = "checkerboard2",
+      bg.source = "range",
+      verbose = TRUE,
+      bias = bias_czechia,
+      nback = 10000,
+      #       f = pres ~
+      #           poly(kfme16.l8_30_4_raw_cv.B5, 2) +
+      # poly(kfme16.l8_30_5_raw_mean.B10, 2) +
+      # poly(kfme16.l8_30_6_raw_cv.B1, 2) +
+      # poly(kfme16.l8_30_4_mndwi_cv.nd, 2) +
+      # poly(kfme16.l8_30_4_ndvi_cv.nd, 2) +
+      # poly(kfme16.l8_30_5_mndwi_cv.nd, 2) +
+      # poly(kfme16.l8_30_6_mndwi_cv.nd, 2) +
+      # poly(kfme16.wc_30_6_cv.bio06, 2) +
+      # poly(kfme16.wc_30_6_cv.bio11, 2) +
+      # poly(kfme16.wc_30_6_mean.bio15, 2) ,
+      corner = ifelse(r == 4, r, NA),
+      speciesInd = species.selected,
+      nbackInd = species.selected,
+      envInd = env.sentinel_bio
+    )
+  }
+
+  print("*************GLM OK***************")
+  m.auc.sentinel_bio <- median(sapply(m, function(x) x$test.evaluation@auc))
+
+
+
+  enm_mxt_gbif.vip <- sapply(m, enmtools.vip)
+  enm_mxt_gbif.vip.t <- lapply(enm_mxt_gbif.vip[seq(1, replicates * 2, 2)], function(x) {
+    as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+  })
+
+  if (replicates == 1) {
+    enm_mxt_gbif.vip.s <- enm_mxt_gbif.vip.t[[1]]
+  } else {
+    b_g <- enm_mxt_gbif.vip.t[[1]]
+
+    for (n in 1:replicates) {
+      if (n > 1) {
+        b_g %<>% add_row(enm_mxt_gbif.vip.t[[n]])
+      }
+    }
+    enm_mxt_gbif.vip.s <- b_g %>%
+      summarise_if(is.numeric, mean, na.rm = TRUE)
+  }
+
+
+
+
+
+
+
+  write.table(
+    data.frame(
+      species.name,
+      round(m.auc.sentinel_bio, digits = 3),
+
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_raw_cv.B10.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_raw_cv.B5.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_cv.B10.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_cv.B7.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_mean.B10.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_mean.B5.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_raw_cv.B1.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_raw_cv.B10.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_mndwi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_mndwi_mean.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_ndvi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_ndvi_mean.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_mndwi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_mndwi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_cv.bio06.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_cv.bio11.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_mean.bio02.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_mean.bio15.Importance, digits = 3),
+
+
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_4_raw_cv.B10.Importance),round(best.model$permImp$kfme16.l8_30_4_raw_cv.B10.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_4_raw_cv.B5.Importance),round(best.model$permImp$kfme16.l8_30_4_raw_cv.B5.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_5_raw_cv.B10.Importance),round(best.model$permImp$kfme16.l8_30_5_raw_cv.B10.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_5_raw_cv.B7.Importance),round(best.model$permImp$kfme16.l8_30_5_raw_cv.B7.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_5_raw_mean.B10.Importance),round(best.model$permImp$kfme16.l8_30_5_raw_mean.B10.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_5_raw_mean.B5.Importance),round(best.model$permImp$kfme16.l8_30_5_raw_mean.B5.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_6_raw_cv.B1.Importance),round(best.model$permImp$kfme16.l8_30_6_raw_cv.B1.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_6_raw_cv.B10.Importance),round(best.model$permImp$kfme16.l8_30_6_raw_cv.B10.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_4_mndwi_cv.nd.Importance),round(best.model$permImp$kfme16.l8_30_4_mndwi_cv.nd.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_4_mndwi_mean.nd.Importance),round(best.model$permImp$kfme16.l8_30_4_mndwi_mean.nd.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_4_ndvi_cv.nd.Importance),round(best.model$permImp$kfme16.l8_30_4_ndvi_cv.nd.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_4_ndvi_mean.nd.Importance),round(best.model$permImp$kfme16.l8_30_4_ndvi_mean.nd.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_5_mndwi_cv.nd.Importance),round(best.model$permImp$kfme16.l8_30_5_mndwi_cv.nd.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.l8_30_6_mndwi_cv.nd.Importance),round(best.model$permImp$kfme16.l8_30_6_mndwi_cv.nd.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.wc_30_6_cv.bio06.Importance),round(best.model$permImp$kfme16.wc_30_6_cv.bio06.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.wc_30_6_cv.bio11.Importance),round(best.model$permImp$kfme16.wc_30_6_cv.bio11.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.wc_30_6_mean.bio02.Importance),round(best.model$permImp$kfme16.wc_30_6_mean.bio02.Importance, digits = 3),0)),
+      # suppressWarnings(ifelse(!is.null(best.model$permImp$kfme16.wc_30_6_mean.bio15.Importance),round(best.model$permImp$kfme16.wc_30_6_mean.bio15.Importance, digits = 3),0)),
+
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_raw_cv.B5.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_mean.B10.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_raw_cv.B1.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_mndwi_cv.nd.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_ndvi_cv.nd.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_mndwi_cv.nd.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_mndwi_cv.nd.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_cv.bio06.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_cv.bio11.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_mean.bio15.Importance, digits = 3),
+
+
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_ndvi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_mndwi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_mndwi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_mndwi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_mndwi_mean.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_mean.B5.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_mean.bio02.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_mean.B10.Importance, digits = 3),
+
+
+      nrow(res.ndop.species.presence),
+      nrow(res.species.presence),
+      nrow(res.species.absence),
+      species.filtry.joined_traits %>% filter(species == species.name) %>% dplyr::select(Habitat),
+      species.filtry.joined_traits %>% filter(species == species.name) %>% dplyr::select(Migration),
+      species.filtry.joined_traits %>% filter(species == species.name) %>% dplyr::select(Protection),
+      species.filtry.joined_traits %>% filter(species == species.name) %>% dplyr::select(Distribution)
+    ),
+    file = paste0(path.igaD, results_name, ".csv"), sep = ",", append = TRUE, quote = TRUE,
+    col.names = FALSE, row.names = FALSE
+  )
+
+  print(paste0(
+    species.name, ",",
+    # round(data.maxAUC.value, digits = 3),
+    round(m.auc.sentinel_bio, digits = 3),
+    ",", nrow(res.ndop.species.presence),
+    ",", nrow(res.species.presence)
+  ))
+  print(Sys.time())
+}
+saveRDS(data.species, file = paste0(path.igaD, results_name, ".rds"))
+# plot(sapply(data.species$`Luscinia megarhynchos`, function(x) x$auc))
+
+print("konec:")
+print(Sys.time())
+
+#  m[[1]]$model$coefficients
+# str(m[[1]], max.level=2)
+# m[[1]]$conf
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+############################################################################################################
+# tvorba bias rasteru pro ptáky 2018-2021
+library(spatstat)
+
+raster_stack <- stack(paste0(path.igaD, "kfme16-vifcor03-vidstep15.grd"))[[1]]
+rcrs <- crs(raster_stack)
+
+res.ndop <- readRDS(paste0(path.igaD, "ptaci_ndop_2018-2021_3-6.rds"))
+
+res.ndop %<>% filter(precision <= 1000) %>% st_as_sf(coords = c("X", "Y"), crs = 3035)
+
+res.ndop %<>% st_transform(st_crs(4326))
+
+ext <- extent(raster_stack)
+ow <- owin(xrange = c(ext@xmin, ext@xmax), yrange = c(ext@ymin, ext@ymax))
+
+res.ndop.coords <- st_coordinates(res.ndop)
+res.ndop.coords.ppp <- ppp(res.ndop.coords[, 1], res.ndop.coords[, 2], window = ow)
+
+
+
+for (adj in 1:9) {
+  raster_stack.bias <- resample(raster(density.ppp(res.ndop.coords.ppp, sigma = bw.scott.iso(res.ndop.coords.ppp), adjust = adj / 10)), raster_stack, method = "bilinear")
+  r.min <- minValue(raster_stack.bias)
+  r.max <- maxValue(raster_stack.bias)
+  raster_stack.bias <- ((raster_stack.bias - r.min) / (r.max - r.min))
+  crs(raster_stack.bias) <- rcrs
+
+  raster_stack.bias <- mask(crop(raster_stack.bias, extent(raster_stack)), raster_stack)
+  raster_stack.bias <- setMinMax(raster_stack.bias)
+
+  writeRaster(raster_stack.bias, paste0(path.igaD, "bias-ptaci-adj-0.", as.character(adj), "-kfme16.tif"), format = "GTiff", overwrite = TRUE)
+}
+# # raster s 1, nulová varianta jako bez biasu
+# raster_stack.bias[raster_stack.bias > 0] <- 1
+# writeRaster(raster_stack.bias, paste0(path.igaD, "bias-ptaci-adj-0.0-kfme16.tif"), format = "GTiff", overwrite = TRUE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#################################################################################################################################################
+# NDOP data evaluována lsdHod nad kfme16 - použití fitování adjust bias rasteru
+#################################################################################################################################################
+
+results_name <- "ndop-train_lsdHod-test_RF-biasFitting"
+
+# obrácení pořadí druhů, od nejméně početných pro urychlení prvních výsledků
+"%notin%" <- Negate("%in%")
+
+sf.grid <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_4326.shp"))
+#  env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor05-vidstep2.grd"))
+env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor03-vidstep15.grd"))
+# env.sentinel_bio <- dropLayer(env.sentinel_bio, which(names(env.sentinel_bio) == "kfme16.l8_30_5_mndwi_cv.nd") )
+
+
+# sjednocení LSD s hodinovkama****************************************************************************
+res <- readRDS(paste0(path.igaD, "export-avif-lsd-2018-2022_utf8_3-6.rds"))
+res.hodinovky <- readRDS(paste0(path.igaD, "exportavif--hodinovky-2018-2022_utf_3-6.rds"))
+
+res$species %<>% as.character
+res.hodinovky$species %<>% as.character
+
+# sjednocení synonym
+syns <- synonyms()
+
+for (s in names(syns)) {
+  matched <- res %>% filter(species == syns[[s]])
+  if (nrow(matched) > 0) {
+    res[res$species == syns[[s]], "species"] <- s
+  }
+}
+
+for (s in names(synonyms)) {
+  matched <- res.hodinovky %>% filter(species == synonyms[[s]])
+  if (nrow(matched) > 0) {
+    res.hodinovky[res.hodinovky$species == synonyms[[s]], "species"] <- s
+  }
+}
+
+
+
+res %<>% dplyr::select(POLE, species, ObsListsID)
+res.hodinovky %<>% dplyr::select(POLE, species, ObsListsID)
+res %<>% add_row(res.hodinovky)
+res %<>% st_transform(st_crs(4326))
+
+
+# počet ObsListsID (jednotlivých LSD akcí) na POLE, alespoň 10 má 113 subkvadrátů
+ObsListsID_per_sq <- res %>%
+  group_by(POLE) %>%
+  summarise(count = n_distinct(ObsListsID)) %>%
+  arrange(desc(count)) %>%
+  filter(count >= 10) %>%
+  filter(!is.na(POLE)) %>%
+  ungroup()
+
+
+# počet POLE na species
+species <- res %>%
+  filter(POLE %in% ObsListsID_per_sq$POLE) %>%
+  group_by(species) %>%
+  summarise(count = n_distinct(POLE)) %>%
+  arrange(desc(count)) %>%
+  filter(count >= 30) %>%
+  filter(count < 110) %>% # celkem je (183) (113) 141 subkvadrátů, potřebuju nějaké absence na ověření...
+  filter(!is.na(species))
+
+
+res %<>% filter(POLE %in% ObsListsID_per_sq$POLE)
+
+# st_write(
+#   # res %>% dplyr::distinct(geometry),
+#   res %>% filter(POLE %in% ObsListsID_per_sq$POLE),
+#  paste0(path.igaD, "delete-distinct-geom-lds-hodinovky.shp"))
+
+
+
+#####################################################################
+# doplnění nálezů z NDOPu do použitých kvadrátů s cílem omezení false absence
+
+
+res.ndop <- readRDS(paste0(path.igaD, "ptaci_ndop_2018-2021_3-6.rds"))
+
+res.ndop %<>% filter(precision <= 1000) %>%
+  st_as_sf(coords = c("X", "Y"), crs = 3035)
+
+
+for (s in names(syns)) {
+  matched <- res.ndop %>% filter(species == syns[[s]])
+  if (nrow(matched) > 0) {
+    res.ndop[res.ndop$species == syns[[s]], "species"] <- s
+  }
+}
+
+res.ndop %<>% st_transform(st_crs(4326))
+res.ndop %<>% st_intersection(sf.grid, res.ndop)
+
+
+
+# počet POLE na species
+species.ndop <- res.ndop %>%
+  group_by(species) %>%
+  summarise(count = n_distinct(key)) %>%
+  arrange(desc(count)) %>%
+  filter(count >= 30) %>%
+  filter(!is.na(species))
+# %>% st_transform(st_crs(4326))
+
+
+species$species %<>% as.character
+
+
+write.table(
+  data.frame(
+    "species", "sentinel_bio",
+    # "predictors_used",
+
+    # "kfme16.l8_30_4_raw_cv.B10",
+    # "kfme16.l8_30_4_raw_cv.B5",
+    # "kfme16.l8_30_5_raw_cv.B10",
+    # "kfme16.l8_30_5_raw_cv.B7",
+    # "kfme16.l8_30_5_raw_mean.B10",
+    # "kfme16.l8_30_5_raw_mean.B5",
+    # "kfme16.l8_30_6_raw_cv.B1",
+    # "kfme16.l8_30_6_raw_cv.B10",
+    # "kfme16.l8_30_4_mndwi_cv.nd",
+    # "kfme16.l8_30_4_mndwi_mean.nd",
+    # "kfme16.l8_30_4_ndvi_cv.nd",
+    # "kfme16.l8_30_4_ndvi_mean.nd",
+    # "kfme16.l8_30_5_mndwi_cv.nd",
+    # "kfme16.l8_30_6_mndwi_cv.nd",
+    # "kfme16.wc_30_6_cv.bio06",
+    # "kfme16.wc_30_6_cv.bio11",
+    # "kfme16.wc_30_6_mean.bio02",
+    # "kfme16.wc_30_6_mean.bio15",
+
+    "kfme16.l8_30_4_raw_cv.B5",
+    "kfme16.l8_30_5_raw_mean.B10",
+    "kfme16.l8_30_6_raw_cv.B1",
+    "kfme16.l8_30_4_mndwi_cv.nd",
+    "kfme16.l8_30_4_ndvi_cv.nd",
+    "kfme16.l8_30_5_mndwi_cv.nd",
+    "kfme16.l8_30_6_mndwi_cv.nd",
+    "kfme16.wc_30_6_cv.bio06",
+    "kfme16.wc_30_6_cv.bio11",
+    "kfme16.wc_30_6_mean.bio15",
+
+    "bias.adjust",
+    "presence.ndop",
+    "presence",
+    "absence",
+    "Habitat",
+    "Migration",
+    "Protection",
+    "Distribution"
+  ),
+  file = paste0(path.igaD, results_name, ".csv"), sep = ",", append = TRUE, quote = TRUE,
+  col.names = FALSE, row.names = FALSE
+)
+
+
+
+
+### Jen hnízdící druhy: http://fkcso.cz/fk/ptacicr.html
+fkcso_csv <- read_csv(paste0(wd, "/species/ndop/ptaci-hnizdeni-do-2020-fkcso.csv"))
+fkcso <- fkcso_csv %>%
+  filter(cat == "A") %>%
+  filter(grepl("h,|H,", type))
+
+### read bird traits table (traits according to Kolecek et al 2010)
+traits <- read_delim(paste0(wd, "/R/export_raster/Rp/birds_traits_K.csv"), delim = ";")
+
+
+
+for (s in names(synonyms)) {
+  matched <- fkcso %>% filter(species == synonyms[[s]])
+  if (nrow(matched) > 0) {
+    fkcso[fkcso$species == synonyms[[s]], "species"] <- s
+  }
+}
+
+# nahrazení názvů traits druhů novějšími názvy z NDOPu
+for (s in names(synonyms)) {
+  matched <- traits %>% filter(species == synonyms[[s]])
+  if (nrow(matched) > 0) {
+    traits[traits$species == synonyms[[s]], "species"] <- s
+  }
+}
+
+# fkcso %>% anti_join(species, by = c("species" = "species"))
+
+species.filtry <- species %>%
+  filter(species %in% fkcso$species) %>%
+  filter(species %notin% nepuvodni_problematicke()$nepuvodni) %>%
+  filter(species %notin% nepuvodni_problematicke()$problematicke) %>%
+  filter(species %notin% nepuvodni_problematicke()$nevhodne) %>%
+  arrange(species)
+
+
+###
+# join bird traits
+species.filtry.joined_traits <- species.filtry %>%
+  left_join(traits, by = c("species" = "species")) %>%
+  filter(!is.na(Habitat))
+species.filtry.joined_traits <- as_tibble(species.filtry.joined_traits)
+# joined_traits_anti <- species.filtry %>%
+#    anti_join(traits, by = c("species" = "species"))
+
+species.filtry.joined_traits$species %<>% as.character
+species.filtry.joined_traits$Habitat %<>% as.factor
+species.filtry.joined_traits$Migration %<>% as.factor
+species.filtry.joined_traits$Distribution %<>% as.factor
+species.filtry.joined_traits$Protection %<>% as.factor
+# saveRDS(permImp.auc75.filtry.joined_traits$species, paste0(path.igaD,"vybrane-druhy.rds"))
+
+
+for (sp in species.filtry.joined_traits$species) {
+  species.name <- sp #  Ciconia nigra, Coturnix coturnix, Mergus merganser, Crex crex, Falco subbuteo, Jynx torquilla, Asio otus, "Vanellus vanellus"
+
+  # presence druhu lsdHod
+  res.species.p <- res %>% filter(species == species.name)
+  res.species.p.intersects <- st_intersects(sf.grid, res.species.p)
+  res.species.p.intersects.true <- lengths(res.species.p.intersects) > 0 # where intersection is TRUE
+  res.species.p.intersects.presence <- sf.grid[res.species.p.intersects.true, ]
+  res.species.presence <- st_centroid(res.species.p.intersects.presence) %>% dplyr::distinct(POLE, .keep_all = TRUE)
+
+
+
+  # absence druhu lsdHod (kvadráty kde nejsou presence)
+  res.species.a <- res %>% filter(POLE %notin% res.species.p$POLE)
+  res.species.a.intersects <- st_intersects(sf.grid, res.species.a)
+  res.species.a.intersects.true <- lengths(res.species.a.intersects) > 0 # where intersection is TRUE
+  res.species.a.intersects.absence <- sf.grid[res.species.a.intersects.true, ]
+  res.species.absence <- st_centroid(res.species.a.intersects.absence) %>% dplyr::distinct(POLE, .keep_all = TRUE)
+
+
+
+  # presence druhu NDOP
+  res.ndop.species.p <- res.ndop %>% filter(species == species.name)
+  res.ndop.species.p.intersects <- st_intersects(sf.grid, res.ndop.species.p)
+  res.ndop.species.p.intersects.true <- lengths(res.ndop.species.p.intersects) > 0 # where intersection is TRUE
+  res.ndop.species.p.intersects.presence <- sf.grid[res.ndop.species.p.intersects.true, ]
+  res.ndop.species.presence <- st_centroid(res.ndop.species.p.intersects.presence) %>% dplyr::distinct(POLE, .keep_all = TRUE)
+
+
+  if (nrow(res.species.presence) < 30 | nrow(res.ndop.species.presence) < 30) {
+    print("******************************************************************************************************************************************")
+    print(species.name)
+    print(nrow(res.species.presence))
+    print(nrow(res.ndop.species.presence))
+    next
+  }
+
+
+  # při 1km nemůžu používat absence z neobsazených kvadrátů!!!
+  species.selected <- ENMToolsPB::enmtools.species(env.sentinel_bio[[1]], as.data.frame(st_coordinates(res.species.presence$geometry)),
+    background.points = as.data.frame(st_coordinates(res.species.absence$geometry)),
+    species.name = species.name
+  )
+
+  # při 1km nemůžu používat absence z neobsazených kvadrátů!!!
+  species.selected.ndop <- ENMToolsPB::enmtools.species(env.sentinel_bio[[1]], as.data.frame(st_coordinates(res.ndop.species.presence$geometry)),
+    # background.points=as.data.frame(st_coordinates(absence$geometry)),
+    species.name = species.name
+  )
+
+
+  replicates <- 1
+
+
+  # hledám bias raster s nejlepším AUC
+  ba <- list()
+  ba.m <- list()
+  for (adj in 0:9) {
+    bias_czechia <- raster(paste0(path.igaD, "bias-ptaci-adj-0.", as.character(adj), "-kfme16.tif"))
+    m <- list()
+    for (r in 1:replicates) {
+      m[[r]] <- ENMToolsPB::enmtools.rf(
+        species.selected.ndop,
+        eval = TRUE,
+        env.sentinel_bio,
+        test.prop = "checkerboard2",
+        bg.source = "range",
+        verbose = TRUE,
+        bias = bias_czechia,
+        nback = 10000,
+        corner = ifelse(r == 4, r, NA),
+        speciesInd = species.selected,
+        nbackInd = species.selected,
+        envInd = env.sentinel_bio
+      )
+    }
+
+
+    ba[[as.character(adj)]] <- m.auc.sentinel_bio <- median(sapply(m, function(x) x$test.evaluation@auc))
+    ba.m[[as.character(adj)]] <- m
+  }
+
+  adj.selected <- names(base::which.max(unlist(ba)))
+
+  m <- ba.m[[adj.selected]]
+  m.auc.sentinel_bio <- median(sapply(m, function(x) x$test.evaluation@auc))
+
+  enm_mxt_gbif.vip <- sapply(m, enmtools.vip)
+  enm_mxt_gbif.vip.t <- lapply(enm_mxt_gbif.vip[seq(1, replicates * 2, 2)], function(x) {
+    as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+  })
+
+  if (replicates == 1) {
+    enm_mxt_gbif.vip.s <- enm_mxt_gbif.vip.t[[1]]
+  } else {
+    b_g <- enm_mxt_gbif.vip.t[[1]]
+
+    for (n in 1:replicates) {
+      if (n > 1) {
+        b_g %<>% add_row(enm_mxt_gbif.vip.t[[n]])
+      }
+    }
+    enm_mxt_gbif.vip.s <- b_g %>%
+      summarise_if(is.numeric, mean, na.rm = TRUE)
+  }
+
+
+
+
+
+
+
+  write.table(
+    data.frame(
+      species.name,
+      round(m.auc.sentinel_bio, digits = 3),
+
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_raw_cv.B10.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_raw_cv.B5.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_cv.B10.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_cv.B7.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_mean.B10.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_mean.B5.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_raw_cv.B1.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_raw_cv.B10.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_mndwi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_mndwi_mean.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_ndvi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_ndvi_mean.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_mndwi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_mndwi_cv.nd.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_cv.bio06.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_cv.bio11.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_mean.bio02.Importance, digits = 3),
+      # round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_mean.bio15.Importance, digits = 3),
+
+
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_raw_cv.B5.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_raw_mean.B10.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_raw_cv.B1.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_mndwi_cv.nd.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_4_ndvi_cv.nd.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_5_mndwi_cv.nd.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.l8_30_6_mndwi_cv.nd.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_cv.bio06.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_cv.bio11.Importance, digits = 3),
+      round(enm_mxt_gbif.vip.s$kfme16.wc_30_6_mean.bio15.Importance, digits = 3),
+
+      adj.selected,
+      nrow(res.ndop.species.presence),
+      nrow(res.species.presence),
+      nrow(res.species.absence),
+      species.filtry.joined_traits %>% filter(species == species.name) %>% dplyr::select(Habitat),
+      species.filtry.joined_traits %>% filter(species == species.name) %>% dplyr::select(Migration),
+      species.filtry.joined_traits %>% filter(species == species.name) %>% dplyr::select(Protection),
+      species.filtry.joined_traits %>% filter(species == species.name) %>% dplyr::select(Distribution)
+    ),
+    file = paste0(path.igaD, results_name, ".csv"), sep = ",", append = TRUE, quote = TRUE,
+    col.names = FALSE, row.names = FALSE
+  )
+
+  print(paste0(
+    species.name, ",",
+    # round(data.maxAUC.value, digits = 3),
+    round(m.auc.sentinel_bio, digits = 3),
+    ",", nrow(res.ndop.species.presence),
+    ",", nrow(res.species.presence)
+  ))
+  print(Sys.time())
+}
+# saveRDS(data.species, file = paste0(path.igaD, results_name, ".rds"))
+# plot(sapply(data.species$`Luscinia megarhynchos`, function(x) x$auc))
+
+print("konec:")
+print(Sys.time())
+
+#  m[[1]]$model$coefficients
+# str(m[[1]], max.level=2)
+# m[[1]]$conf
