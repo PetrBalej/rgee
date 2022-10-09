@@ -1472,7 +1472,7 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
   all.p <- names(env.sentinel_bio)
   all <- c()
   all <- comb_all(all.p) # všechny kombinace bez opakování
-  all <- all[-c(1:10)] #  odstraním prvních 10 samostatných prediktorů, nefungoval s mimi model, proč? *** při dočasných 8 prediktorech jsem si tím odstranil 2 dvojice...
+  # all <- all[-c(1:10)] #  odstraním prvních 10 samostatných prediktorů, nefungoval s mimi model, proč? *** při dočasných 8 prediktorech jsem si tím odstranil 2 dvojice...
 
 
   for (pc in all) {

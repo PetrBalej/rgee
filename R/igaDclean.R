@@ -504,6 +504,7 @@ env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor03-vidstep15.grd"))
 # env.sentinel_bio <- dropLayer(env.sentinel_bio, which(names(env.sentinel_bio) == "kfme16.l8_30_5_mndwi_cv.nd") )
 # env.sentinel_bio <- dropLayer(env.sentinel_bio, which(names(env.sentinel_bio) == c("kfme16.l8_30_6_mndwi_cv.nd", "kfme16.wc_30_6_cv.bio06")) )
 # env.sentinel_bio <- env.sentinel_bio[[1:3]]
+# env.sentinel_bio <- env.sentinel_bio[[c(3,5)]]
 
 # sjednocení LSD s hodinovkama****************************************************************************
 res <- readRDS(paste0(path.igaD, "export-avif-lsd-2018-2022_utf8_3-6.rds"))
@@ -562,7 +563,7 @@ res.ndop <- readRDS(paste0(path.igaD, "ptaci_ndop_2018-2021_3-6.rds"))
 res.ndop %<>% filter(precision <= 1000) %>%
   st_as_sf(coords = c("X", "Y"), crs = 3035)
 
-
+res.ndop$species %<>% as.character
 res.ndop <- synonyms_unite(res.ndop)
 res.ndop %<>% st_transform(st_crs(4326))
 res.ndop %<>% st_intersection(sf.grid, res.ndop)
@@ -629,6 +630,7 @@ species.parts <- split(species.filtry.joined_traits$species, ceiling(seq_along(s
 results_name <- paste0(results_name, "-", species.part)
 
 for (sp in species.parts[[species.part]]) { # species.filtry.joined_traits$species # (species.filtry.joined_traits %>% filter(species == "Certhia familiaris" | species == "Ardea cinerea"))$species
+# (species.filtry.joined_traits %>% filter(species == "Periparus ater"))$species
   species.name <- sp #  Ciconia nigra, Coturnix coturnix, Mergus merganser, Crex crex, Falco subbuteo, Jynx torquilla, Asio otus, "Vanellus vanellus" Certhia familiaris Ardea cinerea
 
   # presence druhu lsdHod
