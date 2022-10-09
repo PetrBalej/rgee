@@ -4320,6 +4320,14 @@ for (i in seq_along(rds_list)) {
   rds_append[[species.name]] <- readRDS(rds_list[[i]])
 }
 
+# ### uložení kompletních výsledků 
+# saveRDS(rds_append, file = paste0(path.igaD, "permImp-WS1-3rep-6bias-8preds-GLM-fitting-igaD/all-merged.rds"))
+# ### ukázka struktury
+# str(rds_append[["Cygnus olor"]]$kfme16.l8_30_4_raw_cv.B5__kfme16.l8_30_4_mndwi_cv.nd, max.level=1)
+
+# soubor s výsledky modelů
+rds_append <- readRDS(paste0(path.igaD, "permImp-WS1-3rep-6bias-8preds-GLM-fitting-igaD/all-merged.rds"))
+
 cn <- c("species", "auc", "pt", env.sentinel_bio.names)
 create.tibble <- TRUE
 for (species.name in species.names) {
@@ -4327,8 +4335,8 @@ for (species.name in species.names) {
   data <- rds_append[[species.name]]
   data.aucs <- sapply(data, function(x) x$auc) # x$sorensen x$auc
 
-  # vyberu nejlepší procento (jednoprocentní rozsah) nejlepších modelů, které považuji za rovnocenné
-  auc.treshold <- max(data.aucs) - 0.01
+  # vyberu nejlepší procento (jednoprocentní rozsah = 0.01, nebo jiný) nejlepších modelů, které považuji za rovnocenné
+  auc.treshold <- max(data.aucs) - 0.01 
   data.aucs.treshold <- which(data.aucs >= auc.treshold)
 
   data.predictors <- sapply(data, function(x) x$predictors.c)
