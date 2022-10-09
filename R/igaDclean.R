@@ -563,13 +563,7 @@ res.ndop %<>% filter(precision <= 1000) %>%
   st_as_sf(coords = c("X", "Y"), crs = 3035)
 
 
-for (s in names(syns)) {
-  matched <- res.ndop %>% filter(species == syns[[s]])
-  if (nrow(matched) > 0) {
-    res.ndop[res.ndop$species == syns[[s]], "species"] <- s
-  }
-}
-
+res.ndop <- synonyms_unite(res.ndop)
 res.ndop %<>% st_transform(st_crs(4326))
 res.ndop %<>% st_intersection(sf.grid, res.ndop)
 
