@@ -469,7 +469,7 @@ synonyms_unite <- function(tbl) {
   # nahrazení názvů traits druhů novějšími názvy z NDOPu
   for (s in names(syns)) {
     matched <- tbl %>% filter(species == syns[[s]])
-    if (nrow(matched) == 1) {
+    if (nrow(matched) >= 1) {
       tbl[tbl$species == syns[[s]], "species"] <- s
     }
   }
