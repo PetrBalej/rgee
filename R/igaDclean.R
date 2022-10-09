@@ -783,7 +783,7 @@ for (i in seq_along(rds_list)) {
 
 # soubor s výsledky modelů
 rds_append <- readRDS(paste0(path.igaD, "permImp-WS1-3rep-6bias-8preds-GLM-fitting-igaD/all-merged.rds"))
-
+species.names <- names(rds_append)
 cn <- c("species", "auc", "pt", env.sentinel_bio.names)
 create.tibble <- TRUE
 for (species.name in species.names) {
@@ -819,7 +819,7 @@ for (species.name in species.names) {
   env.sentinel_bio.names.tf[env.sentinel_bio.names.true] <- 1
   env.sentinel_bio.names.tf[env.sentinel_bio.names.false] <- 0
 
-  row <- c(species.name, max(data.aucs), length(env.sentinel_bio.names.tf), env.sentinel_bio.names.tf)
+  row <- c(species.name, max(data.aucs), length(env.sentinel_bio.names.tf[env.sentinel_bio.names.tf == 1]), env.sentinel_bio.names.tf)
   names(row) <- cn
   if (create.tibble) {
     tbl <- bind_rows(row)
@@ -830,7 +830,7 @@ for (species.name in species.names) {
   }
 }
 
-# tbl %>% filter(auc > 0.70)
+# tbl %>% filter(auc > 0.75) %>% arrange(desc(auc)) %>% dplyr::select(species, auc, pt)
 
 
 
