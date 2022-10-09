@@ -26,7 +26,7 @@ gee_datasets_list <- function(gee_datasets_path_csv) {
 }
 
 
-# odstranění stínů a oblačnosti
+# odstranění stínů a oblačnosti Landsat 8, LANDSAT_LC08_C01_T1_SR
 mask_L8_sr <- function(image) {
   # Get the pixel QA band.
   qa <- image$select("pixel_qa")
@@ -41,6 +41,18 @@ mask_L8_sr <- function(image) {
 
 
   return(image$updateMask(mask))
+}
+
+
+# odstranění stínů a oblačnosti Sentinel 2, COPERNICUS_S2_SR
+maskS2clouds <- function(image) {
+  # nefunkční?!
+  # Get the pixel QA band.
+  qa <- image$select("QA60")
+
+  # Bits 10 and 11 are clouds and cirrus, respectively.
+  mask <- qa$bitwiseAnd(10)$eq(0)$and(qa$bitwiseAnd(11)$eq(0))
+  return(image$updateMask(mask)$divide(10000))
 }
 
 # export rasterů z GEE image
@@ -262,6 +274,14 @@ performance <- function(confusion) {
   ))
 }
 
+performance_models_list <- function(m) {
+    cm <- lapply(m, function(x) performance(x$conf))
+    cm.matrix <- abind(cm, along = 3)
+    cm.perf <- apply(cm.matrix, c(1, 2), median)
+    cm.perf.t <- as_tibble(cm.perf)
+
+return(cm.perf.t)
+}
 
 get_freq_by_cat <- function(freq.df, cat.id) {
   if (exists("freq.df") && !is.na(freq.df)) {
@@ -304,11 +324,13 @@ stack_NA_repair <- function(raster_stack) {
   # tak je nutné je nevybírat do výsledných stacků, aby nekazily analýzy. NDVI, (M)NDWI by měly být v pořádku.
   raster_stack_I <- subset(raster_stack, grep("ND", names(raster_stack))) # po opravě možno grep("I",...)
   raster_stack_biox <- subset(raster_stack, grep("_bio", names(raster_stack)))
+  raster_stack_srtm <- subset(raster_stack, grep("srtm", names(raster_stack)))
 
   raster_stack_Bx[raster_stack_Bx == -9999] <- NA
   raster_stack_I[raster_stack_I == -32768] <- NA
-
-  raster_stack <- stack(raster_stack_Bx, raster_stack_I, raster_stack_biox)
+  raster_stack_srtm[raster_stack_srtm == -9999] <- NA
+  raster_stack_srtm[raster_stack_srtm == -32768] <- NA
+  raster_stack <- stack(raster_stack_Bx, raster_stack_I, raster_stack_biox, raster_stack_srtm)
 
   # + propíše NA hodnoty napříč layery
   raster_stack <- raster::mask(raster_stack, sum(raster_stack))
@@ -424,12 +446,35 @@ synonyms <- function() {
     "Poecile montanus" = "Parus montanus",
     "Saxicola rubicola" = "Saxicola torquata",
     "Lyrurus tetrix" = "Tetrao tetrix",
-    "Chlidonias hybrida" = "Chlidonias hybridus"
+    "Chlidonias hybrida" = "Chlidonias hybridus",
+    # nové k fkcso
+    "Lophophanes cristatus" = "Parus cristatus",
+     "Chloris chloris" = "Carduelis chloris",
+    "Chroicocephalus ridibundus"  = "Larus ridibundus",
+    "Spinus spinus" = "Carduelis spinus",
+    "Linaria cannabina" = "Carduelis cannabina",
+    "Regulus ignicapilla" = "Regulus ignicapillus",
+    "Delichon urbicum" = "Delichon urbica",
+    "Periparus ater" = "Parus ater",
+    "Poecile palustris" = "Parus palustris"
   )
   return(synonyms)
 }
 
 
+synonyms_unite <- function(tbl) {
+# sjednocení synonym, druh pojmenovaný species
+syns <- synonyms()
+
+# nahrazení názvů traits druhů novějšími názvy z NDOPu
+for (s in names(syns)) {
+  matched <- tbl %>% filter(species == syns[[s]])
+  if (nrow(matched) == 1) {
+    tbl[tbl$species == syns[[s]], "species"] <- s
+  }
+}
+return(tbl)
+}
 
 join_outputs_rds <- function(export_path, prefix) {
   rds_list <-
@@ -757,7 +802,7 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
 }
 
 
-fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE, fit_gbif_crop = TRUE, czechia_3035 = NA) {
+fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE, fit_gbif_crop = TRUE, czechia_3035 = NA, bg.source.ndop = "range", bg.source.gbif= "range") {
 
 
 
@@ -776,7 +821,7 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
           eval = eval,
           raster_stack_b,
           test.prop = test.prop,
-          bg.source = "range",
+          bg.source = bg.source.gbif, # "range" !!!
           verbose = TRUE,
           bias = bias_gbif,
           nback = nback_all,
@@ -791,9 +836,9 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
           eval = eval,
           raster_stack_b,
           test.prop = test.prop,
-          bg.source = "range",
+          bg.source = bg.source, # "range" !!!
           verbose = TRUE,
-          bias = bias_gbif,
+          bias = bg.source.gbif, # bias_gbif !!! - můžu ale vybírat background i ze všech presenčních bodů přímo, nejen přes vygenerovaný raster z density.ppp!!!
           nback = nback_all,
           corner = ifelse(r == 4, r, NA)
         )
@@ -806,7 +851,7 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
           eval = eval,
           raster_stack_b,
           test.prop = test.prop,
-          bg.source = "range",
+          bg.source = bg.source.gbif, # "range" !!!
           verbose = TRUE,
           bias = bias_gbif,
           args = c("removeDuplicates=FALSE", "threads=4"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
@@ -860,7 +905,7 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
           eval = eval,
           raster_stack_mask_czechia_b,
           test.prop = test.prop,
-          bg.source = "range",
+          bg.source = bg.source.ndop, # "range" !!!
           verbose = TRUE,
           bias = NA,
           nback = nback_ndop,
@@ -875,7 +920,7 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
           eval = eval,
           raster_stack_mask_czechia_b,
           test.prop = test.prop,
-          bg.source = "range",
+          bg.source = bg.source.ndop, # "range" !!!
           verbose = TRUE,
           bias = NA,
           nback = nback_ndop,
@@ -890,7 +935,7 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
           eval = eval,
           raster_stack_mask_czechia_b,
           test.prop = test.prop,
-          bg.source = "range",
+          bg.source = bg.source.ndop,  # "range" !!!
           verbose = TRUE,
           bias = NA,
           args = c("removeDuplicates=FALSE", "threads=4"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
@@ -1007,7 +1052,7 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
 }
 
 
-fit_modelsN2 <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE, fit_gbif_crop = TRUE, czechia_3035 = NA) {
+fit_modelsN2 <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE, fit_gbif_crop = TRUE, czechia_3035 = NA, bg.source.ndop = "range", bg.source.gbif= "range") {
   # varianta N2 počítá s pozměněným enmtool (zatím lokálně, nutnost nainstalovat), který dělá evaluation fittingu GBIF nad lokálními daty z ČR a nad územím ČR - dostávám tak AUC z testu nad ČR a NDOP daty
 
   eval <- TRUE
@@ -1026,7 +1071,7 @@ fit_modelsN2 <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_m
           eval = eval,
           raster_stack_b,
           test.prop = test.prop,
-          bg.source = "range",
+          bg.source = bg.source.gbif, # "range" !!!
           verbose = TRUE,
           bias = bias_gbif,
           nback = nback_all,
@@ -1044,7 +1089,7 @@ fit_modelsN2 <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_m
           eval = eval,
           raster_stack_b,
           test.prop = test.prop,
-          bg.source = "range",
+          bg.source = bg.source.gbif,  # "range" !!!
           verbose = TRUE,
           bias = bias_gbif,
           nback = nback_all,
@@ -1059,7 +1104,7 @@ fit_modelsN2 <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_m
           eval = eval,
           raster_stack_b,
           test.prop = test.prop,
-          bg.source = "range",
+          bg.source = bg.source.gbif, # "range" !!!
           verbose = TRUE,
           bias = bias_gbif,
           args = c("removeDuplicates=FALSE", "threads=4"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
@@ -1292,7 +1337,7 @@ ecospat.boyce2 <- function(fit, obs, nclass = 0, window.w = "default", res = 100
     plot(HS, f, xlab = "Habitat suitability", ylab = "Predicted/Expected ratio", col = "grey", cex = 0.75)
     points(HS[r], f[r], pch = 19, cex = 0.75)
   }
-  return(list(F.ratio = f, cor = round(b, 3), HS = HS))
+  return(list(F.ratio = f, cor = round(b, 5), HS = HS))
 }
 
 
