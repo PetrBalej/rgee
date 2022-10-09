@@ -10,12 +10,14 @@ lapply(required_packages, require, character.only = TRUE)
 
 # domovský adresář (nebo jiný), z něhož se odvodí další cesty
 # wd <- path.expand("~")
+# wd <- "D:/PERSONAL_DATA/pb/rgee"
 wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee" # samsung500ntfs # paste0(path.expand("~"), "/Downloads/rgee2/rgee")
 
 setwd(wd)
 
 source(paste0(getwd(), "/R/export_raster/functions.R"))
 
+# path.igaD <- "D:/PERSONAL_DATA/pb/igaD/"
 path.igaD <- "/home/petr/Documents/igaD/"
 
 
@@ -1151,7 +1153,7 @@ permImp.auc75 <- permImp.traits2 %>%
 
 
 permImp.test <- drop_na(subset(permImp.auc75, select = -c(
-     predictors_used,
+  predictors_used,
   # `1km_occupied_count`, `1km_unoccupied_count`,
   presence.ndop, presence, absence, bias.adjust,
 
@@ -1177,7 +1179,7 @@ dend <- as.dendrogram(hc)
 permImp.auc75.f <- permImp.auc75 %>% filter(species %in% permImp.test$species)
 
 traits.all <- subset(permImp.auc75.f, select = -c(
-   predictors_used,
+  predictors_used,
   # `1km_occupied_count`, `1km_unoccupied_count`,
   presence.ndop, presence, absence, bias.adjust,
 
@@ -3641,7 +3643,10 @@ print(Sys.time())
 #################################################################################################################################################
 
 results_name <- "ndop-train_lsdHod-test_GLM-biasFitting-permImpFitting-testComb2"
-
+# kolik druhů má být v jedné skupině
+speciesPerGroup <- 3
+# kterou skupinu vyberu pro modelování (při rozdělení paralelních výpočtů do více konzolí)
+species.part <- 1
 
 data <- list()
 data.species <- list()
@@ -3773,7 +3778,7 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
   ###  # všechny kombinace (prediktorů) bez opakování (10prediktorů 1023 kombinací)
   all.p <- names(env.sentinel_bio)
   all <- c()
-  for (k in 1:length(all.p)) {
+  for (k in 1:length(all.p)) { # mám na to funkci comb_all!!!
     # print(combn(letters[1:5], k, simplify=FALSE))
 
     k.list <- combn(all.p, k, simplify = FALSE)
@@ -3785,7 +3790,7 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
     }
     # print(k.list[[k]])
   }
-  all <- all[-c(1:1020)] #  odstraním prvních 10 samostatných prediktorů, nefungoval s mimi model, proč?
+  all <- all[-c(1:10)] #  odstraním prvních 10 samostatných prediktorů, nefungoval s mimi model, proč? *** při dočasných 8 prediktorech jsem si tím odstranil 2 dvojice...
 
 
 
@@ -3798,6 +3803,10 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
 
     data[[pc.name]]$predictors.c <- length(pc.v)
     data[[pc.name]]$predictors.v <- pc.v
+    data[[pc.name]]$species <- species.selected$species.name
+    data[[pc.name]]$species.ndop.p <- nrow(species.selected.ndop$presence.points)
+    data[[pc.name]]$species.p <- nrow(species.selected$presence.points)
+    data[[pc.name]]$species.a <- nrow(species.selected$background.points)
 
     tr <- env.sentinel_bio[[pc.v]]
 
@@ -3806,7 +3815,11 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
     ba <- list()
     ba.m <- list()
     bs <- list()
-    for (adj in 0:9) {
+    metrics.bias <- list()
+    aic <- list()
+    conf <- list()
+    thr <- list()
+    for (adj in c(0, 1, 3, 5, 7, 9)) { # ideálně 0:9 / c(0, 1, 3, 5, 7, 9)
       bias_czechia <- raster(paste0(path.igaD, "bias-ptaci-adj-0.", as.character(adj), "-kfme16.tif"))
       m <- list()
       for (r in 1:replicates) {
@@ -3825,7 +3838,10 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
           envInd = tr
         )
       }
+      conf[[as.character(adj)]] <- sapply(m, function(x) x$conf)
+      thr[[as.character(adj)]] <- sapply(m, function(x) x$thr)
 
+      aic[[as.character(adj)]] <- median(sapply(m, function(x) x$model$aic))
       # aic[[as.character(adj)]] <- median(sapply(m, function(x) x$model$aic))
       ba[[as.character(adj)]] <- m.auc.sentinel_bio <- median(sapply(m, function(x) x$test.evaluation@auc))
       ba.m[[as.character(adj)]] <- m
@@ -3834,13 +3850,28 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
       # bb.r <- calc(stack(sapply(m, function(x) x$suitability)), fun = median)
       # pro výběr NDOP použít Boyce? - netřeba, ověřuju lsdHod
       # bb <- ecospat.boyce2(bb.r, species.selected.ndop$presence.points, nclass = 0, PEplot = FALSE, method = "spearman")$cor
-
-      bs[[as.character(adj)]] <- as.list(performance_models_list(m))$Sorensen
+      metrics.bias[[as.character(adj)]] <- as.list(performance_models_list(m))
+      bs[[as.character(adj)]] <- metrics.bias[[as.character(adj)]]$Sorensen
     }
+    data[[pc.name]] <- append(data[[pc.name]], list(bias.aic = aic))
+    data[[pc.name]] <- append(data[[pc.name]], list(bias.conf = conf))
+    data[[pc.name]] <- append(data[[pc.name]], list(bias.thr = thr))
+    data[[pc.name]] <- append(data[[pc.name]], list(bias.auc = ba))
+    data[[pc.name]] <- append(data[[pc.name]], list(bias.metrics = metrics.bias))
+
     # 1) klasické AUC
     data[[pc.name]]$adj.selected <- adj.selected <- names(base::which.max(unlist(ba)))
 
     m <- ba.m[[adj.selected]]
+
+    # vytvoří adresář pro export rasterů prediktorů, pokud neexistuje
+    dir.create(paste0(path.igaD, "predictions"), showWarnings = FALSE)
+
+    rr <- stack(sapply(m, function(x) x$suitability))
+    rr <- calc(rr, fun = median)
+    # bacha, může toho být hodně v rámci fittování všech kombinací prediktorů a druhů!
+    writeRaster(rr, paste0(path.igaD, "predictions/WS1-", data[[pc.name]]$species, "-auc", round(ba[[adj.selected]], 2), "---", pc.name, "---3rep-6bias-10pred--ndop-train_lsdHod-test_GLM-biasFitting-permImpFitting.tif"), format = "GTiff", overwrite = TRUE)
+
 
 
     data[[pc.name]]$auc <- ba[[adj.selected]]
@@ -3907,7 +3938,8 @@ sf.grid <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_4326.shp"))
 #  env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor05-vidstep2.grd"))
 env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor03-vidstep15.grd"))
 # env.sentinel_bio <- dropLayer(env.sentinel_bio, which(names(env.sentinel_bio) == "kfme16.l8_30_5_mndwi_cv.nd") )
-
+# env.sentinel_bio <- dropLayer(env.sentinel_bio, which(names(env.sentinel_bio) == c("kfme16.l8_30_6_mndwi_cv.nd", "kfme16.wc_30_6_cv.bio06")) )
+# env.sentinel_bio <- env.sentinel_bio[[1:3]]
 
 # sjednocení LSD s hodinovkama****************************************************************************
 res <- readRDS(paste0(path.igaD, "export-avif-lsd-2018-2022_utf8_3-6.rds"))
@@ -4109,8 +4141,11 @@ species.filtry.joined_traits$Distribution %<>% as.factor
 species.filtry.joined_traits$Protection %<>% as.factor
 # saveRDS(permImp.auc75.filtry.joined_traits$species, paste0(path.igaD,"vybrane-druhy.rds"))
 
+# rozdělení druhů do skupin
+species.parts <- split(species.filtry.joined_traits$species, ceiling(seq_along(species.filtry.joined_traits$species) / speciesPerGroup))
+results_name <- paste0(results_name, "-", species.part)
 
-for (sp in species.filtry.joined_traits$species) { # (species.filtry.joined_traits %>% filter(species == "Certhia familiaris" | species == "Ardea cinerea"))$species
+for (sp in species.parts[[species.part]]) { # species.filtry.joined_traits$species # (species.filtry.joined_traits %>% filter(species == "Certhia familiaris" | species == "Ardea cinerea"))$species
   species.name <- sp #  Ciconia nigra, Coturnix coturnix, Mergus merganser, Crex crex, Falco subbuteo, Jynx torquilla, Asio otus, "Vanellus vanellus" Certhia familiaris Ardea cinerea
 
   # presence druhu lsdHod
@@ -4175,26 +4210,26 @@ for (sp in species.filtry.joined_traits$species) { # (species.filtry.joined_trai
 
 
 
-#   data.aucs <- sapply(data, function(x) x$auc)
+  #   data.aucs <- sapply(data, function(x) x$auc)
 
-#   # vyberu nejlepší procento (jednoprocentní rozsah) nejlepších modelů, které považuji za rovnocenné
-#   auc.treshold <- max(data.aucs) - 0.01
-#   data.aucs.treshold <- which(data.aucs >= auc.treshold)
+  #   # vyberu nejlepší procento (jednoprocentní rozsah) nejlepších modelů, které považuji za rovnocenné
+  #   auc.treshold <- max(data.aucs) - 0.01
+  #   data.aucs.treshold <- which(data.aucs >= auc.treshold)
 
-#   data.predictors  <- sapply(data, function(x) x$predictors.c)
-#   # vyberu počet použitých prediktorů pro modely s nejlepším AUC
-#   data.predictors.auc.treshold <- data.predictors[data.aucs.treshold]
+  #   data.predictors  <- sapply(data, function(x) x$predictors.c)
+  #   # vyberu počet použitých prediktorů pro modely s nejlepším AUC
+  #   data.predictors.auc.treshold <- data.predictors[data.aucs.treshold]
 
-#   data.predictors.min.treshold <- min(data.predictors.auc.treshold)
-#   print(data.predictors.min.treshold )
-#   # kombinace prediktorů s největším AUC a nejmenším počtem prediktorů
-#   data.predictors.min <- which(data.predictors.auc.treshold == data.predictors.min.treshold)
+  #   data.predictors.min.treshold <- min(data.predictors.auc.treshold)
+  #   print(data.predictors.min.treshold )
+  #   # kombinace prediktorů s největším AUC a nejmenším počtem prediktorů
+  #   data.predictors.min <- which(data.predictors.auc.treshold == data.predictors.min.treshold)
 
-#   data.predictors.v  <- sapply(data, function(x) x$predictors.v)
+  #   data.predictors.v  <- sapply(data, function(x) x$predictors.v)
 
-#   unique(unlist(data.predictors.v[names(data.predictors.min)]))
+  #   unique(unlist(data.predictors.v[names(data.predictors.min)]))
 
-# #  as.numeric(sapply(data, function(x) x$adj.selected.sorensen))
+  # #  as.numeric(sapply(data, function(x) x$adj.selected.sorensen))
 
 
 
@@ -4268,6 +4303,9 @@ for (sp in species.filtry.joined_traits$species) { # (species.filtry.joined_trai
   #   ",", nrow(res.ndop.species.presence),
   #   ",", nrow(res.species.presence)
   # ))
+
+  # raději ukládám i průběžné výsledky jednotlivých druhů zvlášť
+  saveRDS(data, file = paste0(path.igaD, results_name, "-", species.name, ".rds"))
   print(Sys.time())
 }
 saveRDS(data.species, file = paste0(path.igaD, results_name, ".rds"))
@@ -4291,10 +4329,10 @@ print(Sys.time())
 
 
 #
-# exporty do csv? je to nutné, nestaří rsd
+# vytažení dat z průběžných výsledků jednotlivých druhů a uložení rds
 #
 
-  "%notin%" <- Negate("%in%")
+"%notin%" <- Negate("%in%")
 env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor03-vidstep15.grd"))
 
 env.sentinel_bio <- dropLayer(env.sentinel_bio, which(names(env.sentinel_bio) == c("kfme16.l8_30_6_mndwi_cv.nd", "kfme16.wc_30_6_cv.bio06"))) # nutné po vifcor 0.2
@@ -4320,8 +4358,9 @@ for (i in seq_along(rds_list)) {
   rds_append[[species.name]] <- readRDS(rds_list[[i]])
 }
 
-# ### uložení kompletních výsledků 
+# ### uložení kompletních výsledků z průběžných druhových
 # saveRDS(rds_append, file = paste0(path.igaD, "permImp-WS1-3rep-6bias-8preds-GLM-fitting-igaD/all-merged.rds"))
+
 # ### ukázka struktury
 # str(rds_append[["Cygnus olor"]]$kfme16.l8_30_4_raw_cv.B5__kfme16.l8_30_4_mndwi_cv.nd, max.level=1)
 
@@ -4336,7 +4375,7 @@ for (species.name in species.names) {
   data.aucs <- sapply(data, function(x) x$auc) # x$sorensen x$auc
 
   # vyberu nejlepší procento (jednoprocentní rozsah = 0.01, nebo jiný) nejlepších modelů, které považuji za rovnocenné
-  auc.treshold <- max(data.aucs) - 0.01 
+  auc.treshold <- max(data.aucs) - 0.01
   data.aucs.treshold <- which(data.aucs >= auc.treshold)
 
   data.predictors <- sapply(data, function(x) x$predictors.c)
@@ -4404,7 +4443,8 @@ permImp.auc75 <- synonyms_unite(permImp.auc75)
 # join bird traits
 permImp.traits <- permImp.auc75 %>%
   left_join(traits, by = c("species" = "species")) %>%
-  filter(!is.na(Habitat)) %>% dplyr::select(-species_old)
+  filter(!is.na(Habitat)) %>%
+  dplyr::select(-species_old)
 
 
 
@@ -4429,7 +4469,7 @@ permImp.auc75 <- permImp.traits2 %>%
 
 
 permImp.test <- drop_na(subset(permImp.auc75, select = -c(
-     pt,
+  pt,
   auc, Migration, Distribution, Habitat, Protection, sp.names, code
 ))) %>% dplyr::select(-starts_with(c("e.", "f.", "b.", "3.")))
 permImp.test.names <- permImp.test %>% column_to_rownames(var = "species")
@@ -4452,7 +4492,7 @@ dend <- as.dendrogram(hc)
 permImp.auc75.f <- permImp.auc75 %>% filter(species %in% permImp.test$species)
 
 traits.all <- subset(permImp.auc75.f, select = -c(
-   pt,
+  pt,
   auc, sp.names, code, species, `e.bodymass(g)`
 )) %>% dplyr::select(-starts_with(c("kfme16.", "l8_", "wc_")))
 
