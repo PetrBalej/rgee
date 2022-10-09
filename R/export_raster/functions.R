@@ -275,12 +275,12 @@ performance <- function(confusion) {
 }
 
 performance_models_list <- function(m) {
-    cm <- lapply(m, function(x) performance(x$conf))
-    cm.matrix <- abind(cm, along = 3)
-    cm.perf <- apply(cm.matrix, c(1, 2), median)
-    cm.perf.t <- as_tibble(cm.perf)
+  cm <- lapply(m, function(x) performance(x$conf))
+  cm.matrix <- abind(cm, along = 3)
+  cm.perf <- apply(cm.matrix, c(1, 2), median)
+  cm.perf.t <- as_tibble(cm.perf)
 
-return(cm.perf.t)
+  return(cm.perf.t)
 }
 
 get_freq_by_cat <- function(freq.df, cat.id) {
@@ -449,8 +449,8 @@ synonyms <- function() {
     "Chlidonias hybrida" = "Chlidonias hybridus",
     # nové k fkcso
     "Lophophanes cristatus" = "Parus cristatus",
-     "Chloris chloris" = "Carduelis chloris",
-    "Chroicocephalus ridibundus"  = "Larus ridibundus",
+    "Chloris chloris" = "Carduelis chloris",
+    "Chroicocephalus ridibundus" = "Larus ridibundus",
     "Spinus spinus" = "Carduelis spinus",
     "Linaria cannabina" = "Carduelis cannabina",
     "Regulus ignicapilla" = "Regulus ignicapillus",
@@ -463,17 +463,17 @@ synonyms <- function() {
 
 
 synonyms_unite <- function(tbl) {
-# sjednocení synonym, druh pojmenovaný species
-syns <- synonyms()
+  # sjednocení synonym, druh pojmenovaný species
+  syns <- synonyms()
 
-# nahrazení názvů traits druhů novějšími názvy z NDOPu
-for (s in names(syns)) {
-  matched <- tbl %>% filter(species == syns[[s]])
-  if (nrow(matched) == 1) {
-    tbl[tbl$species == syns[[s]], "species"] <- s
+  # nahrazení názvů traits druhů novějšími názvy z NDOPu
+  for (s in names(syns)) {
+    matched <- tbl %>% filter(species == syns[[s]])
+    if (nrow(matched) == 1) {
+      tbl[tbl$species == syns[[s]], "species"] <- s
+    }
   }
-}
-return(tbl)
+  return(tbl)
 }
 
 join_outputs_rds <- function(export_path, prefix) {
@@ -802,7 +802,7 @@ fit_models <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt
 }
 
 
-fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE, fit_gbif_crop = TRUE, czechia_3035 = NA, bg.source.ndop = "range", bg.source.gbif= "range") {
+fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE, fit_gbif_crop = TRUE, czechia_3035 = NA, bg.source.ndop = "range", bg.source.gbif = "range") {
 
 
 
@@ -935,7 +935,7 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
           eval = eval,
           raster_stack_mask_czechia_b,
           test.prop = test.prop,
-          bg.source = bg.source.ndop,  # "range" !!!
+          bg.source = bg.source.ndop, # "range" !!!
           verbose = TRUE,
           bias = NA,
           args = c("removeDuplicates=FALSE", "threads=4"), # většinově nemají předávajné parametry žádný efekt, používá se jen pro model, ne pro predikci/projekci, tu si enmtools dělá samo přes predict()
@@ -1052,7 +1052,7 @@ fit_modelsN <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mx
 }
 
 
-fit_modelsN2 <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE, fit_gbif_crop = TRUE, czechia_3035 = NA, bg.source.ndop = "range", bg.source.gbif= "range") {
+fit_modelsN2 <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_mxt_ndop.s, enm_mxt_all.s, raster_stack_b, raster_stack_mask_czechia_b, bias_gbif, bias_ndop, bias_all, nback_all, nback_ndop, breadth_only = TRUE, fit_gbif_crop = TRUE, czechia_3035 = NA, bg.source.ndop = "range", bg.source.gbif = "range") {
   # varianta N2 počítá s pozměněným enmtool (zatím lokálně, nutnost nainstalovat), který dělá evaluation fittingu GBIF nad lokálními daty z ČR a nad územím ČR - dostávám tak AUC z testu nad ČR a NDOP daty
 
   eval <- TRUE
@@ -1089,7 +1089,7 @@ fit_modelsN2 <- function(alg, replicates, eval, test.prop, enm_mxt_gbif.s, enm_m
           eval = eval,
           raster_stack_b,
           test.prop = test.prop,
-          bg.source = bg.source.gbif,  # "range" !!!
+          bg.source = bg.source.gbif, # "range" !!!
           verbose = TRUE,
           bias = bias_gbif,
           nback = nback_all,
@@ -1340,6 +1340,271 @@ ecospat.boyce2 <- function(fit, obs, nclass = 0, window.w = "default", res = 100
   return(list(F.ratio = f, cor = round(b, 5), HS = HS))
 }
 
+
+# rekurzivní variable permutation importance s postupným odebíráním nejméně přispívajícího prediktoru, jen záloha, není to vhodná metoda...  + bias fitting
+permImp_remove_last <- function(species.selected, species.selected.ndop, env.sentinel_bio, path.igaD, replicates, data = NA) {
+  if (!is.list(data)) {
+    data <- list()
+  }
+  n_layers <- nlayers(env.sentinel_bio)
+  print(paste0("Počet použitých prediktorů/layerů:", n_layers))
+  print(names(env.sentinel_bio))
+  if (n_layers > 1) {
+    n_layers <- as.character(n_layers)
+    # m <- list()
+    # for (r in 1:replicates) {
+    #   m[[r]] <- ENMToolsPB::enmtools.glm(
+    #     species = species.selected, env = env.sentinel_bio,
+    #     test.prop = "checkerboard2",
+    #     # nback = 10000,
+    #     # bias = bias_czechia,
+    #     bg.source = "points",
+    #     corner = r,
+    #     verbose = TRUE
+    #   )
+    # }
+
+    # hledám bias raster s nejlepším AUC [start]
+    ba <- list()
+    ba.m <- list()
+    for (adj in 0:9) {
+      bias_czechia <- raster(paste0(path.igaD, "bias-ptaci-adj-0.", as.character(adj), "-kfme16.tif"))
+      m <- list()
+      for (r in 1:replicates) {
+        m[[r]] <- ENMToolsPB::enmtools.glm(
+          species.selected.ndop,
+          eval = TRUE,
+          env.sentinel_bio,
+          test.prop = "checkerboard2",
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_czechia,
+          nback = 10000,
+          corner = ifelse(r == 4, r, NA),
+          speciesInd = species.selected,
+          nbackInd = species.selected,
+          envInd = env.sentinel_bio
+        )
+      }
+
+
+      ba[[as.character(adj)]] <- m.auc.sentinel_bio <- median(sapply(m, function(x) x$test.evaluation@auc))
+      ba.m[[as.character(adj)]] <- m
+    }
+
+    data[[n_layers]]$adj.selected <- adj.selected <- names(base::which.max(unlist(ba)))
+
+    m <- ba.m[[adj.selected]]
+
+    # hledám bias raster s nejlepším AUC [end]
+
+
+
+    data[[n_layers]]$auc <- median(sapply(m, function(x) x$test.evaluation@auc))
+
+
+
+    cm <- lapply(m, function(x) performance(x$conf))
+    cm.matrix <- abind(cm, along = 3)
+    cm.perf <- apply(cm.matrix, c(1, 2), median)
+    cm.perf.t <- as_tibble(cm.perf)
+
+    data[[n_layers]] <- append(data[[n_layers]], as.list(cm.perf.t))
+
+
+    enm_mxt_gbif.vip <- sapply(
+      m, enmtools.vip # , nsim = 100
+    )
+    enm_mxt_gbif.vip.t <- lapply(enm_mxt_gbif.vip[seq(1, replicates * 2, 2)], function(x) {
+      as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+    })
+
+    if (replicates == 1) {
+      enm_mxt_gbif.vip.s <- enm_mxt_gbif.vip.t[[1]]
+    } else {
+      b_g <- enm_mxt_gbif.vip.t[[1]]
+
+      for (n in 1:replicates) {
+        if (n > 1) {
+          b_g %<>% add_row(enm_mxt_gbif.vip.t[[n]])
+        }
+      }
+      enm_mxt_gbif.vip.s <- b_g %>%
+        summarise_if(is.numeric, mean, na.rm = TRUE)
+    }
+
+    data[[n_layers]]$permImp <- enm_mxt_gbif.vip.s
+
+
+    # odstraním nejhorší prediktor
+    predictors.all <- as_tibble(cbind(nms = names(enm_mxt_gbif.vip.s), t(enm_mxt_gbif.vip.s))) %>%
+      mutate(across(V2, as.numeric)) %>%
+      arrange(V2)
+
+    predictor.bad <- predictors.all %>% slice_min(V2, n = 1)
+    rs_names <- names(env.sentinel_bio)
+
+    rs_ex <- match(substr(predictor.bad$nms, 1, nchar(predictor.bad$nms) - 11), rs_names) # odstraním příponu .Importance
+    env.sentinel_bio.minus1 <- dropLayer(env.sentinel_bio, rs_ex)
+
+    data[[n_layers]]$bad.name <- predictor.bad$nms
+    data[[n_layers]]$bad.value <- predictor.bad$V2
+    if (n_layers == 2) {
+      print("end")
+      return(data)
+    } else {
+      print("continue")
+      return(permImp_remove_last(species.selected, species.selected.ndop, env.sentinel_bio.minus1, path.igaD, replicates, data))
+    }
+  } else {
+    return(NA)
+  }
+}
+
+
+
+# všechny kombinace prediktorů + bias fitting
+permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_bio, path.igaD, replicates) {
+  data <- list()
+
+
+  ###  # všechny kombinace (prediktorů) bez opakování (10prediktorů 1023 kombinací)
+  all.p <- names(env.sentinel_bio)
+  all <- c()
+  all <- comb_all(all.p) # všechny kombinace bez opakování
+  all <- all[-c(1:10)] #  odstraním prvních 10 samostatných prediktorů, nefungoval s mimi model, proč? *** při dočasných 8 prediktorech jsem si tím odstranil 2 dvojice...
+
+
+  for (pc in all) {
+    print("**********")
+    print(pc)
+    pc.v <- unlist(pc)
+    pc.name <- paste(pc.v, collapse = "__")
+
+    data[[pc.name]]$predictors.c <- length(pc.v)
+    data[[pc.name]]$predictors.v <- pc.v
+    data[[pc.name]]$species <- species.selected$species.name
+    data[[pc.name]]$species.ndop.p <- nrow(species.selected.ndop$presence.points)
+    data[[pc.name]]$species.p <- nrow(species.selected$presence.points)
+    data[[pc.name]]$species.a <- nrow(species.selected$background.points)
+
+    tr <- env.sentinel_bio[[pc.v]]
+
+
+    # hledám bias raster s nejlepším AUC/Sorensen
+    ba <- list()
+    ba.m <- list()
+    bs <- list()
+    metrics.bias <- list()
+    aic <- list()
+    conf <- list()
+    thr <- list()
+    for (adj in c(0, 1, 3, 5, 7, 9)) { # ideálně 0:9 / c(0, 1, 3, 5, 7, 9)
+      bias_czechia <- raster(paste0(path.igaD, "bias-ptaci-adj-0.", as.character(adj), "-kfme16.tif"))
+      m <- list()
+      for (r in 1:replicates) {
+        m[[r]] <- ENMToolsPB::enmtools.glm(
+          species.selected.ndop,
+          eval = TRUE,
+          tr,
+          test.prop = "checkerboard2",
+          bg.source = "range",
+          verbose = TRUE,
+          bias = bias_czechia,
+          nback = 10000,
+          corner = ifelse(r == 4, r, NA),
+          speciesInd = species.selected,
+          nbackInd = species.selected,
+          envInd = tr
+        )
+      }
+      conf[[as.character(adj)]] <- sapply(m, function(x) x$conf)
+      thr[[as.character(adj)]] <- sapply(m, function(x) x$thr)
+
+      aic[[as.character(adj)]] <- median(sapply(m, function(x) x$model$aic))
+      # aic[[as.character(adj)]] <- median(sapply(m, function(x) x$model$aic))
+      ba[[as.character(adj)]] <- m.auc.sentinel_bio <- median(sapply(m, function(x) x$test.evaluation@auc))
+      ba.m[[as.character(adj)]] <- m
+
+
+      # bb.r <- calc(stack(sapply(m, function(x) x$suitability)), fun = median)
+      # pro výběr NDOP použít Boyce? - netřeba, ověřuju lsdHod
+      # bb <- ecospat.boyce2(bb.r, species.selected.ndop$presence.points, nclass = 0, PEplot = FALSE, method = "spearman")$cor
+      metrics.bias[[as.character(adj)]] <- as.list(performance_models_list(m))
+      bs[[as.character(adj)]] <- metrics.bias[[as.character(adj)]]$Sorensen
+    }
+    data[[pc.name]] <- append(data[[pc.name]], list(bias.aic = aic))
+    data[[pc.name]] <- append(data[[pc.name]], list(bias.conf = conf))
+    data[[pc.name]] <- append(data[[pc.name]], list(bias.thr = thr))
+    data[[pc.name]] <- append(data[[pc.name]], list(bias.auc = ba))
+    data[[pc.name]] <- append(data[[pc.name]], list(bias.metrics = metrics.bias))
+
+    # 1) klasické AUC
+    data[[pc.name]]$adj.selected <- adj.selected <- names(base::which.max(unlist(ba)))
+
+    m <- ba.m[[adj.selected]]
+
+    # vytvoří adresář pro export rasterů prediktorů, pokud neexistuje
+    dir.create(paste0(path.igaD, "predictions"), showWarnings = FALSE)
+
+    rr <- stack(sapply(m, function(x) x$suitability))
+    rr <- calc(rr, fun = median)
+    # bacha, může toho být hodně v rámci fittování všech kombinací prediktorů a druhů!
+    writeRaster(rr, paste0(path.igaD, "predictions/WS1-", data[[pc.name]]$species, "-auc", round(ba[[adj.selected]], 2), "---", pc.name, "---3rep-6bias-10pred--ndop-train_lsdHod-test_GLM-biasFitting-permImpFitting.tif"), format = "GTiff", overwrite = TRUE)
+
+
+
+    data[[pc.name]]$auc <- ba[[adj.selected]]
+    #  data[[pc.name]]$auc.totez <- median(sapply(m, function(x) x$test.evaluation@auc))
+    #  data[[pc.name]]$aic <- median(sapply(m, function(x) x$model$aic))
+
+    metrics <- as.list(performance_models_list(m))
+    data[[pc.name]] <- append(data[[pc.name]], list(auc.metrics = metrics))
+
+
+    # 1) Sorensen
+
+    data[[pc.name]]$adj.selected.sorensen <- adj.selected.sorensen <- names(base::which.max(unlist(bs)))
+
+    m2 <- ba.m[[adj.selected.sorensen]]
+
+    data[[pc.name]]$sorensen <- bs[[adj.selected.sorensen]]
+
+    metrics2 <- as.list(performance_models_list(m2))
+    data[[pc.name]] <- append(data[[pc.name]], list(sorensen.metrics = metrics2))
+
+
+
+
+
+    # # teď už nepotřebuju, zdržuje
+    #     enm_mxt_gbif.vip <- sapply(
+    #       m, enmtools.vip # , nsim = 100
+    #     )
+    #     enm_mxt_gbif.vip.t <- lapply(enm_mxt_gbif.vip[seq(1, replicates * 2, 2)], function(x) {
+    #       as_tibble(as.data.frame(t(as.matrix(unlist(purrr::transpose(x[, 2], x$Variable))))))
+    #     })
+
+    #     if (replicates == 1) {
+    #       enm_mxt_gbif.vip.s <- enm_mxt_gbif.vip.t[[1]]
+    #     } else {
+    #       b_g <- enm_mxt_gbif.vip.t[[1]]
+
+    #       for (n in 1:replicates) {
+    #         if (n > 1) {
+    #           b_g %<>% add_row(enm_mxt_gbif.vip.t[[n]])
+    #         }
+    #       }
+    #       enm_mxt_gbif.vip.s <- b_g %>%
+    #         summarise_if(is.numeric, mean, na.rm = TRUE)
+    #     }
+
+    #     data[[pc.name]]$permImp <- enm_mxt_gbif.vip.s
+  }
+
+
+  return(data)
+}
 
 
 # is.defined <- function(sym) {
