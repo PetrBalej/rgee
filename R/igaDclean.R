@@ -484,7 +484,7 @@ for (adj in 1:9) {
 # NDOP data evaluována lsdHod nad kfme16 - použití fitování adjust bias rasteru + fitování prediktorů
 #################################################################################################################################################
 
-results_name <- "ndop-train_lsdHod-test_GLM-biasFitting-permImpFitting-testComb2"
+results_name <- "Periparus-ater-bias-generating"
 # kolik druhů má být v jedné skupině
 speciesPerGroup <- 3
 # kterou skupinu vyberu pro modelování (při rozdělení paralelních výpočtů do více konzolí)
@@ -630,7 +630,7 @@ species.parts <- split(species.filtry.joined_traits$species, ceiling(seq_along(s
 results_name <- paste0(results_name, "-", species.part)
 
 for (sp in species.parts[[species.part]]) { # species.filtry.joined_traits$species # (species.filtry.joined_traits %>% filter(species == "Certhia familiaris" | species == "Ardea cinerea"))$species
-# (species.filtry.joined_traits %>% filter(species == "Periparus ater"))$species
+  # (species.filtry.joined_traits %>% filter(species == "Periparus ater"))$species
   species.name <- sp #  Ciconia nigra, Coturnix coturnix, Mergus merganser, Crex crex, Falco subbuteo, Jynx torquilla, Asio otus, "Vanellus vanellus" Certhia familiaris Ardea cinerea
 
   # presence druhu lsdHod
@@ -659,7 +659,7 @@ for (sp in species.parts[[species.part]]) { # species.filtry.joined_traits$speci
   res.ndop.species.presence <- st_centroid(res.ndop.species.p.intersects.presence) %>% dplyr::distinct(POLE, .keep_all = TRUE)
 
 
-  if (nrow(res.species.presence) < 30 | nrow(res.ndop.species.presence) < 30) {
+  if (nrow(res.species.presence) < 10 | nrow(res.ndop.species.presence) < 10) {
     print("******************************************************************************************************************************************")
     print(species.name)
     print(nrow(res.species.presence))
@@ -741,6 +741,48 @@ print(Sys.time())
 
 
 
+
+
+#
+# získání příkladu generování background biasu
+#
+bias <- readRDS("/home/petr/Documents/igaD/bias-generating.rds")
+
+
+bias.bg <- sapply(bias, function(x) x$background.points)
+# str(bias.bg)
+# bias.bg[[1]]
+# length(bias.bg)
+
+bias.coords <- list()
+for (i in 1:(length(bias.bg) / 2)) {
+  print(i)
+  add <- i - 1
+  print(add)
+  bias.coords[[i]] <- list(
+    lon = bias.bg[[i + add]], # lon
+    lat = bias.bg[[i + add + 1]] # lat
+  )
+
+  xy <- Pair(bias.bg[[i + add]], bias.bg[[i + add + 1]])
+
+  png(paste0(path.igaD, "bias-PerAte-", i, ".png"), width = 1000, height = 600)
+  plot(xy, pch = 19, cex = 0.1, alpha = 0.5)
+  dev.off()
+
+
+  # write.csv(xy, paste0(path.igaD, "bias-PerAte-",i, ".csv"))
+}
+
+
+
+
+
+
+
+
+
+
 #
 # vytažení dat z průběžných výsledků jednotlivých druhů a uložení rds
 #
@@ -748,14 +790,14 @@ print(Sys.time())
 "%notin%" <- Negate("%in%")
 env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor03-vidstep15.grd"))
 
-env.sentinel_bio <- dropLayer(env.sentinel_bio, which(names(env.sentinel_bio) == c("kfme16.l8_30_6_mndwi_cv.nd", "kfme16.wc_30_6_cv.bio06"))) # nutné po vifcor 0.2
+# env.sentinel_bio <- dropLayer(env.sentinel_bio, which(names(env.sentinel_bio) == c("kfme16.l8_30_6_mndwi_cv.nd", "kfme16.wc_30_6_cv.bio06"))) # nutné po vifcor 0.2
 
 env.sentinel_bio.names <- names(env.sentinel_bio)
 
 # načtení RDS jednotlivých druhů, spojení do jednoho listu
 rds_list <-
   list.files(
-    path = paste0(path.igaD, "permImp-WS1-3rep-6bias-8preds-GLM-fitting-igaD"),
+    path = paste0(path.igaD, "rds-all02-final"),
     # původní: "^glm_fmt_", d, "_.*\\.rds$"
     # "^glm_fmt_", d, "_.*[0-9]{4,5}-[0-9]{1,2}\\.rds$" - vše bez 500
     pattern = paste0("[A-z]+ [a-z]+\\.rds$"), # "^enmsr_glmE[0-9]_.+\\.rds$"  "^enmsr_xxx[0-9]_.+\\.rds$"   enmsr_glmF0_5000_3_1621355712.12381.rds       "^enmsr_glm2PATEST[0-9]_.+\\.rds$"
@@ -772,13 +814,13 @@ for (i in seq_along(rds_list)) {
 }
 
 # ### uložení kompletních výsledků z průběžných druhových
-# saveRDS(rds_append, file = paste0(path.igaD, "permImp-WS1-3rep-6bias-8preds-GLM-fitting-igaD/all-merged.rds"))
+# saveRDS(rds_append, file = paste0(path.igaD, "all-merged.rds"))
 
 # ### ukázka struktury
 # str(rds_append[["Cygnus olor"]]$kfme16.l8_30_4_raw_cv.B5__kfme16.l8_30_4_mndwi_cv.nd, max.level=1)
 
 # soubor s výsledky modelů
-rds_append <- readRDS(paste0(path.igaD, "permImp-WS1-3rep-6bias-8preds-GLM-fitting-igaD/all-merged.rds"))
+rds_append <- readRDS(paste0(path.igaD, "all-merged.rds"))
 species.names <- names(rds_append)
 cn <- c("species", "auc", "pt", env.sentinel_bio.names)
 create.tibble <- TRUE
@@ -858,7 +900,7 @@ for (species.name in species.names) {
 
 
 ################### cluster nově
-
+# auc limit 0.05 + auc >= 0.75 + dist(method = "binary") hclust(method = "average") vycvhází OK
 library(cluster)
 library(factoextra)
 library(dendextend)
@@ -866,7 +908,7 @@ library(dendextend)
 permImp <- tbl
 
 permImp.auc75 <- permImp %>%
-  filter(auc >= 0.70) %>%
+  filter(auc >= 0.75) %>%
   arrange(species)
 
 ### read bird traits table (traits according to Kolecek et al 2010)
@@ -918,7 +960,7 @@ permImp.test.names.dist <- dist(permImp.test.names, method = "binary")
 
 # plot(hclust(as.dist(1 - permImp.test.names.dist) ), main="permImp.test.names.dist")
 
-hc <- hclust(permImp.test.names.dist, method = "complete")
+hc <- hclust(permImp.test.names.dist, method = "average")
 plot(hc, main = "permImp.test.names.dist")
 
 
@@ -933,7 +975,7 @@ traits.all <- subset(permImp.auc75.f, select = -c(
 )) %>% dplyr::select(-starts_with(c("kfme16.", "l8_", "wc_")))
 
 
-pdf(paste0(path.igaD, "del-hclust.pdf"), width = 14, height = 6)
+pdf(paste0(path.igaD, "hclust.pdf"), width = 14, height = 6)
 
 for (t in names(traits.all)) {
   # nutné seřadit druhy (s vazbou na habitat) tak aby odpovídaly řazení v dendrogramu a podbarvily se podle habitatu
@@ -948,3 +990,50 @@ for (t in names(traits.all)) {
 
 dev.off()
 
+
+
+
+
+
+
+
+
+
+#
+# # modifikovaný usdm s přidaným výstupem @excludedPairs se seznamem korelovaných prediktorů vzhledem k finálním vybraným
+#
+
+library(usdmPB) # /mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/usdmPB
+raster_stack <-
+  rasters_dir_stack(
+    paste0(
+      "/home/petr/Documents/igaD/kfme16_prediktory/"
+    ),
+    "tif"
+  )
+raster_stack <- dropLayer(raster_stack, grep("srtm|clc|count|bio03|bio08|bio09|stdev", names(raster_stack), ignore.case = TRUE))
+
+
+
+
+# vif.vifcor <- usdmPB::vifcor(raster_stack, th = 0.4, maxobservations=100000)
+# vif.vifcor
+# vif.vifcor@excludedPairs
+# vif.vifcor <- names(vif.vifcor@excludedPairs)
+
+# saveRDS(vif.vifcor, paste0(path.igaD, "vif.vifcor_excludedPairs-04.rds"))
+vif.vifcor <- readRDS(paste0(path.igaD, "vif.vifcor_excludedPairs-04.rds"))
+
+vif.selected <- as.vector(vif.vifcor@results$Variables)
+
+vif.diff <- setdiff(vif.selected, names(vif.vifcor@excludedPairs))
+
+
+vif.vifcor.tree <- append(
+  vif.vifcor@excludedPairs,
+  # setNames(rep(NA, length(vif.diff)), setdiff(env.sentinel_bio.names, names(vif.vifcor@excludedPairs)))
+  setNames(rep(NA, length(vif.diff)), vif.diff)
+)
+# saveRDS(vif.vifcor.tree, paste0(path.igaD, "vif.vifcor_tree-04.rds"))
+
+vif.vifcor.tree <- readRDS(paste0(path.igaD, "vif.vifcor_tree-04.rds"))
