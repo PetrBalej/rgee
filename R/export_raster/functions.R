@@ -1465,14 +1465,14 @@ permImp_remove_last <- function(species.selected, species.selected.ndop, env.sen
 
 
 # všechny kombinace prediktorů + bias fitting
-permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_bio, path.igaD, replicates) {
+permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_bio, path.igaD, replicates, k = 0) {
   data <- list()
 
 
   ###  # všechny kombinace (prediktorů) bez opakování (10prediktorů 1023 kombinací)
   all.p <- names(env.sentinel_bio)
   all <- c()
-  all <- comb_all(all.p) # všechny kombinace bez opakování
+  all <- comb_all(all.p, k) # všechny kombinace bez opakování
   # all <- all[-c(1:10)] #  odstraním prvních 10 samostatných prediktorů, nefungoval s mimi model, proč? *** při dočasných 8 prediktorech jsem si tím odstranil 2 dvojice...
 
 
