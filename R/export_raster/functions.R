@@ -188,10 +188,11 @@ export_gee_image <-
     return(rr_e)
   }
 
-# vytvoří všechny kombinace bez opakování z vloženého vektoru (včetně možných jednotlivých tříd)
-comb_all <- function(vector) {
+# vytvoří všechny kombinace bez opakování z vloženého vektoru (včetně všech možných jednotlivých tříd při k=0, jinak _maximální_ počet tříd podle k)
+comb_all <- function(vector, k = 0) {
   comb_list <- list()
-  total <- length(vector)
+  k <- as.integer(k)
+  total <- ifelse(k > 0, k, length(vector))
   for (i in 1:total) {
     comb_list <- append(comb_list, combn(vector, i, simplify = FALSE))
   }
