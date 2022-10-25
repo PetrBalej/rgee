@@ -484,9 +484,9 @@ for (adj in 1:9) {
 # NDOP data evaluována lsdHod nad kfme16 - použití fitování adjust bias rasteru + fitování prediktorů
 #################################################################################################################################################
 
-results_name <- "Periparus-ater-bias-generating"
+results_name <- "test"
 # kolik druhů má být v jedné skupině
-speciesPerGroup <- 3
+speciesPerGroup <- 6
 # kterou skupinu vyberu pro modelování (při rozdělení paralelních výpočtů do více konzolí)
 species.part <- 1
 
@@ -500,11 +500,18 @@ data.species.best.model <- list()
 
 sf.grid <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_4326.shp"))
 #  env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor05-vidstep2.grd"))
-env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor03-vidstep15.grd"))
+# env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor03-vidstep15.grd"))
+env.sentinel_bio <- stack(paste0(path.igaD, "kfme16-vifcor05-vidstep2.grd"))
 # env.sentinel_bio <- dropLayer(env.sentinel_bio, which(names(env.sentinel_bio) == "kfme16.l8_30_5_mndwi_cv.nd") )
 # env.sentinel_bio <- dropLayer(env.sentinel_bio, which(names(env.sentinel_bio) == c("kfme16.l8_30_6_mndwi_cv.nd", "kfme16.wc_30_6_cv.bio06")) )
 # env.sentinel_bio <- env.sentinel_bio[[1:3]]
 # env.sentinel_bio <- env.sentinel_bio[[c(3,5)]]
+
+
+# raster_stack <- rasters_dir_stack(paste0(path.igaD,"kfme16_prediktory/"),"tif")
+# env.sentinel_bio <- dropLayer(env.sentinel_bio,  grep("stdev|bio03|bio08|bio09", names(env.sentinel_bio)))
+names(env.sentinel_bio) <- str_replace_all(names(env.sentinel_bio), c("kfme16." = "", "_30" = "", "\\.nd" = ""))
+
 
 # sjednocení LSD s hodinovkama****************************************************************************
 res <- readRDS(paste0(path.igaD, "export-avif-lsd-2018-2022_utf8_3-6.rds"))
@@ -540,8 +547,8 @@ species <- res %>%
   group_by(species) %>%
   summarise(count = n_distinct(POLE)) %>%
   arrange(desc(count)) %>%
-  filter(count >= 30) %>%
-  filter(count < 110) %>% # celkem je (183) (113) 141 subkvadrátů, potřebuju nějaké absence na ověření...
+  filter(count >= 10) %>%
+  filter(count < 120) %>% # celkem je (183) (113) 141 subkvadrátů, potřebuju nějaké absence na ověření...
   filter(!is.na(species))
 
 
@@ -682,7 +689,7 @@ for (sp in species.parts[[species.part]]) { # species.filtry.joined_traits$speci
 
 
   replicates <- 3
-
+  k_classes <- 2
   # ###### výběr s odebíráním prediktorů
   # data.species[[species.name]] <- data <- permImp_remove_last(species.selected, species.selected.ndop, env.sentinel_bio, path.igaD, replicates)
   # data.maxAUC <- rev(round(sapply(data, function(x) x$auc), 2)) # záměrně zaokrouhlím na 2 des. místa a pak dám opačné pořadí, aby byl dále vybrán model s nejmenším počtem prediktorů, pokud AUC osciluje kolem jedné hodnoty
@@ -691,7 +698,7 @@ for (sp in species.parts[[species.part]]) { # species.filtry.joined_traits$speci
   # data.species.best.model[[species.name]] <- best.model <- data[[data.maxAUC.index]]
 
   ###### výběr se všemi kombinacemi prediktorů
-  data.species[[species.name]] <- data <- permImp_comb(species.selected, species.selected.ndop, env.sentinel_bio, path.igaD, replicates)
+  data.species[[species.name]] <- data <- permImp_comb(species.selected, species.selected.ndop, env.sentinel_bio, path.igaD, replicates, k_classes)
 
 
 
@@ -737,8 +744,20 @@ print(Sys.time())
 
 
 
-
-
+# # ### rychlá vizuální verifikace PA
+# str(data$ba.m[[1]][[1]], max.level=1)
+# m0 <- data$ba.m[[1]][[1]]
+# writeRaster(m0$suitability, paste0(path.igaD, "smazat-Alcedo-atthis.tif"))
+# s <- m0$suitability
+# s[m0$suitability < 0.5094012] <- 0
+# s[m0$suitability >= 0.5094012] <- 1
+# writeRaster(s, paste0(path.igaD, "smazat-Alcedo-atthis-binary.tif"))
+# plogis(m0$thr$spec_sens) # 0.5094012
+# m0$thr$spec_sens
+# m0$conf
+# m0$test.evaluation@auc
+# st_write(res.species.presence$geometry,paste0(path.igaD, "smazat-Alcedo-atthis-P.shp"))
+# st_write(res.species.absence$geometry,paste0(path.igaD, "smazat-Alcedo-atthis-A.shp"))
 
 
 
@@ -766,7 +785,7 @@ for (i in 1:(length(bias.bg) / 2)) {
 
   xy <- Pair(bias.bg[[i + add]], bias.bg[[i + add + 1]])
 
-  png(paste0(path.igaD, "bias-PerAte-", i, ".png"), width = 1000, height = 600)
+  png(paste0(path.igaD, "bias-test-", i, ".png"), width = 1000, height = 600)
   plot(xy, pch = 19, cex = 0.1, alpha = 0.5)
   dev.off()
 
@@ -1002,7 +1021,7 @@ dev.off()
 #
 # # modifikovaný usdm s přidaným výstupem @excludedPairs se seznamem korelovaných prediktorů vzhledem k finálním vybraným
 #
-
+stop()
 library(usdmPB) # /mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/usdmPB
 raster_stack <-
   rasters_dir_stack(
@@ -1011,18 +1030,28 @@ raster_stack <-
     ),
     "tif"
   )
-raster_stack <- dropLayer(raster_stack, grep("srtm|clc|count|bio03|bio08|bio09|stdev", names(raster_stack), ignore.case = TRUE))
+# raster_stack <- dropLayer(raster_stack, grep("srtm|clc|count|bio03|bio08|bio09|stdev", names(raster_stack), ignore.case = TRUE))
+# raster_stack <- dropLayer(raster_stack, grep("srtm|clc|count|bio03|bio08|bio09|stdev|mean", names(raster_stack), ignore.case = TRUE))
+raster_stack <- dropLayer(raster_stack, grep("srtm|clc|count|bio03|bio08|bio09|stdev|bio", names(raster_stack), ignore.case = TRUE))
 
 
+vif.vifcor <- usdmPB::vifcor(raster_stack, th = 0.5, maxobservations = 100000)
+vif.vifcor
+vif.vifcor@excludedPairs
+
+rs_names <- names(raster_stack)
+rs_indexes <- seq_along(names(raster_stack))
+rs_ex <- match(vif.vifcor@excluded, rs_names)
+
+raster_stack_cor.cv <- dropLayer(raster_stack, rs_ex) # L8
+rr <- writeRaster(raster_stack_cor.cv, paste0(path.igaD, "kfme16-vifcor05-vidstep2-cvMean.grd"), format = "raster", overwrite = TRUE)
+hdr(rr, format = "ENVI")
 
 
-# vif.vifcor <- usdmPB::vifcor(raster_stack, th = 0.4, maxobservations=100000)
-# vif.vifcor
-# vif.vifcor@excludedPairs
 # vif.vifcor <- names(vif.vifcor@excludedPairs)
 
-# saveRDS(vif.vifcor, paste0(path.igaD, "vif.vifcor_excludedPairs-04.rds"))
-vif.vifcor <- readRDS(paste0(path.igaD, "vif.vifcor_excludedPairs-04.rds"))
+saveRDS(vif.vifcor, paste0(path.igaD, "vif.vifcor_excludedPairs---kfme16-vifcor05-vidstep2-cvMean.rds"))
+# vif.vifcor <- readRDS(paste0(path.igaD, "vif.vifcor_excludedPairs-04.rds"))
 
 vif.selected <- as.vector(vif.vifcor@results$Variables)
 
@@ -1034,6 +1063,34 @@ vif.vifcor.tree <- append(
   # setNames(rep(NA, length(vif.diff)), setdiff(env.sentinel_bio.names, names(vif.vifcor@excludedPairs)))
   setNames(rep(NA, length(vif.diff)), vif.diff)
 )
-# saveRDS(vif.vifcor.tree, paste0(path.igaD, "vif.vifcor_tree-04.rds"))
+
+saveRDS(vif.vifcor.tree, paste0(path.igaD, "vif.vifcor_tree---vif.vifcor_excludedPairs---kfme16-vifcor05-vidstep2-cvMean.rds"))
 
 vif.vifcor.tree <- readRDS(paste0(path.igaD, "vif.vifcor_tree-04.rds"))
+
+
+
+
+
+
+
+
+
+### zobrazení jak se generuje BG s/bez korekce bias rasterem
+# nback <- 10000
+
+# bias_czechia <- raster(paste0(path.igaD, "bias-ptaci-adj-0.1-kfme16.tif"))
+# ### bez korekce BG bias rasterem
+# background.points <- as.data.frame(rasterToPoints(bias_czechia)[, 1:2])
+# inds <- sample(1:nrow(background.points), size = nback, replace = TRUE)
+# background.points.zero <- background.points[inds, ]
+
+# ### s korekcí BG bias rasterem
+# # Drawing background points from sample raster
+# background.points <- as.data.frame(rasterToPoints(bias_czechia))
+# inds <- sample(1:nrow(background.points),
+#   size = nback,
+#   prob = background.points[, 3],
+#   replace = TRUE
+# )
+# background.points.bias <- background.points[inds, 1:2]
