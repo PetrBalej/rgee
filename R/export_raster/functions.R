@@ -1500,6 +1500,7 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
     aic <- list()
     conf <- list()
     thr <- list()
+    # bc <- list() # jen pro získání výstupu modelu ven pro ladění (1)
     for (adj in c(0, 1, 3, 5, 7, 9)) { # ideálně 0:9 / c(0, 1, 3, 5, 7, 9)
       bias_czechia <- raster(paste0(path.igaD, "bias-ptaci-adj-0.", as.character(adj), "-kfme16.tif"))
       m <- list()
@@ -1533,7 +1534,10 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
       # bb <- ecospat.boyce2(bb.r, species.selected.ndop$presence.points, nclass = 0, PEplot = FALSE, method = "spearman")$cor
       metrics.bias[[as.character(adj)]] <- as.list(performance_models_list(m))
       bs[[as.character(adj)]] <- metrics.bias[[as.character(adj)]]$Sorensen
+      #  bc[[as.character(adj)]] <- check.bg(species.selected.ndop, tr, nback = 10000, bg.source = "range", bias = bias_czechia) # jen pro získání výstupu modelu ven pro ladění (2)
     }
+    #  saveRDS(bc, paste0(path.igaD,"bias-generating2.rds")) # jen pro získání výstupu modelu ven pro ladění (3)
+
     data[[pc.name]] <- append(data[[pc.name]], list(bias.aic = aic))
     data[[pc.name]] <- append(data[[pc.name]], list(bias.conf = conf))
     data[[pc.name]] <- append(data[[pc.name]], list(bias.thr = thr))
