@@ -10,13 +10,14 @@ lapply(required_packages, require, character.only = TRUE)
 
 
 # wd <- "D:/PERSONAL_DATA/pb/rgee"
-wd <- "C:/Users/petr/Downloads/igaD/rgeeDP/rgee" # samsung500ntfs # paste0(path.expand("~"), "/Downloads/rgee2/rgee")
-
+# wd <- "C:/Users/petr/Downloads/igaD/rgeeDP/rgee" # samsung500ntfs # paste0(path.expand("~"), "/Downloads/rgee2/rgee")
+wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee"
 setwd(wd)
 
 source(paste0(getwd(), "/R/export_raster/functions.R"))
 
-path.igaD <- "C:/Users/petr/Downloads/igaD/igaD/"
+# path.igaD <- "C:/Users/petr/Downloads/igaD/igaD/"
+path.igaD <- "/home/petr/Documents/igaD/"
 
 # #
 # # vytažení dat z průběžných výsledků jednotlivých druhů a uložení rds
@@ -515,3 +516,40 @@ comb_all <- function(vector) {
 }
 
 length(comb_all(1:18))
+
+
+
+
+
+
+### přidání 3kombinací prediktorů ke stáívajícím dvojkovým
+
+rds_append.original <- readRDS(paste0(path.igaD, "v3/all-merged-maxent-104-v3.rds"))
+
+
+# načtení RDS jednotlivých druhů, spojení do jednoho listu
+rds_list <-
+  list.files(
+    path = paste0(path.igaD, "v3/m3v-prubezne-91druhu"), # ../t--1  ws2-glm-meanKomplet-cv4kola  C:\Users\petr\Downloads\igaD\igaD\all-unfiltered-rds-v4
+    # původní: "^glm_fmt_", d, "_.*\\.rds$"
+    # "^glm_fmt_", d, "_.*[0-9]{4,5}-[0-9]{1,2}\\.rds$" - vše bez 500
+    pattern = paste0("[A-z]+ [a-z]+\\.rds$"), #    ws2-glm-cv--[0-9]{1,2}-[A-z]+ [a-z]+         [A-z]+ [a-z]+\\.rds$     "^enmsr_glmE[0-9]_.+\\.rds$"  "^enmsr_xxx[0-9]_.+\\.rds$"   enmsr_glmF0_5000_3_1621355712.12381.rds       "^enmsr_glm2PATEST[0-9]_.+\\.rds$"
+    ignore.case = TRUE,
+    full.names = TRUE
+  )
+
+# rds_list <- str_replace(rds_list, "-cv-", "-mean-")
+# rds_list <- str_replace(rds_list, "-CV-", "-mean-")
+
+species.names <- regmatches(rds_list, regexpr("([A-z]+ [A-z]+)", rds_list))
+rds_append <- list()
+
+# rds_append <- sapply(species.names, function(x) NA)
+for (i in seq_along(rds_list)) {
+  species.name <- regmatches(rds_list[[i]], regexpr("([A-z]+ [A-z]+)", rds_list[[i]]))
+  print(species.name)
+  # rds_append[[species.name]] <- readRDS(rds_list[[i]])
+rds_append.original[[species.name]] <- append(rds_append.original[[species.name]], readRDS(rds_list[[i]]))
+
+}
+# saveRDS(rds_append.original, file = paste0(path.igaD, "v3/all-merged-maxent-104-v3_plus3-91-temp.rds"))
