@@ -196,7 +196,7 @@ for (half in names(sitmap_2rad)) {
                 filterDate(years_range$from, years_range$to)$
                 filter(
                 ee$Filter$calendarRange(season[1], season[2], "month")
-            )$map(mask_L8_sr2_qa)$map(mask_L8_sr2_aerosol)$map(mask_L8_sr2_radsat)$map(applyScaleFactors)
+            )$map(mask_L8_sr2_qa)$map(mask_L8_sr2_radsat)$map(mask_L8_sr2_aerosol)$map(applyScaleFactors)
 
 
 
@@ -374,3 +374,6 @@ end_time <- Sys.time()
 print(paste("start:", start_time))
 print(paste("konec:", end_time))
 print(end_time - start_time)
+
+
+

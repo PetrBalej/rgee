@@ -71,8 +71,8 @@ mask_L8_sr2_radsat <- function(image) {
   # Landsat 8-9 Collection 2 (C2) Level 2 Science Product (L2SP) Guide
   # LSDS-1619 Version 4.0
   # Table 6-4. Landsat 8-9 Radiometric Saturation Quality Assessment (QA_RADSAT) Bit Index
-  # 383: všechny bandy saturované a bez terénní okluze (0000000101111111) # https://www.binaryconvert.com/result_signed_short.html?hexadecimal=017F
-  mask <- qa$eq(383L)
+  # 0: všechny bandy nesaturované a bez terénní okluze (0000000000000000) # https://www.binaryconvert.com/result_signed_short.html?hexadecimal=017F
+  mask <- qa$eq(0L)
 
   return(image$updateMask(mask))
 }
