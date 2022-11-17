@@ -88,7 +88,7 @@ mask_L8_sr2_aerosol <- function(image) {
   # Table 6-7. Landsat 8-9 SR_QA_AEROSOL Value Interpretations
   # 192, 194, 196, 224, 228: High-level aerosol 
   # Note that pixels classified as high aerosol content are not recommended for use.
-  mask <- qa$neq(192L)$bitwiseOr(qa$neq(194L))$bitwiseOr(qa$neq(196L))$bitwiseOr(qa$neq(224L))$bitwiseOr(qa$neq(228L))
+  mask <- qa$neq(192L)$bitwiseAnd(qa$neq(194L))$bitwiseAnd(qa$neq(196L))$bitwiseAnd(qa$neq(224L))$bitwiseAnd(qa$neq(228L))
 
   return(image$updateMask(mask))
    
