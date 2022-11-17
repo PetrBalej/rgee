@@ -44,6 +44,67 @@ mask_L8_sr <- function(image) {
 }
 
 
+# odstranění stínů a oblačnosti Landsat 8, LANDSAT_LC08_C02_T1_L2
+mask_L8_sr2_qa <- function(image) {
+  # Get the pixel QA band.
+  qa <- image$select("QA_PIXEL")
+
+  # https://www.usgs.gov/media/files/landsat-8-9-collection-2-level-2-science-product-guide
+  # Landsat 8-9 Collection 2 (C2) Level 2 Science Product (L2SP) Guide
+  # LSDS-1619 Version 4.0
+  # Table 6-3. Landsat 8-9 Pixel Quality Assessment (QA_PIXEL) Value Interpretations
+  # 21824: Clear with lows set (0101010101000000) # https://www.binaryconvert.com/result_signed_short.html?hexadecimal=5540
+  # 21888: Water with lows set - ne, má nastaveno "Clear no"
+  # 21952: Clear water with lows set (0101010111000000) totéž jako 21824, jen pro vodu # https://www.binaryconvert.com/result_signed_short.html?hexadecimal=55C0
+  mask <- qa$eq(21824L)$bitwiseOr(qa$eq(21952L))
+
+
+  return(image$updateMask(mask))
+}
+
+# saturace a terrain occlusion Landsat 8, LANDSAT_LC08_C02_T1_L2
+mask_L8_sr2_radsat <- function(image) {
+  # Get the pixel QA band.
+  qa <- image$select("QA_RADSAT")
+
+  # https://www.usgs.gov/media/files/landsat-8-9-collection-2-level-2-science-product-guide
+  # Landsat 8-9 Collection 2 (C2) Level 2 Science Product (L2SP) Guide
+  # LSDS-1619 Version 4.0
+  # Table 6-4. Landsat 8-9 Radiometric Saturation Quality Assessment (QA_RADSAT) Bit Index
+  # 383: všechny bandy saturované a bez terénní okluze (0000000101111111) # https://www.binaryconvert.com/result_signed_short.html?hexadecimal=017F
+  mask <- qa$eq(383L)
+
+  return(image$updateMask(mask))
+}
+
+# aerosol Landsat 8, LANDSAT_LC08_C02_T1_L2
+mask_L8_sr2_aerosol <- function(image) {
+  # Get the pixel QA band.
+  qa <- image$select("QA_SR_AEROSOL")
+
+  # https://www.usgs.gov/media/files/landsat-8-9-collection-2-level-2-science-product-guide
+  # Landsat 8-9 Collection 2 (C2) Level 2 Science Product (L2SP) Guide
+  # LSDS-1619 Version 4.0
+  # Table 6-7. Landsat 8-9 SR_QA_AEROSOL Value Interpretations
+  # 192, 194, 196, 224, 228: High-level aerosol 
+  # Note that pixels classified as high aerosol content are not recommended for use.
+  mask <- qa$neq(192L)$bitwiseOr(qa$neq(194L))$bitwiseOr(qa$neq(196L))$bitwiseOr(qa$neq(224L))$bitwiseOr(qa$neq(228L))
+
+  return(image$updateMask(mask))
+   
+}
+
+
+
+#  Applies scaling factors - modified from "Explore in Earth Engine" example https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC08_C02_T1_L2
+applyScaleFactors <- function(image) {
+
+  opticalBands <- image$select("SR_B.")$multiply(0.0000275)$add(-0.2)
+  thermalBands <- image$select("ST_B10")$multiply(0.00341802)$add(149.0)
+  return (image$addBands(opticalBands, NULL, TRUE)$addBands(thermalBands, NULL, TRUE))
+}
+
+
 # odstranění stínů a oblačnosti Sentinel 2, COPERNICUS_S2_SR
 maskS2clouds <- function(image) {
   # nefunkční?!
@@ -1489,6 +1550,8 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
     data[[pc.name]]$species.p <- nrow(species.selected$presence.points)
     data[[pc.name]]$species.a <- nrow(species.selected$background.points)
 
+    print(data[[pc.name]]$species)
+
     tr <- env.sentinel_bio[[pc.v]]
 
 
@@ -1497,15 +1560,19 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
     ba.m <- list()
     bs <- list()
     metrics.bias <- list()
-    aic <- list()
+    # aic <- list()
     conf <- list()
     thr <- list()
     # bc <- list() # jen pro získání výstupu modelu ven pro ladění (1)
     for (adj in c(0, 1, 3, 5, 7, 9)) { # ideálně 0:9 / c(0, 1, 3, 5, 7, 9)
       bias_czechia <- raster(paste0(path.igaD, "bias-ptaci-adj-0.", as.character(adj), "-kfme16.tif"))
+
+      # ###  nastavit v bias rasteru 0 místům s prezencemi, aby se do nich negeneroval background - při nezávislém ověření LSD to ale nehraje roli...?
+      # species.selected.ndop.sf <- as_tibble(species.selected.ndop$presence.points) %>% st_as_sf(coords = c("X", "Y"), crs = 4326) 
+      # bias_czechia <- rasterize(species.selected.ndop.sf, bias_czechia, 0, update=TRUE)
       m <- list()
       for (r in 1:replicates) {
-        m[[r]] <- ENMToolsPB::enmtools.glm(
+        m[[r]] <- ENMToolsPB::enmtools.maxent(
           species.selected.ndop,
           eval = TRUE,
           tr,
@@ -1523,7 +1590,6 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
       conf[[as.character(adj)]] <- sapply(m, function(x) x$conf)
       thr[[as.character(adj)]] <- sapply(m, function(x) x$thr)
 
-      aic[[as.character(adj)]] <- median(sapply(m, function(x) x$model$aic))
       # aic[[as.character(adj)]] <- median(sapply(m, function(x) x$model$aic))
       ba[[as.character(adj)]] <- m.auc.sentinel_bio <- median(sapply(m, function(x) x$test.evaluation@auc))
       ba.m[[as.character(adj)]] <- m
@@ -1538,7 +1604,7 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
     }
     #  saveRDS(bc, paste0(path.igaD,"bias-generating2.rds")) # jen pro získání výstupu modelu ven pro ladění (3)
 
-    data[[pc.name]] <- append(data[[pc.name]], list(bias.aic = aic))
+    # data[[pc.name]] <- append(data[[pc.name]], list(bias.aic = aic))
     data[[pc.name]] <- append(data[[pc.name]], list(bias.conf = conf))
     data[[pc.name]] <- append(data[[pc.name]], list(bias.thr = thr))
     data[[pc.name]] <- append(data[[pc.name]], list(bias.auc = ba))
@@ -1550,12 +1616,12 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
     m <- ba.m[[adj.selected]]
 
     # vytvoří adresář pro export rasterů prediktorů, pokud neexistuje
-    dir.create(paste0(path.igaD, "predictions"), showWarnings = FALSE)
+    dir.create(paste0(path.igaD, "predictionsMaxent"), showWarnings = FALSE)
 
     rr <- stack(sapply(m, function(x) x$suitability))
     rr <- calc(rr, fun = median)
     # bacha, může toho být hodně v rámci fittování všech kombinací prediktorů a druhů!
-    writeRaster(rr, paste0(path.igaD, "predictions/WS1-", data[[pc.name]]$species, "-auc", round(ba[[adj.selected]], 2), "---", pc.name, "---3rep-6bias-10pred--ndop-train_lsdHod-test_GLM-biasFitting-permImpFitting.tif"), format = "GTiff", overwrite = TRUE)
+    writeRaster(rr, paste0(path.igaD, "predictions/maxent-", data[[pc.name]]$species, "-auc", round(ba[[adj.selected]], 2), "---", pc.name, ".tif"), format = "GTiff", overwrite = TRUE)
 
 
 
@@ -1610,6 +1676,470 @@ permImp_comb <- function(species.selected, species.selected.ndop, env.sentinel_b
 
   return(data)
 }
+
+
+
+
+# jen pro získání všech kombinací backgroundu
+permImp_comb_getBg <- function(species.selected, species.selected.ndop, env.sentinel_bio, path.igaD, replicates, r.pa, r0) {
+  data <- list()
+  names(r0) <- "presence"
+  # all <- combs[[species.selected$species.name]]
+  crs <- crs(env.sentinel_bio)
+
+  print("**********")
+  print(species.selected$species.name)
+
+  # hledám bias raster s nejlepším AUC/Sorensen
+
+  r.m <- list()
+
+
+  bias.adj <- c(0, 0.01, 0.1, seq(0.2, 2.00, by = 0.2)) * 100
+
+
+  for (adj in bias.adj) { # ideálně 0:9 / c(0, 1, 3, 5, 7, 9)
+    bias_czechia <- raster(paste0(path.igaD, "bias_rasters/bias-ptaci-adj-", format(round(adj / 100, 2), nsmall = 2), "-kfme16.tif"))
+    m <- list()
+    for (r in 1:replicates) {
+      # m[[r]] <- ENMToolsPB::enmtools.maxent(
+      #   species.selected.ndop,
+      #   eval = FALSE,
+      #   tr,
+      #   test.prop = "checkerboard2",
+      #   bg.source = "range",
+      #   verbose = TRUE,
+      #   bias = bias_czechia,
+      #   nback = 10000,
+      #   corner = ifelse(r == 4, r, NA),
+      #   speciesInd = species.selected,
+      #   nbackInd = species.selected,
+      #   envInd = tr
+      # )
+
+
+      bg <- check.bg(species.selected.ndop, env.sentinel_bio[[1]],
+        nback = 3000, # !!! pro gee sníženo z 10000!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        bg.source = "range", bias = bias_czechia
+      )
+
+
+
+
+      ex <- extract(r0, st_as_sf(bg$background.points, coords = c("Longitude", "Latitude")), sp = TRUE)
+
+      crs(ex) <- crs
+      print(ex)
+
+      data[[as.character(adj)]][[r]] <- ex
+    }
+
+
+
+
+
+
+    # cor.p[[as.character(adj)]] <- cor(r.res[[3]], r.res[[2]], method = "pearson")
+    # cor.s[[as.character(adj)]] <- cor(r.res[[3]], r.res[[2]], method = "spearman")
+  }
+
+
+  return(data)
+  gc()
+}
+
+
+
+
+
+
+
+
+
+
+
+# všechny kombinace prediktorů + bias fitting factorbiasout
+permImp_comb_fbo <- function(species.selected, species.selected.ndop, env.sentinel_bio, path.igaD, replicates, k = 0, combs, r.pa, species.selected.ndop.df) {
+  data <- list()
+
+  # ###  # všechny kombinace (prediktorů) bez opakování (10prediktorů 1023 kombinací)
+  # all.p <- names(env.sentinel_bio)
+  # all <- c()
+  # all <- comb_all(all.p, k) # všechny kombinace bez opakování
+  # # all <- all[-c(1:10)] #  odstraním prvních 10 samostatných prediktorů, nefungoval s mimi model, proč? *** při dočasných 8 prediktorech jsem si tím odstranil 2 dvojice...
+crs <- crs(env.sentinel_bio)
+
+
+all <- comb_all(combs[[species.selected$species.name]], k) 
+# all <- combn(combs[[species.selected$species.name]], k, simplify = FALSE)
+
+ all <- all[lengths(all) >=2] # dočasně, dokud zase neopravím problém s 1 prediktorem v rmaxent...
+
+
+#all <- combs[[species.selected$species.name]]
+
+counter <- 0
+  for (pc in all) {
+    print("**********")
+    print(pc)
+    pc.v <- unlist(pc)
+    pc.name <- paste(pc.v, collapse = "__")
+
+    data[[pc.name]]$predictors.c <- length(pc.v)
+    data[[pc.name]]$predictors.v <- pc.v
+    data[[pc.name]]$species <- species.selected$species.name
+    data[[pc.name]]$species.ndop.p <- nrow(species.selected.ndop$presence.points)
+    data[[pc.name]]$species.p <- nrow(species.selected$presence.points)
+    data[[pc.name]]$species.a <- nrow(species.selected$background.points)
+
+    tr <- env.sentinel_bio[[pc.v]]
+
+print(data[[pc.name]]$species)
+    # hledám bias raster s nejlepším AUC/Sorensen
+    ba <- list()
+    ba.m <- list()
+    bs <- list()
+    metrics.bias <- list()
+    aic <- list()
+    conf <- list()
+    thr <- list()
+    # bc <- list()
+	cor.p <- list()
+	cor.s <- list()
+	cor.points <- list()
+	r.m <- list()
+	
+	
+	bias.adj <- c(0, 0.01, 0.1, seq(0.2, 2.00, by = 0.2)) * 100
+
+	
+    for (adj in bias.adj) { # ideálně 0:9 / c(0, 1, 3, 5, 7, 9)
+print("adj:")
+    print(adj)
+      bias_czechia <- raster(paste0(path.igaD, "bias_rasters/bias-ptaci-adj-", format(round(adj / 100, 2), nsmall = 2), "-kfme16.tif"))
+      #bias_czechia <- paste0(path.igaD, "bias_rasters/bias-ptaci-adj-", format(round(adj / 100, 2), nsmall = 2), "-kfme16.tif")
+      m <- list()
+      for (r in 1:replicates) {
+
+
+
+      bg <- check.bg(species.selected.ndop, env.sentinel_bio[[1]],
+        nback = 10000,
+        bg.source = "range", bias = bias_czechia
+      )
+# res.ndop.species.presence.df <- as.data.frame(as_Spatial(res.ndop.species.presence))[,-1]
+ names(bg$background.points) <- c("lon","lat")
+# str(bg$background.points)
+# stop()
+# st_as_sf(bg$background.points, coords = c("Longitude", "Latitude"))
+
+
+
+
+
+me <- maxent(tr, p=species.selected.ndop.df, a=bg$background.points, args=c('hinge=false', 'threshold=false')) # biasfile=bias_czechia nefunguje
+
+prediction <- rmaxent::project(me, tr)
+
+prediction$prediction_cloglog
+
+m[[r]] <- prediction$prediction_cloglog
+
+
+        # m[[r]] <- ENMToolsPB::enmtools.maxent(
+        #   species.selected.ndop,
+        #   eval = FALSE,
+        #   tr,
+        #   test.prop = "checkerboard2",
+        #   bg.source = "range",
+        #   verbose = TRUE,
+        #   bias = bias_czechia,
+        #   nback = 10000,
+        #   corner = ifelse(r == 4, r, NA),
+        #   speciesInd = species.selected,
+        #   nbackInd = species.selected,
+        #   envInd = tr
+        # )
+
+
+
+
+      # ex <- extract(r0, st_as_sf(bg$background.points, coords = c("Longitude", "Latitude")), sp = TRUE)
+      # crs(ex) <- crs
+      # print(ex)
+      # data[[as.character(adj)]][[r]] <- ex
+
+
+
+
+     }
+      # conf[[as.character(adj)]] <- sapply(m, function(x) x$conf)
+      # thr[[as.character(adj)]] <- sapply(m, function(x) x$thr)
+
+      # aic[[as.character(adj)]] <- median(sapply(m, function(x) x$model$aic))
+      # aic[[as.character(adj)]] <- median(sapply(m, function(x) x$model$aic))
+      # ba[[as.character(adj)]] <- m.auc.sentinel_bio <- median(sapply(m, function(x) x$test.evaluation@auc))
+      # ba.m[[as.character(adj)]] <- m
+
+
+      # bb.r <- calc(stack(sapply(m, function(x) x$suitability)), fun = median)
+      # pro výběr NDOP použít Boyce? - netřeba, ověřuju lsdHod
+      # bb <- ecospat.boyce2(bb.r, species.selected.ndop$presence.points, nclass = 0, PEplot = FALSE, method = "spearman")$cor
+      # metrics.bias[[as.character(adj)]] <- as.list(performance_models_list(m))
+      # bs[[as.character(adj)]] <- metrics.bias[[as.character(adj)]]$Sorensen
+      #  bc[[as.character(adj)]] <- check.bg(species.selected.ndop, tr, nback = 10000, bg.source = "range", bias = bias_czechia)
+	  
+	  
+	  
+	      rr <- stack(sapply(m, function(x) x))
+   r.m[[as.character(adj)]] <- rr <- calc(rr, fun = median)
+
+	r.res <- extract(rr, r.pa, sp = TRUE)
+		cor.points[[as.character(adj)]] <- r.res
+	
+	
+	# cor.p[[as.character(adj)]] <- cor(r.res[[3]], r.res[[2]], method = "pearson")
+	# cor.s[[as.character(adj)]] <- cor(r.res[[3]], r.res[[2]], method = "spearman")
+
+	  
+	  
+	  
+    }
+    #  saveRDS(bc, paste0(path.igaD,"bias-generating2.rds"))
+
+    # data[[pc.name]] <- append(data[[pc.name]], list(bias.aic = aic))
+    # data[[pc.name]] <- append(data[[pc.name]], list(bias.conf = conf))
+    # data[[pc.name]] <- append(data[[pc.name]], list(bias.thr = thr))
+    # data[[pc.name]] <- append(data[[pc.name]], list(bias.auc = ba))
+    # data[[pc.name]] <- append(data[[pc.name]], list(bias.metrics = metrics.bias))
+
+
+# data[[pc.name]] <- append(data[[pc.name]], list(cor.p = cor.p))
+# data[[pc.name]] <- append(data[[pc.name]], list(cor.s = cor.s))
+data[[pc.name]] <- append(data[[pc.name]], list(cor.points = cor.points))
+
+
+
+
+# dn <- "00000pred"
+# dn.auc <- "AUC"
+# dn.sor <- "Sorensen"
+# dn.sfx <- "_mGlm2"
+
+    # # 1) klasické AUC ##############################################################################################
+	
+	
+    # # vytvoří adresář pro export rasterů prediktorů, pokud neexistuje
+    # dir.create(paste0(path.igaD, dn, dn.auc, dn.sfx, "_best"), showWarnings = FALSE)
+
+    # data[[pc.name]]$adj.selected <- adj.selected <- names(base::which.max(unlist(ba)))
+    # m <- ba.m[[adj.selected]]
+
+    # writeRaster(r.m[[adj.selected]], paste0(path.igaD, dn, dn.auc,dn.sfx, "_best","/", data[[pc.name]]$species, "-auc", format(round(ba[[adj.selected]], 2), nsmall = 2), "---", pc.name, ".tif"), format = "GTiff", overwrite = TRUE)
+    
+	
+	
+    # data[[pc.name]]$auc <- ba[[adj.selected]]
+    # #  data[[pc.name]]$auc.totez <- median(sapply(m, function(x) x$test.evaluation@auc))
+    # #  data[[pc.name]]$aic <- median(sapply(m, function(x) x$model$aic))
+
+    # metrics <- as.list(performance_models_list(m))
+    # data[[pc.name]] <- append(data[[pc.name]], list(auc.metrics = metrics))
+
+
+
+
+
+	    # # vytvoří adresář pro export rasterů prediktorů, pokud neexistuje
+    # dir.create(paste0(path.igaD, dn, dn.auc, dn.sfx, "_bestBias"), showWarnings = FALSE)
+    # # 1) klasické AUC
+     # data[[pc.name]]$adj.selected._bestBias <- adj.selected.t <- names(base::which.max(unlist(ba)[-1]))
+    # m <- ba.m[[adj.selected.t]]
+
+    # writeRaster(r.m[[adj.selected.t]], paste0(path.igaD, dn, dn.auc,dn.sfx, "_bestBias","/", data[[pc.name]]$species, "-auc", format(round(ba[[adj.selected.t]], 2), nsmall = 2), "---", pc.name, ".tif"), format = "GTiff", overwrite = TRUE)
+    
+    # data[[pc.name]]$auc._bestBias <- ba[[adj.selected.t]]
+    # #  data[[pc.name]]$auc.totez <- median(sapply(m, function(x) x$test.evaluation@auc))
+    # #  data[[pc.name]]$aic <- median(sapply(m, function(x) x$model$aic))
+    # metrics <- as.list(performance_models_list(m))
+    # data[[pc.name]] <- append(data[[pc.name]], list(auc.metrics._bestBias = metrics))
+
+
+	
+	
+	
+	
+	
+	
+	
+	
+		    # # vytvoří adresář pro export rasterů prediktorů, pokud neexistuje
+    # dir.create(paste0(path.igaD, dn, dn.auc, dn.sfx, "_0"), showWarnings = FALSE)
+    # # 1) klasické AUC
+    # adj.selected.t <- names(base::which.max(unlist(ba)[1]))
+    # m <- ba.m[[adj.selected.t]]
+
+    # writeRaster(r.m[[adj.selected.t]], paste0(path.igaD, dn, dn.auc,dn.sfx, "_0","/", data[[pc.name]]$species, "-auc", format(round(ba[[adj.selected.t]], 2), nsmall = 2), "---", pc.name, ".tif"), format = "GTiff", overwrite = TRUE)
+        
+    # data[[pc.name]]$auc._0 <- ba[[adj.selected.t]]
+    # #  data[[pc.name]]$auc.totez <- median(sapply(m, function(x) x$test.evaluation@auc))
+    # #  data[[pc.name]]$aic <- median(sapply(m, function(x) x$model$aic))
+    # metrics <- as.list(performance_models_list(m))
+    # data[[pc.name]] <- append(data[[pc.name]], list(auc.metrics._0 = metrics))
+	
+	
+		
+		    # # vytvoří adresář pro export rasterů prediktorů, pokud neexistuje
+    # dir.create(paste0(path.igaD, dn, dn.auc, dn.sfx, "_1"), showWarnings = FALSE)
+    # # 1) klasické AUC
+    # adj.selected.t <- names(base::which.max(unlist(ba)[8]))
+    # m <- ba.m[[adj.selected.t]]
+
+    # writeRaster(r.m[[adj.selected.t]], paste0(path.igaD, dn, dn.auc,dn.sfx, "_1","/", data[[pc.name]]$species, "-auc", format(round(ba[[adj.selected.t]], 2), nsmall = 2), "---", pc.name, ".tif"), format = "GTiff", overwrite = TRUE)
+    
+	    # data[[pc.name]]$auc._1 <- ba[[adj.selected.t]]
+    # #  data[[pc.name]]$auc.totez <- median(sapply(m, function(x) x$test.evaluation@auc))
+    # #  data[[pc.name]]$aic <- median(sapply(m, function(x) x$model$aic))
+    # metrics <- as.list(performance_models_list(m))
+    # data[[pc.name]] <- append(data[[pc.name]], list(auc.metrics._1 = metrics))
+	
+	
+	
+
+    # # 2) Sorensen ##############################################################################################
+
+  
+
+
+    # # vytvoří adresář pro export rasterů prediktorů, pokud neexistuje
+    # dir.create(paste0(path.igaD, dn, dn.sor, dn.sfx, "_best"), showWarnings = FALSE)
+    # # 1) klasické AUC
+    # data[[pc.name]]$adj.selected.sorensen <- adj.selected.sorensen <- names(base::which.max(unlist(bs)))
+    # m <- ba.m[[adj.selected.sorensen]]
+
+    # writeRaster(r.m[[adj.selected.sorensen]], paste0(path.igaD, dn, dn.sor,dn.sfx, "_best","/", data[[pc.name]]$species, "-sor", format(round(bs[[adj.selected.sorensen]], 2), nsmall = 2), "---", pc.name, ".tif"), format = "GTiff", overwrite = TRUE)
+    
+	
+	
+	
+
+    # data[[pc.name]]$sorensen <- bs[[adj.selected.sorensen]]
+
+    # metrics2 <- as.list(performance_models_list(m))
+    # data[[pc.name]] <- append(data[[pc.name]], list(sorensen.metrics = metrics2))
+
+
+
+	
+	
+	
+	
+	    # # vytvoří adresář pro export rasterů prediktorů, pokud neexistuje
+    # dir.create(paste0(path.igaD, dn, dn.sor, dn.sfx, "_bestBias"), showWarnings = FALSE)
+    # # 1) klasické AUC
+    # data[[pc.name]]$adj.selected.sorensen_bestBias <- adj.selected.t <- names(base::which.max(unlist(bs)[-1]))
+    # m <- ba.m[[adj.selected.t]]
+
+    # writeRaster(r.m[[adj.selected.t]], paste0(path.igaD, dn, dn.sor,dn.sfx, "_bestBias","/", data[[pc.name]]$species, "-sor", format(round(bs[[adj.selected.t]], 2), nsmall = 2), "---", pc.name, ".tif"), format = "GTiff", overwrite = TRUE)
+    
+	    # data[[pc.name]]$sorensen._bestBias <- bs[[adj.selected.t]]
+    # #  data[[pc.name]]$auc.totez <- median(sapply(m, function(x) x$test.evaluation@auc))
+    # #  data[[pc.name]]$aic <- median(sapply(m, function(x) x$model$aic))
+    # metrics <- as.list(performance_models_list(m))
+    # data[[pc.name]] <- append(data[[pc.name]], list(sorensen.metrics._bestBias = metrics))
+	
+	
+	
+		    # # vytvoří adresář pro export rasterů prediktorů, pokud neexistuje
+    # dir.create(paste0(path.igaD, dn, dn.sor, dn.sfx, "_0"), showWarnings = FALSE)
+    # # 1) klasické AUC
+     # adj.selected.t <- names(base::which.max(unlist(bs)[1]))
+    # m <- ba.m[[adj.selected.t]]
+
+    # writeRaster(r.m[[adj.selected.t]], paste0(path.igaD, dn, dn.sor,dn.sfx, "_0","/", data[[pc.name]]$species, "-sor", format(round(bs[[adj.selected.t]], 2), nsmall = 2), "---", pc.name, ".tif"), format = "GTiff", overwrite = TRUE)
+    	   
+		   # data[[pc.name]]$sorensen._0 <- bs[[adj.selected.t]]
+    # #  data[[pc.name]]$auc.totez <- median(sapply(m, function(x) x$test.evaluation@auc))
+    # #  data[[pc.name]]$aic <- median(sapply(m, function(x) x$model$aic))
+    # metrics <- as.list(performance_models_list(m))
+    # data[[pc.name]] <- append(data[[pc.name]], list(sorensen.metrics._0 = metrics))
+	
+	
+		
+		    # # vytvoří adresář pro export rasterů prediktorů, pokud neexistuje
+    # dir.create(paste0(path.igaD, dn, dn.sor, dn.sfx, "_1"), showWarnings = FALSE)
+    # # 1) klasické AUC
+    # adj.selected.t <- names(base::which.max(unlist(bs)[8]))
+    # m <- ba.m[[adj.selected.t]]
+
+    # writeRaster(r.m[[adj.selected.t]], paste0(path.igaD, dn, dn.sor,dn.sfx, "_1","/", data[[pc.name]]$species, "-sor", format(round(bs[[adj.selected.t]], 2), nsmall = 2), "---", pc.name, ".tif"), format = "GTiff", overwrite = TRUE)
+    
+			   # data[[pc.name]]$sorensen._1 <- bs[[adj.selected.t]]
+    # #  data[[pc.name]]$auc.totez <- median(sapply(m, function(x) x$test.evaluation@auc))
+    # #  data[[pc.name]]$aic <- median(sapply(m, function(x) x$model$aic))
+    # metrics <- as.list(performance_models_list(m))
+    # data[[pc.name]] <- append(data[[pc.name]], list(sorensen.metrics._1 = metrics))
+	
+	
+	
+	# # 3) výběr cor.Pearson ##############################################################################################
+			    # # vytvoří adresář pro export rasterů prediktorů, pokud neexistuje
+    # dir.create(paste0(path.igaD, dn, dn.sfx, "_pearson"), showWarnings = FALSE)
+
+   # data[[pc.name]]$adj.selected.pearson <- adj.selected.t <- names(base::which.max(unlist(cor.p)))
+    # m <- ba.m[[adj.selected.t]]
+
+    # writeRaster(r.m[[adj.selected.t]], paste0(path.igaD, dn ,dn.sfx, "_pearson","/", data[[pc.name]]$species, "-cor", format(round(cor.p[[adj.selected.t]], 2), nsmall = 2), "---", pc.name, ".tif"), format = "GTiff", overwrite = TRUE)
+    
+			   # data[[pc.name]]$cor._pearson <- cor.p[[adj.selected.t]]
+
+    # data[[pc.name]] <- append(data[[pc.name]], list(cor.metrics._pearson = cor.p))
+	
+	
+		# # 4) výběr cor.Spearman ##############################################################################################
+			    # # vytvoří adresář pro export rasterů prediktorů, pokud neexistuje
+    # dir.create(paste0(path.igaD, dn, dn.sfx, "_spearman"), showWarnings = FALSE)
+
+   # data[[pc.name]]$adj.selected.spearman <- adj.selected.t <- names(base::which.max(unlist(cor.s)))
+    # m <- ba.m[[adj.selected.t]]
+
+    # writeRaster(r.m[[adj.selected.t]], paste0(path.igaD, dn,dn.sfx, "_spearman","/", data[[pc.name]]$species, "-cor", format(round(cor.s[[adj.selected.t]], 2), nsmall = 2), "---", pc.name, ".tif"), format = "GTiff", overwrite = TRUE)
+    
+			   # data[[pc.name]]$cor._spearman <- cor.s[[adj.selected.t]]
+
+    # data[[pc.name]] <- append(data[[pc.name]], list(cor.metrics._spearman = cor.s))
+	
+	
+
+		counter <- counter + 1
+
+
+
+if(counter == 2){
+ return(data)
+
+
+}
+ 
+  }
+
+
+#  return(data)
+
+  gc()
+
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 # is.defined <- function(sym) {
