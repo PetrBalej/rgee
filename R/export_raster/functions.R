@@ -80,7 +80,7 @@ mask_L8_sr2_radsat <- function(image) {
 # aerosol Landsat 8, LANDSAT_LC08_C02_T1_L2
 mask_L8_sr2_aerosol <- function(image) {
   # Get the pixel QA band.
-  qa <- image$select("QA_SR_AEROSOL")
+  qa <- image$select("SR_QA_AEROSOL")
 
   # https://www.usgs.gov/media/files/landsat-8-9-collection-2-level-2-science-product-guide
   # Landsat 8-9 Collection 2 (C2) Level 2 Science Product (L2SP) Guide
@@ -91,7 +91,6 @@ mask_L8_sr2_aerosol <- function(image) {
   mask <- qa$neq(192L)$bitwiseAnd(qa$neq(194L))$bitwiseAnd(qa$neq(196L))$bitwiseAnd(qa$neq(224L))$bitwiseAnd(qa$neq(228L))
 
   return(image$updateMask(mask))
-   
 }
 
 
