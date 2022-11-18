@@ -14,15 +14,7 @@ source(paste0(getwd(), "/R/export_raster/functions.R"))
 
 # kontrola (do)instalace všech dodatečně potřebných balíčků
 required_packages <-
-    c(
-        "sp",
-        "rgdal",
-        "mapview",
-        "raster",
-        "geojsonio",
-        "stars",
-        "httpuv"
-    )
+    c("sp", "rgdal", "mapview", "raster", "geojsonio", "stars", "httpuv", "tidyverse", "sf", "lubridate", "magrittr", "dplyr", "readxl", "abind", "stringr")
 # "googledrive" # kontrola při použití v ee_Initialize?
 install.packages(setdiff(required_packages, rownames(installed.packages())))
 
@@ -377,3 +369,70 @@ print(end_time - start_time)
 
 
 
+#########
+# spojení obou "polovin" ČR a vepsání vypočtených variant hodnot pixelů do rasterů
+#########
+
+####### nové načítání L8 a WC
+kfme16.N <- readRDS(paste0(path.igaD, "clean/predictors/kfme16-N_czechia_wc_l8_2018-2021_4-6.rds"))
+kfme16.S <- readRDS(paste0(path.igaD, "clean/predictors/kfme16-S_czechia_wc_l8_2018-2021_4-6.rds"))
+
+# sloučit N a S
+for (l1 in names(kfme16.N)) {
+    kfme16.N[[l1]] %<>% add_row(kfme16.S[[l1]])
+}
+
+kfme16 <- kfme16.N
+
+sf.grid <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_4326_czechia.shp"))
+
+
+# vzorový KFME raster pro 16 subkvadrátů
+r <- raster(
+    xmn = 12.0834157383896326, # set minimum x coordinate
+    xmx = 18.8750299183168408, # set maximum x coordinate
+    ymn = 48.5500817521775048, # set minimum y coordinate
+    ymx = 51.0750755551042701, # set maximum y coordinate
+    res = c((1 / 6) / 4, 0.1 / 4), # resolution in c(x,y) direction
+    vals = runif(16463, 0, 1)
+)
+# writeRaster(r, paste0(path.igaD, "kfme16-test.tif"))
+
+
+
+
+for (l1 in names(kfme16)) {
+    kfme16.t <- as_tibble(kfme16[[l1]])
+
+    print(l1)
+
+    names(kfme16[[l1]])[-1]
+
+    for (band in names(kfme16[[l1]])[-1]) {
+        print(band)
+        kfme16.t.select <- kfme16.t %>% dplyr::select(all_of(c("POLE", band)))
+
+        m <- merge(sf.grid, kfme16.t.select, by = "POLE")
+
+
+        rr <- rasterize(m, r, field = band)
+        crs(rr) <- 4326
+
+        writeRaster(rr, paste0(path.igaD, "clean/predictors/kfme16-", l1, "-", band, ".tif"), format = "GTiff", overwrite = TRUE)
+
+        # dodělávka CV
+        if (grepl("stdev", l1, fixed = TRUE)) {
+            l1.mean <- gsub("stdev", "mean", l1)
+            print(l1.mean)
+            kfme16.t.mean <- as_tibble(kfme16[[l1.mean]])
+            kfme16.t.mean.select <- kfme16.t.mean %>% dplyr::select(all_of(c("POLE", band)))
+            m.mean <- merge(sf.grid, kfme16.t.mean.select, by = "POLE")
+
+            rr.mean <- rasterize(m.mean, r, field = band)
+            crs(rr.mean) <- 4326
+
+
+            writeRaster(rr / rr.mean, paste0(path.igaD, "clean/predictors/kfme16-", gsub("stdev", "cv", l1), "-", band, ".tif"), format = "GTiff", overwrite = TRUE)
+        }
+    }
+}
