@@ -38,7 +38,7 @@ ndop_ugc <-
             DATUM_DO = col_date("%Y%m%d"),
             DATUM_OD = col_date("%Y%m%d"),
             ZDROJ = "c", SITMAP = "i", X = "d", Y = "d", DAT_SADA = "c",
-            CXPRESNOST = "c", PROJEKT = "c", KAT_TAX = "f", DRUH = "f",
+            CXPRESNOST = "d", PROJEKT = "c", KAT_TAX = "f", DRUH = "f",
             GARANCE = "c", VALIDACE = "c", ID_NALEZ = "n", NEGATIV = "i",
             VEROH = "i"
         )
@@ -117,15 +117,15 @@ ndop_ugc <-
 
         # přidání sloupců s WGS84 souřadnicemi, výběr záznamů z polygonu a potřebných sloupců
         csv_ndop_filter %<>%
-            dplyr::select(ID_NALEZ, DRUH, X, Y, KAT_TAX) %>%
+            dplyr::select(ID_NALEZ, DRUH, X, Y, KAT_TAX, CXPRESNOST, DATUM_OD, DATUM_DO) %>%
             rename(
                 key = ID_NALEZ,
                 species = DRUH,
-                cat = KAT_TAX
+                cat = KAT_TAX,
+                precision = CXPRESNOST,
+                date_from = DATUM_OD,
+                date_do = DATUM_DO
             )
 
         return(csv_ndop_filter)
     }
-# res <- ndop_ugc(list(from = "2010-01-01", to = "2020-12-31"), list(from = 1, to = 12), "/mnt/2AA56BAE3BB1EC2E/Downloads/uga/ndop-downloader/zal")
-# print(as_tibble(res), n = 10)
-# print(res %>% group_by(cat) %>% summarise(count = n_distinct(key)) %>% arrange(desc(count)))
