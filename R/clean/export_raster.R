@@ -436,3 +436,61 @@ for (l1 in names(kfme16)) {
         }
     }
 }
+
+
+# VIFy (bio, (mean, cv))
+
+
+# bias rastery - ppp bezrozměrné, přímo souřadnice? - kde mám poznámky na správný postup stackowerflow Australský profesor?
+
+
+# příprava NDOP
+res.ndop <- ndop_ugc(list(from = "2018-01-01", to = "2021-12-31"), list(from = 4, to = 6), "/mnt/2AA56BAE3BB1EC2E/Downloads/uga/ndop-downloader/zal", 5514, 1000)
+res.ndop.ptaci <- res.ndop %>% filter(cat == "Ptáci") # 447052 nálezů
+res.ndop.ptaci$species %<>% as.character
+res.ndop.ptaci$species %<>% as.factor
+res.ndop.ptaci %<>% dplyr::select(-cat)
+res.ndop.ptaci %<>% st_as_sf(coords = c("X", "Y"), crs = 5514)
+
+
+# czechia4326 <- st_read("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/shp/SPH_SHP_WGS84/WGS84/SPH_STAT.shp")
+# st_crs(czechia4326) <- 4326
+# czechia4326 %<>% dplyr::select(-c(ID, KOD_NUTS1, NAZEV_NUTS))
+# czechia5514 <- st_transform(czechia4326, 5514)
+# res.ndop.ptaci.crop <- st_intersection(res.ndop.ptaci, czechia5514) # NDOP nálezů jen v ČR
+
+
+sf.grid <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_4326_czechia.shp")) # 9845
+sf.grid.czechia <- st_union(sf.grid)
+# st_write(sf.grid.czechia, paste0(path.igaD,"clean/border/czechia-borderGrid-4326.shp"))
+# saveRDS(sf.grid.czechia, paste0(path.igaD,"clean/border/czechia-borderGrid-4326.rds"))
+sf.grid.czechia5514 <- st_transform(sf.grid.czechia, 5514)
+# st_write(sf.grid.czechia5514, paste0(path.igaD,"clean/border/czechia-borderGrid-5514.shp"))
+# saveRDS(sf.grid.czechia5514, paste0(path.igaD,"clean/border/czechia-borderGrid-5514.rds"))
+
+res.ndop.ptaci.czechia <- st_intersection(res.ndop.ptaci, sf.grid.czechia5514) # 446661 NDOP nálezů jen v ČR
+# saveRDS(res.ndop.ptaci.czechia, paste0(path.igaD,"clean/occurrences/NDOP-5514_2018-2021_4-6_lt1000.rds"))
+# st_write(res.ndop.ptaci.czechia, paste0(path.igaD,"clean/occurrences/NDOP-5514_2018-2021_4-6_lt1000.shp"))
+
+res.ndop.ptaci.czechia4326 <- st_transform(res.ndop.ptaci.czechia, 4326)
+
+#  saveRDS(res.ndop.ptaci.czechia4326, paste0(path.igaD,"clean/occurrences/NDOP-4326_2018-2021_4-6_lt1000.rds"))
+#  st_write(res.ndop.ptaci.czechia4326, paste0(path.igaD,"clean/occurrences/NDOP-4326_2018-2021_4-6_lt1000.shp"))
+
+# unikátní centroid kvadrátu pro každý výskyt druhu
+sf.grid.ndop <- st_intersection(sf.grid, res.ndop.ptaci.czechia4326)
+sf.grid.ndop.groups <- sf.grid.ndop %>%
+    group_by(species, POLE) %>%
+    dplyr::select(species, POLE) # 136427 obsazených kvadrátů různými druhy
+sf.grid.ndop.groups.distinct <- sf.grid.ndop.groups %>% distinct(across(c(species, POLE)), .keep_all = TRUE)
+sf.grid.ndop.groups.distinct.df <- as.data.frame(sf.grid.ndop.groups.distinct) %>% dplyr::select(species, POLE)
+sf.grid.ndop.sq <- merge(sf.grid, sf.grid.ndop.groups.distinct.df, by = "POLE")
+sf.grid.ndop.sq.centroid <- st_centroid(sf.grid.ndop.sq)
+
+# saveRDS(sf.grid.ndop.sq.centroid, paste0(path.igaD,"clean/occurrences/NDOP-4326_2018-2021_4-6_lt1000_kfmeUniqueCentroids.rds"))
+# st_write(sf.grid.ndop.sq.centroid, paste0(path.igaD,"clean/occurrences/NDOP-4326_2018-2021_4-6_lt1000_kfmeUniqueCentroids.shp"))
+
+# length(unique(sf.grid.ndop.sq.centroid$POLE)) # 7818 z 9845 pokrývá NDOP (~80%); 160 LSD (<2%)
+
+
+summary(res.ndop.ptaci)
