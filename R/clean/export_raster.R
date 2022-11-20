@@ -437,8 +437,139 @@ for (l1 in names(kfme16)) {
     }
 }
 
+### ### ### ### ### ### ### ### ###
+# ### VIFy (bio, (mean, cv))
+### ### ### ### ### ### ### ### ###
 
-# VIFy (bio, (mean, cv))
+library(usdmPB) # /mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/usdmPB
+raster_stack <-
+    rasters_dir_stack(
+        paste0(
+            "/home/petr/Documents/igaD/clean/predictors/"
+        ),
+        "tif"
+    )
+# 165
+
+raster_stack <- dropLayer(raster_stack, grep("srtm|clc|count|bio03|bio09|b10|stdev", names(raster_stack), ignore.case = TRUE)) # 100
+
+names(raster_stack) <- str_replace_all(names(raster_stack), c("kfme16." = "", "6_mean.bio" = "mean.bio", "6_cv.bio" = "cv.bio", "_30" = "", "\\.nd" = "", "\\.constant" = "", "\\." = "_"))
+
+# ### uložení
+# rr <- writeRaster(raster_stack, paste0(path.igaD, "clean/predictors/kfme16-100.grd"), format = "raster", overwrite = TRUE)
+# hdr(rr, format = "ENVI")
+# saveRDS(raster_stack, file = paste0(path.igaD, "clean/predictors/kfme16-100.rds"))
+
+
+
+
+
+# ### jen vizualizace všech rasterů do PDF
+# rStandardize <- function(x){
+#     # https://github.com/danlwarren/ENMTools/blob/master/R/raster.standardize.R
+#    return(x/cellStats(x, stat=sum))
+# }
+# pdf(paste0(path.igaD, "bioclim-landsat-100-standardized.pdf"), width = 12, height = 9)
+# for (l in sort(names(raster_stack))) {
+# # plot(normalize(raster_stack[[l]]), main=l)
+# plot(rStandardize(raster_stack[[l]]), main=l)
+# # plot(raster_stack[[l]], axes=FALSE, frame.plot=FALSE, legend=FALSE)
+# }
+# dev.off()
+
+
+
+
+predictor.groups <- c("wc_mean", "wc_cv", "l8.*_mean", "l8.*_cv")
+raster_stack_groups <- list()
+for (group in predictor.groups) {
+    group.name <- str_replace(group, "\\.\\*", "")
+    print(group.name)
+    layer.indexes <- grep(group, names(raster_stack), ignore.case = TRUE)
+
+    raster_stack_groups[[group.name]] <- raster_stack[[layer.indexes]]
+    rr <- writeRaster(raster_stack_groups[[group.name]], paste0(path.igaD, "clean/predictors/kfme16-100---", group.name, ".grd"), format = "raster", overwrite = TRUE)
+    hdr(rr, format = "ENVI")
+    saveRDS(raster_stack_groups[[group.name]], file = paste0(path.igaD, "clean/predictors/kfme16-100---", group.name, ".rds"))
+}
+
+
+# VIFy - 1st round (4 skupiny)
+
+raster_stack_groups_vif <- list()
+for (group in names(raster_stack_groups)) {
+    print("***********************************************")
+    print(group)
+
+    # vifcor
+    vif.vifcor <- usdmPB::vifcor(raster_stack_groups[[group]], th = 0.7, maxobservations = 10000)
+    saveRDS(vif.vifcor, file = paste0(path.igaD, "clean/vif/vifcor-1stLevel---", group, ".rds"))
+
+    # vifstep
+    vif.vifstep <- usdmPB::vifstep(raster_stack_groups[[group]][[vif.vifcor@results$Variables]], th = 5, maxobservations = 10000)
+
+    vifcor07_vifstep5 <- raster_stack_groups[[group]][[vif.vifstep@results$Variables]]
+
+    rr <- writeRaster(vifcor07_vifstep5, paste0(path.igaD, "clean/vif/vifcor07_vifstep5---", group, ".grd"), format = "raster", overwrite = TRUE)
+    hdr(rr, format = "ENVI")
+    saveRDS(vifcor07_vifstep5, paste0(path.igaD, "clean/vif/vifcor07_vifstep5---", group, ".rds"))
+    raster_stack_groups_vif[[group]] <- vifcor07_vifstep5
+}
+
+
+
+# VIFy - 2nd round (2 skupiny bioXl8)
+# reálně nic nezredukuje, zůstane stejný počet prediktorů
+raster_stack_groups2 <- list()
+raster_stack_groups2$wc <- stack(raster_stack_groups_vif[["wc_mean"]], raster_stack_groups_vif[["wc_cv"]])
+raster_stack_groups2$l8 <- stack(raster_stack_groups_vif[["l8_mean"]], raster_stack_groups_vif[["l8_cv"]])
+
+raster_stack_groups2_vif <- list()
+for (group in names(raster_stack_groups2)) {
+    print("***********************************************")
+    print(group)
+
+    # vifcor
+    vif.vifcor <- usdmPB::vifcor(raster_stack_groups2[[group]], th = 0.7, maxobservations = 10000)
+    saveRDS(vif.vifcor, file = paste0(path.igaD, "clean/vif/vifcor-2ndLevel---", group, ".rds"))
+
+    # vifstep
+    vif.vifstep <- usdmPB::vifstep(raster_stack_groups2[[group]][[vif.vifcor@results$Variables]], th = 5, maxobservations = 10000)
+
+    vifcor07_vifstep5 <- raster_stack_groups2[[group]][[vif.vifstep@results$Variables]]
+
+    rr <- writeRaster(vifcor07_vifstep5, paste0(path.igaD, "clean/vif/vifcor07_vifstep5---", group, ".grd"), format = "raster", overwrite = TRUE)
+    hdr(rr, format = "ENVI")
+    saveRDS(vifcor07_vifstep5, paste0(path.igaD, "clean/vif/vifcor07_vifstep5---", group, ".rds"))
+    raster_stack_groups2_vif[[group]] <- vifcor07_vifstep5
+}
+
+
+
+
+
+
+# VIFy - 3rd round (all)
+
+raster_stack_groups3 <- stack(raster_stack_groups2$wc, raster_stack_groups2$l8)
+group <- "all"
+
+# vifcor
+vif.vifcor <- usdmPB::vifcor(raster_stack_groups3, th = 0.7, maxobservations = 10000)
+saveRDS(vif.vifcor, file = paste0(path.igaD, "clean/vif/vifcor-3rdLevel---", group, ".rds"))
+
+# vifstep
+vif.vifstep <- usdmPB::vifstep(raster_stack_groups3[[vif.vifcor@results$Variables]], th = 5, maxobservations = 10000)
+
+vifcor07_vifstep5 <- raster_stack_groups3[[vif.vifstep@results$Variables]]
+
+rr <- writeRaster(vifcor07_vifstep5, paste0(path.igaD, "clean/vif/vifcor07_vifstep5---", group, ".grd"), format = "raster", overwrite = TRUE)
+hdr(rr, format = "ENVI")
+saveRDS(vifcor07_vifstep5, paste0(path.igaD, "clean/vif/vifcor07_vifstep5---", group, ".rds"))
+raster_stack_groups3_vif <- vifcor07_vifstep5
+
+
+
 
 
 # bias rastery - ppp bezrozměrné, přímo souřadnice? - kde mám poznámky na správný postup stackowerflow Australský profesor?
@@ -523,5 +654,25 @@ res.lsd$species %<>% as.character # factor dělá problémy v synonyms_unite()
 # saveRDS(res.lsd, paste0(path.igaD,"clean/occurrences/LSD-164-4326_2018-2021_4-6.rds"))
 # st_write(synonyms_unite(res.lsd), paste0(path.igaD,"clean/occurrences/LSD-164-4326_2018-2021_4-6_synonymUnite.shp"))
 # saveRDS(synonyms_unite(res.lsd), paste0(path.igaD,"clean/occurrences/LSD-164-4326_2018-2021_4-6_synonymUnite.rds"))
+
+
+
+
+
+
+
+
+# vyřezat z NDOP LSD? Až po TGB? Zkreslím tím TGB... Ne, pokud TGB bez, tak i train bez!
+
+
+
+# jsou v literatuře známé velikosti home range (okrsky) které každý druh využívá? Jde odněkud zjistit? V nových traits? Dát do vazby s TGB adjustem a pokud je tam jasný vztah, tak je vyhráno!
+# pravděpodobnější vztah velikosti home range, než prevalence (tu ale také otestovat)
+
+# sdm - možnost predikce jen do LSD míst (ne do celé ČR)? Rychlejší
+# jsou v maxentu přidat váhy (presencím nebo random bg?)
+
+
+
 
 
