@@ -452,14 +452,6 @@ res.ndop.ptaci$species %<>% as.factor
 res.ndop.ptaci %<>% dplyr::select(-cat)
 res.ndop.ptaci %<>% st_as_sf(coords = c("X", "Y"), crs = 5514)
 
-
-# czechia4326 <- st_read("/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee/shp/SPH_SHP_WGS84/WGS84/SPH_STAT.shp")
-# st_crs(czechia4326) <- 4326
-# czechia4326 %<>% dplyr::select(-c(ID, KOD_NUTS1, NAZEV_NUTS))
-# czechia5514 <- st_transform(czechia4326, 5514)
-# res.ndop.ptaci.crop <- st_intersection(res.ndop.ptaci, czechia5514) # NDOP nálezů jen v ČR
-
-
 sf.grid <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_4326_czechia.shp")) # 9845
 sf.grid.czechia <- st_union(sf.grid)
 # st_write(sf.grid.czechia, paste0(path.igaD,"clean/border/czechia-borderGrid-4326.shp"))
@@ -471,11 +463,15 @@ sf.grid.czechia5514 <- st_transform(sf.grid.czechia, 5514)
 res.ndop.ptaci.czechia <- st_intersection(res.ndop.ptaci, sf.grid.czechia5514) # 446661 NDOP nálezů jen v ČR
 # saveRDS(res.ndop.ptaci.czechia, paste0(path.igaD,"clean/occurrences/NDOP-5514_2018-2021_4-6_lt1000.rds"))
 # st_write(res.ndop.ptaci.czechia, paste0(path.igaD,"clean/occurrences/NDOP-5514_2018-2021_4-6_lt1000.shp"))
+# saveRDS(synonyms_unite(res.ndop.ptaci.czechia), paste0(path.igaD,"clean/occurrences/NDOP-5514_2018-2021_4-6_lt1000_synonymUnite.rds"))
+# st_write(synonyms_unite(res.ndop.ptaci.czechia), paste0(path.igaD,"clean/occurrences/NDOP-5514_2018-2021_4-6_lt1000_synonymUnite.shp"))
 
 res.ndop.ptaci.czechia4326 <- st_transform(res.ndop.ptaci.czechia, 4326)
 
 #  saveRDS(res.ndop.ptaci.czechia4326, paste0(path.igaD,"clean/occurrences/NDOP-4326_2018-2021_4-6_lt1000.rds"))
 #  st_write(res.ndop.ptaci.czechia4326, paste0(path.igaD,"clean/occurrences/NDOP-4326_2018-2021_4-6_lt1000.shp"))
+#  saveRDS(synonyms_unite(res.ndop.ptaci.czechia4326), paste0(path.igaD,"clean/occurrences/NDOP-4326_2018-2021_4-6_lt1000_synonymUnite.rds"))
+#  st_write(synonyms_unite(res.ndop.ptaci.czechia4326), paste0(path.igaD,"clean/occurrences/NDOP-4326_2018-2021_4-6_lt1000_synonymUnite.shp"))
 
 # unikátní centroid kvadrátu pro každý výskyt druhu
 sf.grid.ndop <- st_intersection(sf.grid, res.ndop.ptaci.czechia4326)
@@ -489,8 +485,43 @@ sf.grid.ndop.sq.centroid <- st_centroid(sf.grid.ndop.sq)
 
 # saveRDS(sf.grid.ndop.sq.centroid, paste0(path.igaD,"clean/occurrences/NDOP-4326_2018-2021_4-6_lt1000_kfmeUniqueCentroids.rds"))
 # st_write(sf.grid.ndop.sq.centroid, paste0(path.igaD,"clean/occurrences/NDOP-4326_2018-2021_4-6_lt1000_kfmeUniqueCentroids.shp"))
+# saveRDS(synonyms_unite(sf.grid.ndop.sq.centroid), paste0(path.igaD,"clean/occurrences/NDOP-4326_2018-2021_4-6_lt1000_kfmeUniqueCentroids_synonymUnite.rds"))
+# st_write(synonyms_unite(sf.grid.ndop.sq.centroid), paste0(path.igaD,"clean/occurrences/NDOP-4326_2018-2021_4-6_lt1000_kfmeUniqueCentroids_synonymUnite.shp"))
 
 # length(unique(sf.grid.ndop.sq.centroid$POLE)) # 7818 z 9845 pokrývá NDOP (~80%); 160 LSD (<2%)
 
 
-summary(res.ndop.ptaci)
+# LSD (raději bez hodinovek, ať to nekomplikuju)
+res.lsd <- readRDS(paste0(path.igaD, "export-avif-lsd-2018-2022_utf8_3-6.rds"))
+res.lsd %<>% filter(Year %in% 2018:2021) %>%
+    filter(Month %in% 4:6) %>%
+    filter(!str_detect(species, "/|sp\\.")) %>%
+    dplyr::select(POLE, species, ObsListsID) # 131918 kvadrátů
+res.lsd <- st_transform(res.lsd, 4326)
+res.lsd <- distinct(res.lsd) # trvá dlouho, ale nutné udělat, nekteré druhy zaznamenány vícekrát na jedné návčtěve, 45264 kvadrátů
+
+
+
+# 164 lokalit, alespoň 4 návštěvy
+ObsListsIDperSq <- res.lsd %>%
+    group_by(POLE) %>%
+    summarise(count = n_distinct(ObsListsID)) %>%
+    arrange(desc(count)) %>%
+    filter(count >= 4) %>% # 4 je hranice 1/2 kvartilu / summary(ObsListsIDperSq)
+    ungroup()
+
+POLE.selected <- as.vector(ObsListsIDperSq$POLE)
+
+# st_write(ObsListsIDperSq, paste0(path.igaD, "clean/occurrences/ObsListsIDperSq-4326.shp"))
+# saveRDS(ObsListsIDperSq, paste0(path.igaD, "clean/occurrences/ObsListsIDperSq-4326.rds"))
+
+# dofiltr jen kvadráty s alespoň 4 návštěvami
+res.lsd %<>% filter(POLE %in% POLE.selected) # 44839 kvadrátů
+res.lsd$species %<>% as.character # factor dělá problémy v synonyms_unite()
+
+# st_write(res.lsd, paste0(path.igaD,"clean/occurrences/LSD-164-4326_2018-2021_4-6.shp"))
+# saveRDS(res.lsd, paste0(path.igaD,"clean/occurrences/LSD-164-4326_2018-2021_4-6.rds"))
+# st_write(synonyms_unite(res.lsd), paste0(path.igaD,"clean/occurrences/LSD-164-4326_2018-2021_4-6_synonymUnite.shp"))
+# saveRDS(synonyms_unite(res.lsd), paste0(path.igaD,"clean/occurrences/LSD-164-4326_2018-2021_4-6_synonymUnite.rds"))
+
+

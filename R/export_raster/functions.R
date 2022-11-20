@@ -526,7 +526,7 @@ synonyms <- function() {
 synonyms_unite <- function(tbl) {
   # sjednocení synonym, druh pojmenovaný species
   syns <- synonyms()
-
+  tbl$species %<>% as.character # factor delá problémy, ikdyž je formálně správně
   # nahrazení názvů traits druhů novějšími názvy z NDOPu
   for (s in names(syns)) {
     matched <- tbl %>% filter(species == syns[[s]])
