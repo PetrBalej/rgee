@@ -806,6 +806,47 @@ f.res.ndop.ptaci.czechia_noLSD <- res.ndop.ptaci.czechia[-res.ndop.ptaci.czechia
 
 # bias rastery - ppp bezrozměrné, přímo souřadnice? - kde mám poznámky na správný postup stackowerflow Australský profesor?
 
+#
+# occ/per_pixel + normalizace k vytvoření jednoduchého bias rasteru
+#
+
+p.temp <- as_Spatial(res.ndop.ptaci.czechia4326 %>% dplyr::select(!everything()))
+
+ndop_per_pixel <- rasterize(p.temp, rCheck, update = TRUE, fun = "count")
+
+
+# rr <- writeRaster(ndop_per_pixel, paste0(path.igaD, "clean/bias/ndop_per_pixel.grd"), format = "raster", overwrite = TRUE)
+# hdr(rr, format = "ENVI")
+# saveRDS(ndop_per_pixel, file = paste0(path.igaD, "clean/bias/ndop_per_pixel.rds"))
+# rr <- writeRaster(normalize(ndop_per_pixel), paste0(path.igaD, "clean/bias/ndop_per_pixel_normalized.grd"), format = "raster", overwrite = TRUE)
+# hdr(rr, format = "ENVI")
+# saveRDS(normalize(ndop_per_pixel), file = paste0(path.igaD, "clean/bias/ndop_per_pixel_normalized.rds"))
+
+# # NA
+# ndop_per_pixel_na <- raster::mask(ndop_per_pixel, rCheck)
+# ndop_per_pixel_na <- raster::setMinMax(ndop_per_pixel_na)
+# rr <- writeRaster(ndop_per_pixel_na, paste0(path.igaD, "clean/bias/ndop_per_pixel_na.grd"), format = "raster", overwrite = TRUE)
+# hdr(rr, format = "ENVI")
+# saveRDS(ndop_per_pixel_na, file = paste0(path.igaD, "clean/bias/ndop_per_pixel_na.rds"))
+# rr <- writeRaster(normalize(ndop_per_pixel_na), paste0(path.igaD, "clean/bias/ndop_per_pixel_normalized_na.grd"), format = "raster", overwrite = TRUE)
+# hdr(rr, format = "ENVI")
+# saveRDS(normalize(ndop_per_pixel_na), file = paste0(path.igaD, "clean/bias/ndop_per_pixel_normalized_na.rds"))
+
+# # noLSD
+# ndop_per_pixel_na_noLSD <- raster::mask(ndop_per_pixel, rCheck2)
+# ndop_per_pixel_na_noLSD <- raster::setMinMax(ndop_per_pixel_na_noLSD)
+# rr <- writeRaster(ndop_per_pixel_na_noLSD, paste0(path.igaD, "clean/bias/ndop_per_pixel_na_noLSD.grd"), format = "raster", overwrite = TRUE)
+# hdr(rr, format = "ENVI")
+# saveRDS(ndop_per_pixel_na_noLSD, file = paste0(path.igaD, "clean/bias/ndop_per_pixel_na_noLSD.rds"))
+# rr <- writeRaster(normalize(ndop_per_pixel_na_noLSD), paste0(path.igaD, "clean/bias/ndop_per_pixel_normalized_na_noLSD.grd"), format = "raster", overwrite = TRUE)
+# hdr(rr, format = "ENVI")
+# saveRDS(normalize(ndop_per_pixel_na_noLSD), file = paste0(path.igaD, "clean/bias/ndop_per_pixel_normalized_na_noLSD.rds"))
+
+
+# "wc_cv_bio11" má nodata v Praze
+# raster_stack_groups3_vif[["wc_cv_bio11"]]@file@nodatavalue
+# NAvalue(raster_stack_groups3_vif[["wc_cv_bio11"]])
+
 
 # vyřezat z NDOP LSD? Až po TGB? Zkreslím tím TGB... Ne, pokud TGB bez, tak i train bez!
 
@@ -818,6 +859,6 @@ f.res.ndop.ptaci.czechia_noLSD <- res.ndop.ptaci.czechia[-res.ndop.ptaci.czechia
 # jsou v maxentu přidat váhy (presencím nebo random bg?)
 
 
-
+# dodělat zpětně pro LSD absence
 
 
