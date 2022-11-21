@@ -571,8 +571,13 @@ raster_stack_groups3_vif <- vifcor07_vifstep5
 
 
 
+# můžu počítat s finálními 21, cv na závěr spolklo sama sebe... (proč ne už v prvním kole je asi jen náhoda?)
+# > `vifcor-3rdLevel---all`@excludedPairs
+# $l8_5_ndvi_cv
+# [1] "l8_5_evi_cv"
+# $l8_4_ndvi_cv
+# [1] "l8_4_raw_cv_B5"
 
-# bias rastery - ppp bezrozměrné, přímo souřadnice? - kde mám poznámky na správný postup stackowerflow Australský profesor?
 
 
 # příprava NDOP
@@ -657,9 +662,149 @@ res.lsd$species %<>% as.character # factor dělá problémy v synonyms_unite()
 
 
 
+#
+#### kontrola na NA napříč
+#
+# + propíše NA hodnoty napříč layery
+raster_stack_groups3_vif_na <- raster::mask(raster_stack_groups3_vif, sum(raster_stack_groups3_vif))
+#  znovu určí minMax hodnoty
+raster_stack_groups3_vif_na <- raster::setMinMax(raster_stack_groups3_vif_na)
+
+# rr <- writeRaster(raster_stack_groups3_vif_na, paste0(path.igaD, "clean/vif/vifcor07_vifstep5---", group, "-na.grd"), format = "raster", overwrite = TRUE)
+# hdr(rr, format = "ENVI")
+# saveRDS(raster_stack_groups3_vif_na, paste0(path.igaD, "clean/vif/vifcor07_vifstep5---", group, "-na.rds"))
+
+
+#################################################################################################################
+# konečný dataset 21 rasterů s propsanými NA -- nutno ještě dodatečně vyřezat LSD pro NDOP (odstranit) a pro predikci (získat jen 162)!!!
+# vif/vifcor07_vifstep5---all-na.grd
+# vif/vifcor07_vifstep5---all-na.rds
+
+# konečné datasety LSD+NDOP
+# occurrences/f.*
+# _noLSD - odstraněno LSD
+
+#################################################################################################################
 
 
 
+#
+##### nutná zpětná kontrola NDOP+LSD jestli leží v NA rasteru
+##### 2 LSD v Praze spadnou do NA... Nutno odstranit (jen 162)
+#
+rCheck <- raster_stack_groups3_vif_na[[1]]
+
+
+#
+# LSD
+#
+ObsListsIDperSqNA <- which(is.na(extract(rCheck, as_Spatial(ObsListsIDperSq))))
+f.ObsListsIDperSq <- ObsListsIDperSq[-ObsListsIDperSqNA, ]
+# st_write(f.ObsListsIDperSq, paste0(path.igaD,"clean/occurrences/f.ObsListsIDperSq.shp"))
+# saveRDS(f.ObsListsIDperSq, paste0(path.igaD,"clean/occurrences/f.ObsListsIDperSq.rds"))
+
+
+res.lsdNA <- which(is.na(extract(rCheck, as_Spatial(res.lsd))))
+f.res.lsd <- res.lsd[-res.lsdNA, ] #  44839 na 44568
+# st_write(f.res.lsd, paste0(path.igaD,"clean/occurrences/f.res.lsd.shp"))
+# saveRDS(f.res.lsd, paste0(path.igaD,"clean/occurrences/f.res.lsd.rds"))
+# st_write(synonyms_unite(f.res.lsd), paste0(path.igaD,"clean/occurrences/f.res.lsd_syn.shp"))
+# saveRDS(synonyms_unite(f.res.lsd), paste0(path.igaD,"clean/occurrences/f.res.lsd_syn.rds"))
+
+POLE.selected <- as.vector(f.ObsListsIDperSq$POLE)
+
+#
+# NDOP
+#
+
+sf.grid.ndop.sq.centroidNA <- which(is.na(extract(rCheck, as_Spatial(sf.grid.ndop.sq.centroid))))
+f.sf.grid.ndop.sq.centroid <- sf.grid.ndop.sq.centroid[-sf.grid.ndop.sq.centroidNA, ] #  136427 na 135868
+# st_write(f.sf.grid.ndop.sq.centroid, paste0(path.igaD,"clean/occurrences/f.sf.grid.ndop.sq.centroid.shp"))
+# saveRDS(f.sf.grid.ndop.sq.centroid, paste0(path.igaD,"clean/occurrences/f.sf.grid.ndop.sq.centroid.rds"))
+# st_write(synonyms_unite(f.sf.grid.ndop.sq.centroid), paste0(path.igaD,"clean/occurrences/f.sf.grid.ndop.sq.centroid_syn.shp"))
+# saveRDS(synonyms_unite(f.sf.grid.ndop.sq.centroid), paste0(path.igaD,"clean/occurrences/f.sf.grid.ndop.sq.centroid_syn.rds"))
+
+
+
+
+res.ndop.ptaci.czechia4326NA <- which(is.na(extract(rCheck, as_Spatial(res.ndop.ptaci.czechia4326))))
+f.res.ndop.ptaci.czechia4326 <- res.ndop.ptaci.czechia4326[-res.ndop.ptaci.czechia4326NA, ] #  446661 na 442018
+# st_write(f.res.ndop.ptaci.czechia4326, paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia4326.shp"))
+# saveRDS(f.res.ndop.ptaci.czechia4326, paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia4326.rds"))
+# st_write(synonyms_unite(f.res.ndop.ptaci.czechia4326), paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia4326_syn.shp"))
+# saveRDS(synonyms_unite(f.res.ndop.ptaci.czechia4326), paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia4326_syn.rds"))
+
+
+
+
+# použito předchozí NA, protože nemůžu vylučovat rasterem v jiném CRS
+f.res.ndop.ptaci.czechia <- res.ndop.ptaci.czechia[-res.ndop.ptaci.czechia4326NA, ] #  446661 na 442018
+# st_write(f.res.ndop.ptaci.czechia, paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia.shp"))
+# saveRDS(f.res.ndop.ptaci.czechia, paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia.rds"))
+# st_write(synonyms_unite(f.res.ndop.ptaci.czechia), paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia_syn.shp"))
+# saveRDS(synonyms_unite(f.res.ndop.ptaci.czechia), paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia_syn.rds"))
+
+
+
+# nutno ještě dodatečně vyřezat LSD pro NDOP (odstranit) a pro predikci (získat jen 162)!!!
+
+# toto asi reálně netřeba? jen pro bias raster jeden layer jako podklad? Ale preventivně můžu používat k extrakci NDOP a generování a extrakci backgroundu
+raster_stack_groups3_vif_na_noLSD <- raster::mask(raster_stack_groups3_vif_na, f.ObsListsIDperSq, inverse = TRUE)
+raster_stack_groups3_vif_na_noLSD <- raster::setMinMax(raster_stack_groups3_vif_na_noLSD)
+# rr <- writeRaster(raster_stack_groups3_vif_na_noLSD, paste0(path.igaD, "clean/vif/vifcor07_vifstep5---", group, "-na_noLSD.grd"), format = "raster", overwrite = TRUE)
+# hdr(rr, format = "ENVI")
+# saveRDS(raster_stack_groups3_vif_na_noLSD, paste0(path.igaD, "clean/vif/vifcor07_vifstep5---", group, "-na_noLSD.rds"))
+
+
+
+#
+# NDOP2 - odstranění kvadrátů z LSD (úplná nezávislost)
+#
+rCheck2 <- raster_stack_groups3_vif_na_noLSD[[1]]
+
+
+sf.grid.ndop.sq.centroidNA <- which(is.na(extract(rCheck2, as_Spatial(sf.grid.ndop.sq.centroid))))
+f.sf.grid.ndop.sq.centroid_noLSD <- sf.grid.ndop.sq.centroid[-sf.grid.ndop.sq.centroidNA, ] #  136427 na 135868 na 130654
+# st_write(f.sf.grid.ndop.sq.centroid_noLSD, paste0(path.igaD,"clean/occurrences/f.sf.grid.ndop.sq.centroid_noLSD.shp"))
+# saveRDS(f.sf.grid.ndop.sq.centroid_noLSD, paste0(path.igaD,"clean/occurrences/f.sf.grid.ndop.sq.centroid_noLSD.rds"))
+# st_write(synonyms_unite(f.sf.grid.ndop.sq.centroid_noLSD), paste0(path.igaD,"clean/occurrences/f.sf.grid.ndop.sq.centroid_syn_noLSD.shp"))
+# saveRDS(synonyms_unite(f.sf.grid.ndop.sq.centroid_noLSD), paste0(path.igaD,"clean/occurrences/f.sf.grid.ndop.sq.centroid_syn_noLSD.rds"))
+
+
+res.ndop.ptaci.czechia4326NA <- which(is.na(extract(rCheck2, as_Spatial(res.ndop.ptaci.czechia4326))))
+f.res.ndop.ptaci.czechia4326_noLSD <- res.ndop.ptaci.czechia4326[-res.ndop.ptaci.czechia4326NA, ] #  446661 na 442018 na 412824
+# st_write(f.res.ndop.ptaci.czechia4326_noLSD, paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia4326_noLSD.shp"))
+# saveRDS(f.res.ndop.ptaci.czechia4326_noLSD, paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia4326_noLSD.rds"))
+# st_write(synonyms_unite(f.res.ndop.ptaci.czechia4326_noLSD), paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia4326_syn_noLSD.shp"))
+# saveRDS(synonyms_unite(f.res.ndop.ptaci.czechia4326_noLSD), paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia4326_syn_noLSD.rds"))
+
+
+# použito předchozí NA, protože nemůžu vylučovat rasterem v jiném CRS
+f.res.ndop.ptaci.czechia_noLSD <- res.ndop.ptaci.czechia[-res.ndop.ptaci.czechia4326NA, ] #  446661 na 442018 na 412824
+# st_write(f.res.ndop.ptaci.czechia_noLSD, paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia_noLSD.shp"))
+# saveRDS(f.res.ndop.ptaci.czechia_noLSD, paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia_noLSD.rds"))
+# st_write(synonyms_unite(f.res.ndop.ptaci.czechia_noLSD), paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia_syn_noLSD.shp"))
+# saveRDS(synonyms_unite(f.res.ndop.ptaci.czechia_noLSD), paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia_syn_noLSD.rds"))
+
+
+
+
+
+# # doplnění prázdného prediktoru pro maxent s jedním prediktorem
+# if (length(names(env)) == 1) {
+#     # https://github.com/danlwarren/ENMTools/blob/master/R/enmtools.maxent.R
+#     oldname <- names(env)
+#     env <- stack(env, env)
+#     env[[2]][!is.na(env[[2]])] <- 0
+#     names(env) <- c(oldname, "dummyvar")
+# }
+# # occ$lon + occ$lat
+# bg <- randomPoints(predictors, 1000)
+# me <- dismo::maxent(predictors, occtrain, a=bg, removeDuplicates = FALSE, args = c("hinge=false", "threshold=false"))
+# me.r <- dismo::predict(me, predictors, args = c("outputformat=cloglog"))
+
+
+# bias rastery - ppp bezrozměrné, přímo souřadnice? - kde mám poznámky na správný postup stackowerflow Australský profesor?
 
 
 # vyřezat z NDOP LSD? Až po TGB? Zkreslím tím TGB... Ne, pokud TGB bez, tak i train bez!
