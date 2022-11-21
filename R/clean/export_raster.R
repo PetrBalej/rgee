@@ -803,8 +803,33 @@ f.res.ndop.ptaci.czechia_noLSD <- res.ndop.ptaci.czechia[-res.ndop.ptaci.czechia
 # me <- dismo::maxent(predictors, occtrain, a=bg, removeDuplicates = FALSE, args = c("hinge=false", "threshold=false"))
 # me.r <- dismo::predict(me, predictors, args = c("outputformat=cloglog"))
 
+#
+# bias rastery
+#
+library(spatstat)
 
-# bias rastery - ppp bezrozměrné, přímo souřadnice? - kde mám poznámky na správný postup stackowerflow Australský profesor?
+# res.ndop.ptaci.czechia4326
+# rCheck
+# rCheck2
+
+# ppp
+ow <- as.owin(as.im(rCheck2)) # rCheck + dále níže
+ndop_coords <- st_coordinates(res.ndop.ptaci.czechia4326)
+ndop_ppp <- ppp(ndop_coords[, 1], ndop_coords[, 2], window = ow)
+
+# ndop_ppp.bw <- bw.scott.iso(ndop_ppp) # 0.09940521 ~ 7.10 km
+# sigma = 0.001 se téměř rovná použití per_pixel, nemusím ho používat...
+
+sigmas <- c(0.001, seq(0.01, 0.2, by = 0.01))
+
+for (sigma in sigmas) {
+    ndop_ppp.d <- density.ppp(ndop_ppp, sigma = sigma, positive = TRUE)
+    ndop_ppp.r <- normalize(raster(ndop_ppp.d, crs = crs(rCheck2)))
+
+    # rr <- writeRaster(ndop_ppp.r, paste0(path.igaD, "clean/bias/ppp_na_noLSD-", sigma * 1000, ".tif"), format = "GTiff", overwrite = TRUE)
+    # hdr(rr, format = "ENVI")
+    # saveRDS(ndop_ppp.r, paste0(path.igaD, "clean/bias/ppp_na_noLSD-", sigma * 1000, ".rds"))
+}
 
 #
 # occ/per_pixel + normalizace k vytvoření jednoduchého bias rasteru
