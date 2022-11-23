@@ -537,6 +537,22 @@ synonyms_unite <- function(tbl) {
   return(tbl)
 }
 
+generate_bg <- function(raster, n = 10000, prob = FALSE, replace = TRUE) {
+  # in dismo::randomPoints sample replace cannot be changed to TRUE
+  # https://github.com/danlwarren/ENMTools/blob/master/R/check.bg.R
+  r.df <- as.data.frame(rasterToPoints(raster))
+
+  if (prob) {
+    prob <- r.df[, 3]
+  } else {
+    prob <- NULL
+  }
+
+  inds <- sample(1:nrow(r.df), size = n, prob = prob, replace = replace)
+
+  return(r.df[inds, 1:2])
+}
+
 join_outputs_rds <- function(export_path, prefix) {
   rds_list <-
     list.files(

@@ -635,7 +635,7 @@ res.lsd %<>% filter(Year %in% 2018:2021) %>%
     dplyr::select(POLE, species, ObsListsID) # 131918 kvadrátů
 res.lsd <- st_transform(res.lsd, 4326)
 res.lsd <- distinct(res.lsd) # trvá dlouho, ale nutné udělat, nekteré druhy zaznamenány vícekrát na jedné návčtěve, 45264 kvadrátů
-
+###### není distinct!!!!!!!!!!!!!!!!!!!!!!!!!!! musím dát res.lsd distinct(across(c(species, POLE)), .keep_all = TRUE)
 
 
 # 164 lokalit, alespoň 4 návštěvy
@@ -660,6 +660,14 @@ res.lsd$species %<>% as.character # factor dělá problémy v synonyms_unite()
 # st_write(synonyms_unite(res.lsd), paste0(path.igaD,"clean/occurrences/LSD-164-4326_2018-2021_4-6_synonymUnite.shp"))
 # saveRDS(synonyms_unite(res.lsd), paste0(path.igaD,"clean/occurrences/LSD-164-4326_2018-2021_4-6_synonymUnite.rds"))
 
+
+
+#### znovu distinct až tady!!! 
+res.lsd.distinct <- res.lsd %>% distinct(across(c(species, POLE)), .keep_all = TRUE) # 9307 kvadrátů
+# st_write(res.lsd.distinct, paste0(path.igaD,"clean/occurrences/LSD-164-4326_2018-2021_4-6_distinct.shp"))
+# saveRDS(res.lsd.distinct, paste0(path.igaD,"clean/occurrences/LSD-164-4326_2018-2021_4-6_distinct.rds"))
+# st_write(synonyms_unite(res.lsd.distinct), paste0(path.igaD,"clean/occurrences/LSD-164-4326_2018-2021_4-6_synonymUnite_distinct.shp"))
+# saveRDS(synonyms_unite(res.lsd.distinct), paste0(path.igaD,"clean/occurrences/LSD-164-4326_2018-2021_4-6_synonymUnite_distinct.rds"))
 
 
 #
@@ -711,7 +719,42 @@ f.res.lsd <- res.lsd[-res.lsdNA, ] #  44839 na 44568
 # st_write(synonyms_unite(f.res.lsd), paste0(path.igaD,"clean/occurrences/f.res.lsd_syn.shp"))
 # saveRDS(synonyms_unite(f.res.lsd), paste0(path.igaD,"clean/occurrences/f.res.lsd_syn.rds"))
 
+res.lsd.distinctNA <- which(is.na(extract(rCheck, as_Spatial(res.lsd.distinct))))
+f.res.lsd.distinct <- res.lsd.distinct[-res.lsd.distinctNA, ] #  9307 na 9227
+# st_write(f.res.lsd.distinct, paste0(path.igaD,"clean/occurrences/f.res.lsd.distinct.shp"))
+# saveRDS(f.res.lsd.distinct, paste0(path.igaD,"clean/occurrences/f.res.lsd.distinct.rds"))
+# st_write(synonyms_unite(f.res.lsd.distinct), paste0(path.igaD,"clean/occurrences/f.res.lsd.distinct_syn.shp"))
+# saveRDS(synonyms_unite(f.res.lsd.distinct), paste0(path.igaD,"clean/occurrences/f.res.lsd.distinct_syn.rds"))
+
+
 POLE.selected <- as.vector(f.ObsListsIDperSq$POLE)
+
+# odvodit pro LSD absence
+"%notin%" <- Negate("%in%")
+
+f.res.lsd.distinct.temp <- f.res.lsd.distinct
+f.res.lsd.distinct.temp$presence <- 1
+f.res.lsd.distinct.temp %<>% dplyr::select(POLE, species, presence)
+f.ObsListsIDperSq.temp <- f.ObsListsIDperSq %>% dplyr::select(POLE)
+
+
+for (sp in as.vector(unique(f.res.lsd.distinct.temp$species))) {
+    sp.presences <- f.res.lsd.distinct.temp %>% filter(species == sp)
+    sp.absences <- f.ObsListsIDperSq.temp %>% filter(POLE %notin% sp.presences$POLE)
+
+    sp.absences$species <- sp
+    sp.absences$presence <- 0
+
+    f.res.lsd.distinct.temp %<>% add_row(sp.absences)
+}
+
+f.res.lsd.distinct.pa <- f.res.lsd.distinct.temp # 9227 na 32076
+
+# st_write(f.res.lsd.distinct.pa, paste0(path.igaD,"clean/occurrences/f.res.lsd.distinct.pa.shp"))
+# saveRDS(f.res.lsd.distinct.pa, paste0(path.igaD,"clean/occurrences/f.res.lsd.distinct.pa.rds"))
+# st_write(synonyms_unite(f.res.lsd.distinct.pa), paste0(path.igaD,"clean/occurrences/f.res.lsd.distinct.pa_syn.shp"))
+# saveRDS(synonyms_unite(f.res.lsd.distinct.pa), paste0(path.igaD,"clean/occurrences/f.res.lsd.distinct.pa_syn.rds"))
+
 
 #
 # NDOP
@@ -881,9 +924,128 @@ ndop_per_pixel <- rasterize(p.temp, rCheck, update = TRUE, fun = "count")
 # pravděpodobnější vztah velikosti home range, než prevalence (tu ale také otestovat)
 
 # sdm - možnost predikce jen do LSD míst (ne do celé ČR)? Rychlejší
-# jsou v maxentu přidat váhy (presencím nebo random bg?)
+# jsou v maxentu přidat váhy (presencím nebo random bg?)???
 
 
-# dodělat zpětně pro LSD absence
+
+#
+# generování backgroundu
+#
+
+# biasRasters <-
+#     list.files(
+#         path = paste0(path.igaD, "clean/bias"),
+#         pattern = paste0("^ppp_na_noLSD.+\\.tif$"),
+#         ignore.case = TRUE,
+#         full.names = TRUE
+#     )
+# for (biasRaster in biasRasters) {
+#     br <- raster(biasRaster)
+#     bgBias[[]] <- generate_bg(br, 5000, prob = TRUE)
+# }
+
+bgBias <- list()
+
+for (r in 1:10) {
+    r <- as.character(r)
+    for (sigma in sigmas) {
+        sigma <- as.character(sigma * 1000)
+        br.na <- raster(paste0(path.igaD, "clean/bias/ppp_na-", sigma, ".tif"))
+        br.na_noLSD <- raster(paste0(path.igaD, "clean/bias/ppp_na_noLSD-", sigma, ".tif"))
+
+        bgBias[["bias_na"]][[as.character(5000)]][[r]][[sigma]] <- generate_bg(br.na, 5000, prob = TRUE)
+        bgBias[["bias_na_noLSD"]][[as.character(5000)]][[r]][[sigma]] <- generate_bg(br.na_noLSD, 5000, prob = TRUE)
+
+        bgBias[["bias_na"]][[as.character(10000)]][[r]][[sigma]] <- generate_bg(br.na, 10000, prob = TRUE)
+        bgBias[["bias_na_noLSD"]][[as.character(10000)]][[r]][[sigma]] <- generate_bg(br.na_noLSD, 10000, prob = TRUE)
+    }
+    bgBias[["random_na"]][[as.character(5000)]][[r]] <- generate_bg(br.na, 5000, prob = FALSE)
+    bgBias[["random_na_noLSD"]][[as.character(5000)]][[r]] <- generate_bg(br.na_noLSD, 5000, prob = FALSE)
+
+    bgBias[["random_na"]][[as.character(10000)]][[r]] <- generate_bg(br.na, 10000, prob = FALSE)
+    bgBias[["random_na_noLSD"]][[as.character(10000)]][[r]] <- generate_bg(br.na_noLSD, 10000, prob = FALSE)
+}
+
+# saveRDS(bgBias, file = paste0(path.igaD, "clean/bias/bg-variants.rds"))
+
+# # plot(st_as_sf(bgBias[["random_na_noLSD"]][[as.character(5000)]][[r]], coords = c("x", "y"), crs = crs(br.na_noLSD)))
+
+
+
+# předem nasamplovat a uložit pro všechny typy backgroundů pro rastery prediktorů (ať se zbytečně pak neopakuje při modelování)
+# stejně tak bych mohl nasamplovat i všechny druhy (nálezy) pro presence NDOP (k nim pak napárovávat bg výše - to až při modelování?) i PA bodů LSD
+# ověřit formát pro sdm a možnost vložení parametrů pro sdm::maxent včetně zpracování 1 prediktoru
+
+# plot(st_as_sf(bgBias[["bias_na_noLSD"]][[as.character(10000)]][["1"]][["1"]], coords = c("x", "y"), crs = crs(br.na_noLSD)))
+
+# sdm "test.indep"
+
+
+
+#
+# nasamplovat bg
+#
+
+bgBiasSampled <- list()
+for (r in 1:10) {
+    r <- as.character(r)
+    print(r)
+    for (sigma in sigmas) {
+        print(sigma)
+        sigma <- as.character(sigma * 1000)
+        bgBiasSampled[["bias_na"]][[as.character(5000)]][[r]][[sigma]] <- extract(raster_stack_groups3_vif_na, as_Spatial(st_as_sf(bgBias[["bias_na"]][[as.character(5000)]][[r]][[sigma]], coords = c("x", "y"), crs = crs(raster_stack_groups3_vif_na))))
+        bgBiasSampled[["bias_na_noLSD"]][[as.character(5000)]][[r]][[sigma]] <- extract(raster_stack_groups3_vif_na_noLSD, as_Spatial(st_as_sf(bgBias[["bias_na_noLSD"]][[as.character(5000)]][[r]][[sigma]], coords = c("x", "y"), crs = crs(raster_stack_groups3_vif_na_noLSD))))
+
+        bgBiasSampled[["bias_na"]][[as.character(10000)]][[r]][[sigma]] <- extract(raster_stack_groups3_vif_na, as_Spatial(st_as_sf(bgBias[["bias_na"]][[as.character(10000)]][[r]][[sigma]], coords = c("x", "y"), crs = crs(raster_stack_groups3_vif_na))))
+        bgBiasSampled[["bias_na_noLSD"]][[as.character(10000)]][[r]][[sigma]] <- extract(raster_stack_groups3_vif_na_noLSD, as_Spatial(st_as_sf(bgBias[["bias_na_noLSD"]][[as.character(10000)]][[r]][[sigma]], coords = c("x", "y"), crs = crs(raster_stack_groups3_vif_na_noLSD))))
+    }
+    bgBiasSampled[["random_na"]][[as.character(5000)]][[r]] <- extract(raster_stack_groups3_vif_na, as_Spatial(st_as_sf(bgBias[["random_na"]][[as.character(5000)]][[r]], coords = c("x", "y"), crs = crs(raster_stack_groups3_vif_na))))
+    bgBiasSampled[["random_na_noLSD"]][[as.character(5000)]][[r]] <- extract(raster_stack_groups3_vif_na_noLSD, as_Spatial(st_as_sf(bgBias[["random_na_noLSD"]][[as.character(5000)]][[r]], coords = c("x", "y"), crs = crs(raster_stack_groups3_vif_na_noLSD))))
+
+    bgBiasSampled[["random_na"]][[as.character(10000)]][[r]] <- extract(raster_stack_groups3_vif_na, as_Spatial(st_as_sf(bgBias[["random_na"]][[as.character(10000)]][[r]], coords = c("x", "y"), crs = crs(raster_stack_groups3_vif_na))))
+    bgBiasSampled[["random_na_noLSD"]][[as.character(10000)]][[r]] <- extract(raster_stack_groups3_vif_na_noLSD, as_Spatial(st_as_sf(bgBias[["random_na_noLSD"]][[as.character(10000)]][[r]], coords = c("x", "y"), crs = crs(raster_stack_groups3_vif_na_noLSD))))
+}
+# saveRDS(bgBiasSampled, file = paste0(path.igaD, "clean/bias/bgSampled-variants.rds"))
+
+
+
+#
+# nasamplovat LSD
+#
+
+f.res.lsd.distinct.pa.sampled <- extract(raster_stack_groups3_vif_na, as_Spatial(f.res.lsd.distinct.pa))
+f.res.lsd.distinct.pa.sampled.df <- cbind(f.res.lsd.distinct.pa, f.res.lsd.distinct.pa.sampled)
+# saveRDS(f.res.lsd.distinct.pa.sampled.df, file = paste0(path.igaD, "clean/occurrences/lsdSampled.rds"))
+# saveRDS(synonyms_unite(f.res.lsd.distinct.pa.sampled.df), file = paste0(path.igaD, "clean/occurrences/lsdSampled_syn.rds"))
+
+
+
+#
+# nasamplovat NDOP
+#
+# 130654 NDOP vs.  32076 LSD (PA) respektive 9227 (P); 14x více presencí v NDOP
+
+f.sf.grid.ndop.sq.centroid_noLSD.sampled <- extract(raster_stack_groups3_vif_na_noLSD, as_Spatial(f.sf.grid.ndop.sq.centroid_noLSD))
+f.sf.grid.ndop.sq.centroid_noLSD.sampled.df <- cbind(f.sf.grid.ndop.sq.centroid_noLSD, f.sf.grid.ndop.sq.centroid_noLSD.sampled)
+# saveRDS(f.sf.grid.ndop.sq.centroid_noLSD.sampled.df, file = paste0(path.igaD, "clean/occurrences/ndopSampled.rds"))
+# saveRDS(synonyms_unite(f.sf.grid.ndop.sq.centroid_noLSD.sampled.df), file = paste0(path.igaD, "clean/occurrences/ndopSampled_syn.rds"))
+
+
+
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# paste0(path.igaD, "clean/bias/bgSampled-variants.rds")
+# paste0(path.igaD, "clean/occurrences/ndopSampled_syn.rds")
+# paste0(path.igaD, "clean/occurrences/lsdSampled_syn.rds")
+# 
+# paste0(path.igaD,"clean/occurrences/f.res.lsd.distinct.pa_syn.rds")
+# 
+# paste0(path.igaD,"clean/occurrences/f.sf.grid.ndop.sq.centroid_syn_noLSD.rds")
+# paste0(path.igaD,"clean/occurrences/f.res.ndop.ptaci.czechia4326_syn_noLSD.rds")
+# 
+# paste0(path.igaD, "clean/vif/vifcor07_vifstep5---all-na.rds")
+# paste0(path.igaD, "clean/vif/vifcor07_vifstep5---all-na_noLSD.rds")
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
 
 
