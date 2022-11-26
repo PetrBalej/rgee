@@ -1,5 +1,3 @@
-start_time <- Sys.time()
-
 # předem nainstalováno...
 library(rgee)
 
@@ -53,8 +51,8 @@ scale <- 30
 tag_name <- scale # "" # gsub('[^0-9-]', '-', Sys.time())
 
 # adresář pro exportované soubory (v rámci wd) + další tag_name
-export_path <-
-    paste0(getwd(), "/../export/test-reduceResolution/", scale)
+export_path <- paste0(path.igaD, "predsDP/")
+export_fileName <- "kfme0rad-czechia_wc_l8_2014-2017_4-8"
 
 
 # GIT project directory (kompletní repozitář rgee z github.com: po rozbalení zipu v rgee-master/rgee-master)
@@ -103,11 +101,13 @@ bb <- cesko
 # )
 ## časové rozsahy
 
+# 2014 – 2017 pro každý měsíc 4, 5, 6, 7, 8.
+
 # rozsah snímků od/do
-years_range <- list(from = "2018-01-01", to = "2021-12-31")
+years_range <- list(from = "2014-01-01", to = "2017-12-31")
 
 # rozsah jedné sezóny v měsících (podvýběr z vybraného období years_range výše), možno i více sezón
-season_months_range <- list(c(4, 4), c(5, 5), c(6, 6))
+season_months_range <- list(c(4, 4), c(5, 5), c(6, 6), c(7, 7), c(8, 8))
 
 ## výstupní fotmát exportovaných rasterů
 # pokud zadám koncovku, budou rastry uloženy jako fyzické soubory na disk
@@ -169,12 +169,13 @@ if (!is.character(bb)) {
 
 sitmap_2rad <- list()
 # Define a geometry
-sitmap_2rad$N <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_4326_czechia_N.shp"))
-sitmap_2rad$S <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_4326_czechia_S.shp"))
+sitmap_2rad$all <- st_transform(st_read(paste0(path.igaD, "sitmap_0rad/sitmap_0rad.shp")), crs = 4326) %>% dplyr::select(POLE)
+
+# sitmap_2rad$N <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_4326_czechia_N.shp"))
+# sitmap_2rad$S <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_4326_czechia_S.shp"))
 output_df <- list()
 
-
-
+start_time <- Sys.time()
 for (half in names(sitmap_2rad)) {
     for (season in season_months_range) {
 
@@ -186,7 +187,7 @@ for (half in names(sitmap_2rad)) {
         # aplikace základních geografických, časových a odmračňovacích/odstiňovacích/aerosol/radio filtrů
         l8_sr_collection <-
             ee$ImageCollection(gdl$landsat2$geeSnippet)$
-                filterBounds(bb_geometry_rectangle)$
+                # filterBounds(bb_geometry_rectangle)$ # nevhodné dělat předem?
                 filterDate(years_range$from, years_range$to)$
                 filter(
                 ee$Filter$calendarRange(season[1], season[2], "month")
@@ -196,7 +197,7 @@ for (half in names(sitmap_2rad)) {
 
 
 
-        bands_all <- c("B1", "B2", "B3", "B4", "B5", "B6", "B7", "B10")
+        bands_all <- c("B1", "B2", "B3", "B4", "B5", "B6", "B7")
         bn <- l8_sr_collection$first()$bandNames()$getInfo()
         bn.renamed <- gsub("SR_|ST_", "", bn)
 
@@ -206,7 +207,7 @@ for (half in names(sitmap_2rad)) {
         # raw
         #####
         output_df[[paste0("l8_", scale, "_", season[1], "_raw_stdev")]] <- ee_extract(
-            x = l8_sr_collection$select(bands_all)$median(),
+            x = l8_sr_collection$select(bands_all)$mean(),
             y = sitmap_2rad[[half]],
             scale = scale,
             fun = ee$Reducer$stdDev(),
@@ -214,10 +215,10 @@ for (half in names(sitmap_2rad)) {
         )
 
         output_df[[paste0("l8_", scale, "_", season[1], "_raw_mean")]] <- ee_extract(
-            x = l8_sr_collection$select(bands_all)$median(),
+            x = l8_sr_collection$select(bands_all)$mean(),
             y = sitmap_2rad[[half]],
             scale = scale,
-            fun = ee$Reducer$median(),
+            fun = ee$Reducer$mean(),
             sf = FALSE
         )
 
@@ -225,7 +226,7 @@ for (half in names(sitmap_2rad)) {
         # ndvi
         #####
         output_df[[paste0("l8_", scale, "_", season[1], "_ndvi_stdev")]] <- ee_extract(
-            x = l8_sr_collection$select(c("B5", "B4"))$median()$normalizedDifference(c("B5", "B4")),
+            x = l8_sr_collection$select(c("B5", "B4"))$mean()$normalizedDifference(c("B5", "B4")),
             y = sitmap_2rad[[half]],
             scale = scale,
             fun = ee$Reducer$stdDev(),
@@ -233,10 +234,10 @@ for (half in names(sitmap_2rad)) {
         )
 
         output_df[[paste0("l8_", scale, "_", season[1], "_ndvi_mean")]] <- ee_extract(
-            x = l8_sr_collection$select(c("B5", "B4"))$median()$normalizedDifference(c("B5", "B4")),
+            x = l8_sr_collection$select(c("B5", "B4"))$mean()$normalizedDifference(c("B5", "B4")),
             y = sitmap_2rad[[half]],
             scale = scale,
-            fun = ee$Reducer$median(),
+            fun = ee$Reducer$mean(),
             sf = FALSE
         )
 
@@ -246,7 +247,7 @@ for (half in names(sitmap_2rad)) {
         #####
         # https://www.linkedin.com/pulse/ndvi-ndbi-ndwi-calculation-using-landsat-7-8-tek-bahadur-kshetri
         output_df[[paste0("l8_", scale, "_", season[1], "_mndwi_stdev")]] <- ee_extract(
-            x = l8_sr_collection$select(c("B3", "B6"))$median()$normalizedDifference(c("B3", "B6")),
+            x = l8_sr_collection$select(c("B3", "B6"))$mean()$normalizedDifference(c("B3", "B6")),
             y = sitmap_2rad[[half]],
             scale = scale,
             fun = ee$Reducer$stdDev(),
@@ -254,13 +255,34 @@ for (half in names(sitmap_2rad)) {
         )
 
         output_df[[paste0("l8_", scale, "_", season[1], "_mndwi_mean")]] <- ee_extract(
-            x = l8_sr_collection$select(c("B3", "B6"))$median()$normalizedDifference(c("B3", "B6")),
+            x = l8_sr_collection$select(c("B3", "B6"))$mean()$normalizedDifference(c("B3", "B6")),
             y = sitmap_2rad[[half]],
             scale = scale,
-            fun = ee$Reducer$median(),
+            fun = ee$Reducer$mean(),
             sf = FALSE
         )
 
+
+        #####
+        # ndwi (new)
+        #####
+        # https://www.linkedin.com/pulse/ndvi-ndbi-ndwi-calculation-using-landsat-7-8-tek-bahadur-kshetri
+        # NDWI = (NIR – SWIR) / (NIR + SWIR)
+        output_df[[paste0("l8_", scale, "_", season[1], "_ndwi_stdev")]] <- ee_extract(
+            x = l8_sr_collection$select(c("B5", "B6"))$mean()$normalizedDifference(c("B5", "B6")),
+            y = sitmap_2rad[[half]],
+            scale = scale,
+            fun = ee$Reducer$stdDev(),
+            sf = FALSE
+        )
+
+        output_df[[paste0("l8_", scale, "_", season[1], "_ndwi_mean")]] <- ee_extract(
+            x = l8_sr_collection$select(c("B5", "B6"))$mean()$normalizedDifference(c("B5", "B6")),
+            y = sitmap_2rad[[half]],
+            scale = scale,
+            fun = ee$Reducer$mean(),
+            sf = FALSE
+        )
 
         #####
         # evi
@@ -268,7 +290,7 @@ for (half in names(sitmap_2rad)) {
         #   # https://www.usgs.gov/core-science-systems/nli/landsat/landsat-enhanced-vegetation-index?qt-science_support_page_related_con=0
         #   # In Landsat 8, EVI = 2.5 * ((Band 5 – Band 4) / (Band 5 + 6 * Band 4 – 7.5 * Band 2 + 1)).
 
-        evi_prep <- l8_sr_collection$select(c("B5", "B4", "B2"))$median()
+        evi_prep <- l8_sr_collection$select(c("B5", "B4", "B2"))$mean()
 
         evi_res <- evi_prep$expression(
             "2.5 * ((B5 - B4) / (B5 + 6 * B4 - 7.5 * B2 + 1))",
@@ -291,7 +313,7 @@ for (half in names(sitmap_2rad)) {
             x = evi_res,
             y = sitmap_2rad[[half]],
             scale = scale,
-            fun = ee$Reducer$median(),
+            fun = ee$Reducer$mean(),
             sf = FALSE
         )
 
@@ -301,7 +323,7 @@ for (half in names(sitmap_2rad)) {
         #   # https://www.usgs.gov/core-science-systems/nli/landsat/landsat-modified-soil-adjusted-vegetation-index
         #   # In Landsat 8, MSAVI = (2 * Band 5 + 1 – sqrt ((2 * Band 5 + 1)2 – 8 * (Band 5 – Band 4))) / 2.
 
-        msavi_prep <- l8_sr_collection$select(c("B5", "B4"))$median()
+        msavi_prep <- l8_sr_collection$select(c("B5", "B4"))$mean()
         msavi_res <- msavi_prep$expression(
             "(2 * B5 + 1 - sqrt(pow((2 * B5 + 1), 2) - 8 * (B5 - B4))) / 2",
             list(
@@ -322,7 +344,7 @@ for (half in names(sitmap_2rad)) {
             x = msavi_res,
             y = sitmap_2rad[[half]],
             scale = scale,
-            fun = ee$Reducer$median(),
+            fun = ee$Reducer$mean(),
             sf = FALSE
         )
     }
@@ -352,14 +374,14 @@ for (half in names(sitmap_2rad)) {
         x = wc,
         y = sitmap_2rad[[half]],
         scale = scale,
-        fun = ee$Reducer$median(),
+        fun = ee$Reducer$mean(),
         sf = FALSE
     )
 
 
 
     # saveRDS(output_df, file = paste0(path.igaD, "test-kfme16-N_czechia_wc_l8_2018-2021_4-6.rds"))
-    saveRDS(output_df, file = paste0(path.igaD, "clean/predictors/kfme16-", half, "_czechia_wc_l8_2018-2021_4-6.rds"))
+    saveRDS(output_df, file = paste0(export_path, export_filename, "---", half, ".rds"))
 }
 
 end_time <- Sys.time()
@@ -370,71 +392,80 @@ print(paste("konec:", end_time))
 print(end_time - start_time)
 
 
+# #########
+# # spojení obou "polovin" ČR a vepsání vypočtených variant hodnot pixelů do rasterů
+# #########
 
-#########
-# spojení obou "polovin" ČR a vepsání vypočtených variant hodnot pixelů do rasterů
-#########
+# ####### nové načítání L8 a WC
+# kfme16.N <- readRDS(paste0(path.igaD, "clean/predictors/kfme16-N_czechia_wc_l8_2018-2021_4-6.rds"))
+# kfme16.S <- readRDS(paste0(path.igaD, "clean/predictors/kfme16-S_czechia_wc_l8_2018-2021_4-6.rds"))
 
-####### nové načítání L8 a WC
-kfme16.N <- readRDS(paste0(path.igaD, "clean/predictors/kfme16-N_czechia_wc_l8_2018-2021_4-6.rds"))
-kfme16.S <- readRDS(paste0(path.igaD, "clean/predictors/kfme16-S_czechia_wc_l8_2018-2021_4-6.rds"))
+# # sloučit N a S
+# for (l1 in names(kfme16.N)) {
+#     kfme16.N[[l1]] %<>% add_row(kfme16.S[[l1]])
+# }
 
-# sloučit N a S
-for (l1 in names(kfme16.N)) {
-    kfme16.N[[l1]] %<>% add_row(kfme16.S[[l1]])
-}
+# kfme16 <- output_df <- readRDS("/home/petr/Documents/igaD/predictorsDP/kfme1rad-all_czechia_wc_l8_2014-2017_4-8.rds")
+kfme16 <- output_df #  <- readRDS("/home/petr/Documents/igaD/predictorsDP/kfme0rad-all_czechia_wc_l8_2014-2017_4-8.rds")
 
-kfme16 <- kfme16.N
 
-sf.grid <- st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad_4326_czechia.shp"))
+# sitmap_2rad$all <- st_transform(st_read(paste0(path.igaD, "sitmap_0rad/sitmap_0rad.shp")), crs=4326) %>% dplyr::select(POLE)
+sf.grid <- sitmap_2rad$all
+
 
 
 # vzorový KFME raster pro 16 subkvadrátů
+divBy <- 1 # 0rad: 1; 1rad: 2; 2rad: 4
+
 r <- raster(
-    xmn = 12.0834157383896326, # set minimum x coordinate
-    xmx = 18.8750299183168408, # set maximum x coordinate
-    ymn = 48.5500817521775048, # set minimum y coordinate
-    ymx = 51.0750755551042701, # set maximum y coordinate
-    res = c((1 / 6) / 4, 0.1 / 4), # resolution in c(x,y) direction
-    vals = runif(16463, 0, 1)
+    ext = extent(sitmap_2rad$all),
+    res = c((1 / 6) / divBy, 0.1 / divBy), # resolution in c(x,y) direction
+    vals = rep(1, nrow(sitmap_2rad$all))
 )
 # writeRaster(r, paste0(path.igaD, "kfme16-test.tif"))
 
 
 
-
+create.tibble <- TRUE
+kfme1rad <- list()
 for (l1 in names(kfme16)) {
     kfme16.t <- as_tibble(kfme16[[l1]])
 
     print(l1)
-
     names(kfme16[[l1]])[-1]
 
-    for (band in names(kfme16[[l1]])[-1]) {
-        print(band)
-        kfme16.t.select <- kfme16.t %>% dplyr::select(all_of(c("POLE", band)))
+    names(kfme16.t) <- c("POLE", paste0(str_replace(l1, "_30", ""), "_", names(kfme16.t[-1])))
 
-        m <- merge(sf.grid, kfme16.t.select, by = "POLE")
+    if (create.tibble) {
+        tbl <- bind_rows(kfme16.t)
+        create.tibble <- FALSE
+    } else {
 
+        # tbl %<>% add_row(bind_rows(all.values))
+        tbl %<>% bind_cols(kfme16.t %>% dplyr::select(-POLE))
+    }
 
-        rr <- rasterize(m, r, field = band)
-        crs(rr) <- 4326
+    # dodělávka CV
+    if (grepl("stdev", l1, fixed = TRUE)) {
+        l1.mean <- gsub("stdev", "mean", l1)
+        print(l1.mean)
 
-        writeRaster(rr, paste0(path.igaD, "clean/predictors/kfme16-", l1, "-", band, ".tif"), format = "GTiff", overwrite = TRUE)
+        kfme16.t.mean <- as_tibble(kfme16[[l1.mean]])
 
-        # dodělávka CV
-        if (grepl("stdev", l1, fixed = TRUE)) {
-            l1.mean <- gsub("stdev", "mean", l1)
-            print(l1.mean)
-            kfme16.t.mean <- as_tibble(kfme16[[l1.mean]])
-            kfme16.t.mean.select <- kfme16.t.mean %>% dplyr::select(all_of(c("POLE", band)))
-            m.mean <- merge(sf.grid, kfme16.t.mean.select, by = "POLE")
+        names(kfme16.t.mean) <- c("POLE", paste0(str_replace(l1.mean, "_30", ""), "_", names(kfme16.t.mean[-1])))
 
-            rr.mean <- rasterize(m.mean, r, field = band)
-            crs(rr.mean) <- 4326
+        cv <- (kfme16.t %>% dplyr::select(-POLE)) / (kfme16.t.mean %>% dplyr::select(-POLE))
 
+        names(cv) <- str_replace(names(cv), "stdev", "cv")
 
-            writeRaster(rr / rr.mean, paste0(path.igaD, "clean/predictors/kfme16-", gsub("stdev", "cv", l1), "-", band, ".tif"), format = "GTiff", overwrite = TRUE)
-        }
+        tbl %<>% bind_cols(cv)
     }
 }
+
+names(tbl) <- str_replace_all(names(tbl), c("_constant$" = "", "_nd$" = ""))
+sort(names(tbl))
+
+write.csv(tbl, paste0(export_path, export_filename, "---", half, ".csv"), row.names = FALSE)
+
+print("celkem:")
+print(Sys.time() - start_time)
