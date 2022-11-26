@@ -381,7 +381,7 @@ for (half in names(sitmap_2rad)) {
 
 
     # saveRDS(output_df, file = paste0(path.igaD, "test-kfme16-N_czechia_wc_l8_2018-2021_4-6.rds"))
-    saveRDS(output_df, file = paste0(export_path, export_filename, "---", half, ".rds"))
+    saveRDS(output_df, file = paste0(export_path, export_fileName, "---", half, ".rds"))
 }
 
 end_time <- Sys.time()
@@ -465,7 +465,7 @@ for (l1 in names(kfme16)) {
 names(tbl) <- str_replace_all(names(tbl), c("_constant$" = "", "_nd$" = ""))
 sort(names(tbl))
 
-write.csv(tbl, paste0(export_path, export_filename, "---", half, ".csv"), row.names = FALSE)
+write.csv(tbl, paste0(export_path, export_fileName, "---", half, ".csv"), row.names = FALSE)
 
 print("celkem:")
 print(Sys.time() - start_time)
