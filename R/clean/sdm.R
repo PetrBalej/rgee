@@ -168,16 +168,30 @@ saveRDS(m, file = paste0(path.igaD, "clean/results/", results_name, "-m.rds"))
 # library(shinyBS)
 # sdmPB::gui(m8)
 
-age <- readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/delete/2-Accipiter_gentilis---2maxnet-1-eval-1.rds")
-# # jak maxnet vybere nejlepší kombinaci? Co si vybere predict???? Mám uchované modely, můžu kdyžtak udělat znovu...
-# agm <- readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/delete/2-Accipiter_gentilis---2maxnet-1-model-1.rds")
-# models <- agm
+# age <- readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/delete/2-Accipiter_gentilis---2maxnet-1-eval-1.rds")
+
+# načtení RDS jednotlivých druhů, spojení do jednoho listu
+rds_list <-
+  list.files(
+    path = paste0(path.igaD, "ws2/results"),
+    pattern = paste0("[A-z]+_[a-z]+.*-eval-[0-9]+\\.rds$"),
+    ignore.case = TRUE,
+    full.names = TRUE
+  )
 
 
-evals <- age
+RDS <- readRDS(rds_list[1])
+for (f in rds_list[-1]) {
+  rds <- readRDS(f)
+  RDS <- append(RDS, rds)
+}
+# str(RDS, max.level=1)
+
+evals <- RDS
 evals.out <- list()
 create.tibble <- TRUE
 for (sp.name in names(evals)) {
+  print(sp.name)
   for (predComb in names(evals[[sp.name]])) {
     for (sigma in names(evals[[sp.name]][[predComb]])) {
       for (replication in names(evals[[sp.name]][[predComb]][[sigma]])) {
@@ -228,13 +242,19 @@ for (sp.name in names(evals)) {
     }
   }
 }
-# hodilo by se ještě přidat info o počtu NDOP+LSD presencí - jejich prevalence
+# hodilo by se ještě přidat info o počtu NDOP+LSD presencí - jejich "prevalence"
 tbl$species %<>% as.factor
 tbl$predsComb %<>% as.factor
 tbl$sigma %<>% as.integer
 tbl$replication %<>% as.integer
 
+print(tbl)
 
 summary(tbl)
+#  saveRDS(tbl, file = paste0(path.igaD, "ws2/tbl-21.rds"))
+
 
 # dát do tibble se sloupci jednotlivých úrovní - pak půjde zgroupovat a vyhodnotit
+
+# minBAR - zjištění ale jen nad nebiasovaným LSD, jinak nedává smysl
+# udělat analýtu rozsahů využití prediktorů pro LSD a NDOP
