@@ -170,6 +170,14 @@ saveRDS(m, file = paste0(path.igaD, "clean/results/", results_name, "-m.rds"))
 
 # age <- readRDS("/mnt/2AA56BAE3BB1EC2E/Downloads/delete/2-Accipiter_gentilis---2maxnet-1-eval-1.rds")
 
+
+
+
+#
+# 
+#
+
+start_time <- Sys.time()
 # načtení RDS jednotlivých druhů, spojení do jednoho listu
 rds_list <-
   list.files(
@@ -183,9 +191,20 @@ rds_list <-
 RDS <- readRDS(rds_list[1])
 for (f in rds_list[-1]) {
   rds <- readRDS(f)
-  RDS <- append(RDS, rds)
+  sp <- names(rds)
+  sps <- names(RDS)
+  if (sp %in% sps) {
+    for (pred in names(rds[[sp]])) {
+      for (sigma in names(rds[[sp]][[pred]])) {
+        # přidávání replikací
+        RDS[[sp]][[pred]][[sigma]] <- append(RDS[[sp]][[pred]][[sigma]], rds[[sp]][[pred]][[sigma]])
+      }
+    }
+  } else {
+    RDS <- append(RDS, rds)
+  }
 }
-# str(RDS, max.level=1)
+
 
 evals <- RDS
 evals.out <- list()
@@ -251,7 +270,9 @@ tbl$replication %<>% as.integer
 print(tbl)
 
 summary(tbl)
-#  saveRDS(tbl, file = paste0(path.igaD, "ws2/tbl-21.rds"))
+saveRDS(tbl, file = paste0(path.igaD, "ws2/tbl-49-1.rds"))
+end_time <- Sys.time()
+print(end_time - start_time)
 
 
 # dát do tibble se sloupci jednotlivých úrovní - pak půjde zgroupovat a vyhodnotit
