@@ -42,7 +42,7 @@ retype <- TRUE
 res_proj_epsg <- 4326
 
 ## výsledná velikost pixelu v m
-scale <- 100
+scale <- 30
 
 ## jednotná "značka" přidaná ke všem output rasterům z jednoho běhu skriptu (stejné nastavení parametrů) a
 tag_name <- scale # "" # gsub('[^0-9-]', '-', Sys.time())
@@ -57,6 +57,10 @@ git_project_path <- getwd()
 
 
 ## výběr regionu
+
+SitMap.selected <- unname(unlist(read_csv(paste0(wd, "/R/clean/SitMap_0Rad-selected.csv"))))
+SitMap <- st_transform(st_read(paste0(path.igaD, "sitmap_0rad/sitmap_0rad.shp")), crs = 4326) %>% dplyr::select(POLE)
+SitMap.POLE.selected <- SitMap %>% dplyr::filter(POLE %in% SitMap.selected)
 
 # definice obálek (bounding box) různě velkých území pro testování
 sz_cechy <- list(
@@ -141,27 +145,18 @@ source(paste0(git_project_path, "/R/export_raster/functions.R"))
 # načtení csv s datasety z GEE
 gdl <- gee_datasets_list(gee_datasets_path_csv)
 
-if (!is.character(bb)) {
-    xmin <- bb$xmin
-    xmax <- bb$xmax
-    ymin <- bb$ymin
-    ymax <- bb$ymax
 
-    bb_geometry <- NULL
-    bb_geometry_rectangle <- ee$Geometry$Rectangle(
-        coords = c(xmin, ymin, xmax, ymax),
-        proj = "EPSG:4326",
-        geodesic = FALSE
-    )
-} else {
-    if (file.exists(bb)) {
-        bb_geometry_ee <- st_read(bb) %>% sf_as_ee()
-        bb_geometry <- bb_geometry_ee$geometry() # [[1]]$getInfo()
-        bb_geometry_rectangle <- bb_geometry_ee$geometry()$bounds()
-    } else {
-        stop(paste0("Shapefile ", bb, " not exist!"))
-    }
-}
+xmin <- bb$xmin
+xmax <- bb$xmax
+ymin <- bb$ymin
+ymax <- bb$ymax
+
+bb_geometry <- NULL
+bb_geometry_rectangle <- ee$Geometry$Rectangle(
+    coords = c(xmin, ymin, xmax, ymax),
+    proj = "EPSG:4326",
+    geodesic = FALSE
+)
 
 
 start_time <- Sys.time()
@@ -176,7 +171,7 @@ for (season in season_months_range) {
     # aplikace základních geografických, časových a odmračňovacích/odstiňovacích/aerosol/radio filtrů
     l8_sr_collection <-
         ee$ImageCollection(gdl$landsat2$geeSnippet)$
-            # filterBounds(bb_geometry_rectangle)$ # nevhodné dělat předem?
+            # filterBounds(SitMap.POLE.selected %>% sf_as_ee())$ # nevhodné dělat předem?
             filterDate(years_range$from, years_range$to)$
             filter(
             ee$Filter$calendarRange(season[1], season[2], "month")
@@ -193,10 +188,10 @@ for (season in season_months_range) {
     # raw
     #####
     task <- ee_image_to_gcs(
-        image = l8_sr_collection$select(bands_all)$mean(),
+        image = l8_sr_collection$select(bands_all)$mean()$clip(SitMap.POLE.selected %>% sf_as_ee()),
         region = bb_geometry_rectangle,
         scale = scale,
-        description = paste0("czechia-l8_", scale, "_", season[1], "_raw_mean.tif"),
+        description = paste0("czechia_selected-l8_", scale, "_", season[1], "_raw_mean"),
         bucket = "kfme33",
         maxPixels = 1e10,
         timePrefix = FALSE
