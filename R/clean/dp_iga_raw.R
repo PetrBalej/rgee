@@ -159,6 +159,9 @@ bb_geometry_rectangle <- ee$Geometry$Rectangle(
 )
 
 
+POLE <- SitMap.POLE.selected %>% sf_as_ee()
+envelope <- st_as_sfc(st_bbox(SitMap.POLE.selected)) %>% sf_as_ee()
+
 start_time <- Sys.time()
 
 for (season in season_months_range) {
@@ -188,10 +191,10 @@ for (season in season_months_range) {
     # raw
     #####
     task <- ee_image_to_gcs(
-        image = l8_sr_collection$select(bands_all)$mean()$clip(SitMap.POLE.selected %>% sf_as_ee()),
-        region = bb_geometry_rectangle,
+        image = l8_sr_collection$select(bands_all)$mean()$clip(POLE),
+        region = envelope, # bb_geometry_rectangle,
         scale = scale,
-        description = paste0("czechia_selected-l8_", scale, "_", season[1], "_raw_mean"),
+        description = paste0("czechia-0rad-l8_", scale, "_", season[1], "_raw_mean"),
         bucket = "kfme33",
         maxPixels = 1e10,
         timePrefix = FALSE
@@ -200,7 +203,7 @@ for (season in season_months_range) {
     task$start()
     ee_monitoring(task) # optional
 }
-
+# Map$addLayer()
 
 end_time <- Sys.time()
 
@@ -208,3 +211,14 @@ end_time <- Sys.time()
 print(paste("start:", start_time))
 print(paste("konec:", end_time))
 print(end_time - start_time)
+
+stop()
+#
+# spojení tiles, při 30m to GEE pro ČR rozdělí do více tiffů...
+#
+library(terra)
+tiles <- list.files("/mnt/6C2B3F36770071FA/presuny-u20/igaD0/30m/0rad/mean/", "tiff$", full.names = TRUE)
+tiles.c <- sprc(lapply(tiles, rast))
+r <- mosaic(tiles.c)
+rr <- writeRaster(r, "/mnt/6C2B3F36770071FA/presuny-u20/igaD0/30m/0rad_mean.grd", format = "raster", overwrite = TRUE)
+hdr(rr, format = "ENVI")
