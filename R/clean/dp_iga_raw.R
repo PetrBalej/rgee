@@ -191,10 +191,10 @@ for (season in season_months_range) {
     # raw
     #####
     task <- ee_image_to_gcs(
-        image = l8_sr_collection$select(bands_all)$mean()$clip(POLE),
+        image = l8_sr_collection$select(bands_all)$median()$clip(POLE),
         region = envelope, # bb_geometry_rectangle,
         scale = scale,
-        description = paste0("czechia-0rad-l8_", scale, "_", season[1], "_raw_mean"),
+        description = paste0("czechia-0rad-l8_", scale, "_", season[1], "_raw_median"),
         bucket = "kfme33",
         maxPixels = 1e10,
         timePrefix = FALSE
@@ -217,8 +217,17 @@ stop()
 # spojení tiles, při 30m to GEE pro ČR rozdělí do více tiffů...
 #
 library(terra)
-tiles <- list.files("/mnt/6C2B3F36770071FA/presuny-u20/igaD0/30m/0rad/mean/", "tiff$", full.names = TRUE)
-tiles.c <- sprc(lapply(tiles, rast))
-r <- mosaic(tiles.c)
-rr <- writeRaster(r, "/mnt/6C2B3F36770071FA/presuny-u20/igaD0/30m/0rad_mean.grd", format = "raster", overwrite = TRUE)
-hdr(rr, format = "ENVI")
+
+agg <- "mean"
+months <- c(4, 5, 6, 7, 8)
+rad <- "0rad"
+
+for (month in months) {
+    tiles <- list.files(paste0("/mnt/6C2B3F36770071FA/presuny-u20/igaD0/30m/", rad, "/", agg, "/", month), "tif$", full.names = TRUE)
+    bands <- names(raster::stack(tiles[[1]]))
+    tiles.c <- sprc(lapply(tiles, rast))
+    r <- mosaic(tiles.c)
+    names(r) <- bands
+    terra::writeRaster(r, paste0("/mnt/6C2B3F36770071FA/presuny-u20/igaD0/30m/merged/", rad, "_", month, "_", agg, ".tif"), filetype = "GTiff", overwrite = TRUE)
+}
+
