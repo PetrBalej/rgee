@@ -52,7 +52,7 @@ tag_name <- scale # "" # gsub('[^0-9-]', '-', Sys.time())
 
 # adresář pro exportované soubory (v rámci wd) + další tag_name
 export_path <- paste0(path.igaD, "predsDP/")
-export_fileName <- "0rad-czechia_wc_l8_2014-2017_4-8_mean"
+export_fileName <- "0rad-czechia_wc_l8_2014-2017_4-8_median"
 
 
 # GIT project directory (kompletní repozitář rgee z github.com: po rozbalení zipu v rgee-master/rgee-master)
@@ -200,18 +200,18 @@ for (season in season_months_range) {
     # raw
     #####
     output_df[[paste0("l8_", scale, "_", season[1], "_raw_stdev")]] <- ee_extract(
-        x = l8_sr_collection$select(bands_all)$mean(),
+        x = l8_sr_collection$select(bands_all)$median(),
         y = SitMap.POLE.selected,
         scale = scale,
         fun = ee$Reducer$stdDev(),
         sf = FALSE
     )
 
-    output_df[[paste0("l8_", scale, "_", season[1], "_raw_mean")]] <- ee_extract(
-        x = l8_sr_collection$select(bands_all)$mean(),
+    output_df[[paste0("l8_", scale, "_", season[1], "_raw_median")]] <- ee_extract(
+        x = l8_sr_collection$select(bands_all)$median(),
         y = SitMap.POLE.selected,
         scale = scale,
-        fun = ee$Reducer$mean(),
+        fun = ee$Reducer$median(),
         sf = FALSE
     )
 
@@ -219,18 +219,18 @@ for (season in season_months_range) {
     # ndvi
     #####
     output_df[[paste0("l8_", scale, "_", season[1], "_ndvi_stdev")]] <- ee_extract(
-        x = l8_sr_collection$select(c("B5", "B4"))$mean()$normalizedDifference(c("B5", "B4")),
+        x = l8_sr_collection$select(c("B5", "B4"))$median()$normalizedDifference(c("B5", "B4")),
         y = SitMap.POLE.selected,
         scale = scale,
         fun = ee$Reducer$stdDev(),
         sf = FALSE
     )
 
-    output_df[[paste0("l8_", scale, "_", season[1], "_ndvi_mean")]] <- ee_extract(
-        x = l8_sr_collection$select(c("B5", "B4"))$mean()$normalizedDifference(c("B5", "B4")),
+    output_df[[paste0("l8_", scale, "_", season[1], "_ndvi_median")]] <- ee_extract(
+        x = l8_sr_collection$select(c("B5", "B4"))$median()$normalizedDifference(c("B5", "B4")),
         y = SitMap.POLE.selected,
         scale = scale,
-        fun = ee$Reducer$mean(),
+        fun = ee$Reducer$median(),
         sf = FALSE
     )
 
@@ -240,18 +240,18 @@ for (season in season_months_range) {
     #####
     # https://www.linkedin.com/pulse/ndvi-ndbi-ndwi-calculation-using-landsat-7-8-tek-bahadur-kshetri
     output_df[[paste0("l8_", scale, "_", season[1], "_mndwi_stdev")]] <- ee_extract(
-        x = l8_sr_collection$select(c("B3", "B6"))$mean()$normalizedDifference(c("B3", "B6")),
+        x = l8_sr_collection$select(c("B3", "B6"))$median()$normalizedDifference(c("B3", "B6")),
         y = SitMap.POLE.selected,
         scale = scale,
         fun = ee$Reducer$stdDev(),
         sf = FALSE
     )
 
-    output_df[[paste0("l8_", scale, "_", season[1], "_mndwi_mean")]] <- ee_extract(
-        x = l8_sr_collection$select(c("B3", "B6"))$mean()$normalizedDifference(c("B3", "B6")),
+    output_df[[paste0("l8_", scale, "_", season[1], "_mndwi_median")]] <- ee_extract(
+        x = l8_sr_collection$select(c("B3", "B6"))$median()$normalizedDifference(c("B3", "B6")),
         y = SitMap.POLE.selected,
         scale = scale,
-        fun = ee$Reducer$mean(),
+        fun = ee$Reducer$median(),
         sf = FALSE
     )
 
@@ -262,18 +262,18 @@ for (season in season_months_range) {
     # https://www.linkedin.com/pulse/ndvi-ndbi-ndwi-calculation-using-landsat-7-8-tek-bahadur-kshetri
     # NDWI = (NIR – SWIR) / (NIR + SWIR)
     output_df[[paste0("l8_", scale, "_", season[1], "_ndwi_stdev")]] <- ee_extract(
-        x = l8_sr_collection$select(c("B5", "B6"))$mean()$normalizedDifference(c("B5", "B6")),
+        x = l8_sr_collection$select(c("B5", "B6"))$median()$normalizedDifference(c("B5", "B6")),
         y = SitMap.POLE.selected,
         scale = scale,
         fun = ee$Reducer$stdDev(),
         sf = FALSE
     )
 
-    output_df[[paste0("l8_", scale, "_", season[1], "_ndwi_mean")]] <- ee_extract(
-        x = l8_sr_collection$select(c("B5", "B6"))$mean()$normalizedDifference(c("B5", "B6")),
+    output_df[[paste0("l8_", scale, "_", season[1], "_ndwi_median")]] <- ee_extract(
+        x = l8_sr_collection$select(c("B5", "B6"))$median()$normalizedDifference(c("B5", "B6")),
         y = SitMap.POLE.selected,
         scale = scale,
-        fun = ee$Reducer$mean(),
+        fun = ee$Reducer$median(),
         sf = FALSE
     )
 
@@ -283,7 +283,7 @@ for (season in season_months_range) {
     #   # https://www.usgs.gov/core-science-systems/nli/landsat/landsat-enhanced-vegetation-index?qt-science_support_page_related_con=0
     #   # In Landsat 8, EVI = 2.5 * ((Band 5 – Band 4) / (Band 5 + 6 * Band 4 – 7.5 * Band 2 + 1)).
 
-    evi_prep <- l8_sr_collection$select(c("B5", "B4", "B2"))$mean()
+    evi_prep <- l8_sr_collection$select(c("B5", "B4", "B2"))$median()
 
     evi_res <- evi_prep$expression(
         "2.5 * ((B5 - B4) / (B5 + 6 * B4 - 7.5 * B2 + 1))",
@@ -302,11 +302,11 @@ for (season in season_months_range) {
         sf = FALSE
     )
 
-    output_df[[paste0("l8_", scale, "_", season[1], "_evi_mean")]] <- ee_extract(
+    output_df[[paste0("l8_", scale, "_", season[1], "_evi_median")]] <- ee_extract(
         x = evi_res,
         y = SitMap.POLE.selected,
         scale = scale,
-        fun = ee$Reducer$mean(),
+        fun = ee$Reducer$median(),
         sf = FALSE
     )
 
@@ -316,7 +316,7 @@ for (season in season_months_range) {
     #   # https://www.usgs.gov/core-science-systems/nli/landsat/landsat-modified-soil-adjusted-vegetation-index
     #   # In Landsat 8, MSAVI = (2 * Band 5 + 1 – sqrt ((2 * Band 5 + 1)2 – 8 * (Band 5 – Band 4))) / 2.
 
-    msavi_prep <- l8_sr_collection$select(c("B5", "B4"))$mean()
+    msavi_prep <- l8_sr_collection$select(c("B5", "B4"))$median()
     msavi_res <- msavi_prep$expression(
         "(2 * B5 + 1 - sqrt(pow((2 * B5 + 1), 2) - 8 * (B5 - B4))) / 2",
         list(
@@ -333,11 +333,11 @@ for (season in season_months_range) {
         sf = FALSE
     )
 
-    output_df[[paste0("l8_", scale, "_", season[1], "_msavi_mean")]] <- ee_extract(
+    output_df[[paste0("l8_", scale, "_", season[1], "_msavi_median")]] <- ee_extract(
         x = msavi_res,
         y = SitMap.POLE.selected,
         scale = scale,
-        fun = ee$Reducer$mean(),
+        fun = ee$Reducer$median(),
         sf = FALSE
     )
 }
@@ -363,11 +363,11 @@ output_df[[paste0("wc_", scale, "_", season[1], "_stdev")]] <- ee_extract(
     sf = FALSE
 )
 
-output_df[[paste0("wc_", scale, "_", season[1], "_mean")]] <- ee_extract(
+output_df[[paste0("wc_", scale, "_", season[1], "_median")]] <- ee_extract(
     x = wc,
     y = SitMap.POLE.selected,
     scale = scale,
-    fun = ee$Reducer$mean(),
+    fun = ee$Reducer$median(),
     sf = FALSE
 )
 
@@ -435,7 +435,7 @@ for (l1 in names(kfme16)) {
 
     # dodělávka CV
     if (grepl("stdev", l1, fixed = TRUE)) {
-        l1.mean <- gsub("stdev", "mean", l1)
+        l1.mean <- gsub("stdev", "median", l1)
         print(l1.mean)
 
         kfme16.t.mean <- as_tibble(kfme16[[l1.mean]])
@@ -457,3 +457,5 @@ write.csv(tbl, paste0(export_path, export_fileName, ".csv"), row.names = FALSE)
 
 print("celkem:")
 print(Sys.time() - start_time)
+
+
