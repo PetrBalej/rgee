@@ -259,6 +259,12 @@ comb_all <- function(vector, k = 0) {
   return(comb_list)
 }
 
+# vytvoří jen kombinace o zadaném k
+comb_k <- function(vector, k = 0) {
+  k <- as.integer(k)
+  return(combn(vector, k, simplify = FALSE))
+}
+
 # načte do RasterStack-u všechny rastry ze zadaného adresáře a dané přípony
 rasters_dir_stack <- function(path_dir, raster_extension) {
   rasters_list <-
