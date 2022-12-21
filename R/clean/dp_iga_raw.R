@@ -58,8 +58,8 @@ git_project_path <- getwd()
 
 ## výběr regionu
 
-SitMap.selected <- unname(unlist(read_csv(paste0(wd, "/R/clean/SitMap_0Rad-selected.csv"))))
-SitMap <- st_transform(st_read(paste0(path.igaD, "sitmap_0rad/sitmap_0rad.shp")), crs = 4326) %>% dplyr::select(POLE)
+SitMap.selected <- unname(unlist(read_csv(paste0(wd, "/R/clean/SitMap_2Rad-selected.csv"))))
+SitMap <- st_transform(st_read(paste0(path.igaD, "sitmap_2rad/sitmap_2rad.shp")), crs = 4326) %>% dplyr::select(POLE)
 SitMap.POLE.selected <- SitMap %>% dplyr::filter(POLE %in% SitMap.selected)
 
 # definice obálek (bounding box) různě velkých území pro testování
@@ -194,7 +194,7 @@ for (season in season_months_range) {
         image = l8_sr_collection$select(bands_all)$median()$clip(POLE),
         region = envelope, # bb_geometry_rectangle,
         scale = scale,
-        description = paste0("czechia-0rad-l8_", scale, "_", season[1], "_raw_median"),
+        description = paste0("czechia-2rad-l8_", scale, "_", season[1], "_raw_median"),
         bucket = "kfme33",
         maxPixels = 1e10,
         timePrefix = FALSE
@@ -218,9 +218,9 @@ stop()
 #
 library(terra)
 
-agg <- "mean"
+agg <- "median"
 months <- c(4, 5, 6, 7, 8)
-rad <- "0rad"
+rad <- "2rad"
 
 for (month in months) {
     tiles <- list.files(paste0("/mnt/6C2B3F36770071FA/presuny-u20/igaD0/30m/", rad, "/", agg, "/", month), "tif$", full.names = TRUE)
