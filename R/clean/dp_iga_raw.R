@@ -190,12 +190,14 @@ for (season in season_months_range) {
     #####
     # raw
     #####
+    fileName <- paste0("czechia-2rad-l8_", scale, "_", season[1], "_raw_median")
     task <- ee_image_to_gcs(
         image = l8_sr_collection$select(bands_all)$median()$clip(POLE),
         region = envelope, # bb_geometry_rectangle,
         scale = scale,
-        description = paste0("czechia-2rad-l8_", scale, "_", season[1], "_raw_median"),
+        description = fileName, # task name
         bucket = "kfme33",
+        fileNamePrefix = paste0("30m/", fileName),
         maxPixels = 1e10,
         timePrefix = FALSE
     )
