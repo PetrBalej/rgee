@@ -233,3 +233,16 @@ for (month in months) {
     terra::writeRaster(r, paste0("/mnt/6C2B3F36770071FA/presuny-u20/igaD0/30m/merged/", rad, "_", month, "_", agg, ".tif"), filetype = "GTiff", overwrite = TRUE)
 }
 
+#
+# mask NA across months
+#
+
+per.months <- list.files("/mnt/6C2B3F36770071FA/presuny-u20/igaD0/30m/merged", paste0(".*", agg, ".*tif$"), full.names = TRUE)
+per.months.sum <- sum(raster::stack(per.months))
+
+for (r.path in per.months) {
+    print(r.path)
+    raster_stack <- raster::mask(raster::stack(r.path), per.months.sum)
+    raster_stack <- raster::setMinMax(raster_stack)
+    raster::writeRaster(raster_stack, str_replace(r.path, rad, paste0("NA_", rad)), filetype = "GTiff", overwrite = TRUE)
+}
