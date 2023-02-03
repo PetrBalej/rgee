@@ -16,7 +16,7 @@ seznam.druhu$reakce_pozitivni %<>% as.factor
 path.ndop.downloader <- "C: && cd C:/Users/balej/AppData/Roaming/QGIS/QGIS3/profiles/default/python/plugins/ndop_downloader"
 path.python <- "C:/Users/balej/AppData/Local/Microsoft/WindowsApps/python.exe"
 
-# uložení pøihlašovacích údajù do "C:\Users\USER_NAME\.ndop.cfg"
+# uloÅ¾enÃ­ pÃ¸ihlaÅ¡ovacÃ­ch ÃºdajÃ¹ do "C:\Users\USER_NAME\.ndop.cfg"
 # bin/ndop --user "user_name" --password "heslo" -s
 
 use.cfg <- FALSE
@@ -40,7 +40,7 @@ for(taxon in seznam.druhu$druh_lat_ndop){
                 "\" bin/ndop  ", credentials ," --output \"", wd, "export/", taxon,
                 "\" --taxon \"", taxon,"\"")
   # -loc_only 
-  # pøestal fungovat (pøi spuštìní pøes R shell), proè?!
+  # pÃ¸estal fungovat (pÃ¸i spuÅ¡tÃ¬nÃ­ pÃ¸es R shell), proÃ¨?!
   
   shell(cmd)
 }
