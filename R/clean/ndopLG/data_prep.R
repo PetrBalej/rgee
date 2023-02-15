@@ -17,7 +17,7 @@ export_path <- "/home/petr/Downloads/ndopLG/"
 #
 ns <- list()
 ns[["time.start"]] <- Sys.time()
-ns[["dir.v"]] <- "v0"
+ns[["dir.v"]] <- "v1"
 ns[["ndop.occ.min"]] <- 30
 ns[["ndop.precision"]] <- 1000
 ns[["ndop.date.min"]] <- "2018-01-01"

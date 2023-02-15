@@ -1,0 +1,15 @@
+ENVI
+samples =  163 
+lines =  101 
+bands =  23 
+header offset = 0
+file type = ENVI Standard
+data type =  4 
+data ignore value=-3.4e+38
+interleave =  BIL 
+sensor type = 
+byte order =  0 
+map info = {Geographic Lat/Lon, 1, 1, 12.08342 ,  51.07508 ,  0.04166667 ,  0.025 }
+projection info = +proj=longlat +datum=WGS84 +no_defs 
+z plot range = { -0.049105 -1.4991 -25.10284 0.1224794 0.06734914 -0.5742205 0.02908344 0.0116655 0.1049727 0.0173692 -5.404586 0.1190657 0.1697087 0.1257273 0.0035463 0.0004440734 -0.1349897 -2.300129 0 55 6013 -94 16 ,  0.6153969 2.218641 13.96922 38.62458 10.54147 0.5818457 33.15039 0.8965468 1.615309 0.4862643 17.65504 3.098856 3.699924 8.823439 0.0991315 0.03934549 0 1.657219 0.1094782 97 7565 -37 47 }
+band names = { l8_4_evi_mean,l8_4_mndwi_cv,l8_4_ndvi_cv,l8_4_raw_cv_B1,l8_4_raw_cv_B5,l8_5_mndwi_mean,l8_5_ndvi_cv,l8_5_ndvi_mean,l8_5_raw_cv_B3,l8_5_raw_mean_B5,l8_6_ndvi_cv,l8_6_raw_cv_B1,l8_6_raw_cv_B4,l8_6_raw_cv_B7,l8_6_raw_mean_B1,wc_cv_bio04,wc_cv_bio06,wc_cv_bio11,wc_cv_bio15,wc_mean_bio02,wc_mean_bio04,wc_mean_bio06,wc_mean_bio15 } 

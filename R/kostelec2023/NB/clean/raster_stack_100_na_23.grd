@@ -1,0 +1,26 @@
+[general]
+creator=R package 'raster'
+created=2023-02-15 23:50:15
+[data]
+datatype=FLT4S
+byteorder=little
+nbands=23
+bandorder=BIL
+minvalue=-0.0491049997508526:-1.49910020828247:-25.1028423309326:0.122479356825352:0.0673491358757019:-0.574220478534698:0.0290834363549948:0.0116654997691512:0.104972697794437:0.0173691995441914:-5.40458631515503:0.119065679609776:0.169708669185638:0.125727266073227:0.0035463001113385:0.000444073433754966:-0.134989708662033:-2.300128698349:0:55:6013:-94:16
+maxvalue=0.615396916866302:2.21864080429077:13.9692192077637:38.624584197998:10.5414667129517:0.581845700740814:33.1503944396973:0.89654678106308:1.61530864238739:0.486264288425446:17.6550388336182:3.09885573387146:3.69992399215698:8.82343864440918:0.0991315022110939:0.0393454879522324:0:1.65721869468689:0.109478190541267:97:7565:-37:47
+nodatavalue=-3.4e+38
+[legend]
+legendtype=
+values=
+color=
+[description]
+layername=l8_4_evi_mean:l8_4_mndwi_cv:l8_4_ndvi_cv:l8_4_raw_cv_B1:l8_4_raw_cv_B5:l8_5_mndwi_mean:l8_5_ndvi_cv:l8_5_ndvi_mean:l8_5_raw_cv_B3:l8_5_raw_mean_B5:l8_6_ndvi_cv:l8_6_raw_cv_B1:l8_6_raw_cv_B4:l8_6_raw_cv_B7:l8_6_raw_mean_B1:wc_cv_bio04:wc_cv_bio06:wc_cv_bio11:wc_cv_bio15:wc_mean_bio02:wc_mean_bio04:wc_mean_bio06:wc_mean_bio15
+[georeference]
+nrows=101
+ncols=163
+xmin=12.0834157383896
+ymin=48.5500755551043
+xmax=18.8750824050563
+ymax=51.0750755551043
+projection=+proj=longlat +datum=WGS84 +no_defs
+wkt=GEOGCRS["WGS 84 (with axis order normalized for visualization)",    DATUM["World Geodetic System 1984",        ELLIPSOID["WGS 84",6378137,298.257223563,            LENGTHUNIT["metre",1]]],    PRIMEM["Greenwich",0,        ANGLEUNIT["degree",0.0174532925199433]],    CS[ellipsoidal,2],        AXIS["geodetic longitude (Lon)",east,            ORDER[1],            ANGLEUNIT["degree",0.0174532925199433,                ID["EPSG",9122]]],        AXIS["geodetic latitude (Lat)",north,            ORDER[2],            ANGLEUNIT["degree",0.0174532925199433,                ID["EPSG",9122]]]]
