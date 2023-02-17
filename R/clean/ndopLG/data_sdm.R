@@ -107,6 +107,29 @@ for(sps in unique(spss.t$species)) {
 }
 }
 
+#####################
+
+library(terra)
+dir_list <- list.dirs(paste0(export_path, "exportAll"),recursive = FALSE, full.names = FALSE) 
+source(paste0(wd, "/R/export_raster/functions.R"))
+
+for (gr in dir_list) {
+  print(gr)
+  raster_stack <-
+    rasters_dir_stack(
+      paste0(
+        paste0(export_path, "exportAll/", gr)
+      ),
+      "tif"
+    )
+  
+  raster_stack_mean <- calc(raster_stack, fun = mean)
+  
+  
+  terra::writeRaster( raster_stack_mean, paste0(export_path, "groupMean/", gr,".tif"), filetype = "GTiff", overwrite = TRUE)
+
+  }
+
 
 
 
