@@ -329,6 +329,9 @@ for(th in ths){
   vc.ths.n[[as.character(th)]] <-  vc@excluded
   vc.ths.p[[as.character(th)]] <- vc@results$Variables
   
+  # vcPB <- usdmPB::vifcor(raster_stack_100_na_23, th=0.6)
+  # saveRDS( vcPB, paste0(path.igaD, "vcPB.ths.n.RDS"))
+  
 }
 vc.ths.n[["0.7"]] <- c()
 vc.ths.p[["0.7"]] <- names(raster_stack_100_na_23)
