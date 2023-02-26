@@ -20,7 +20,7 @@ path.igaD <- "C:/Users/petr/Downloads/igaD/igaD/clean/k2023/"
 
 
 
-# scénáře a vliv na výsledky: 
+# scénáře a vliv na výsledky:
 # 1) pevně dané prediktory vifcor 0.7 (biomean/cv) x landsat(mean/cv)) - musím dodělat vifcor=0.7 (zvlášť) a vybrat jen dotyčné prediktory!
 # 2a) nesmysl omezevat velkým vifem (nechat vyšší korelaci, nevím na co druh a z kterých oblastí zabírá)
 # 2b) nechat vybrat nejlepší kombinaci
@@ -34,7 +34,7 @@ path.igaD <- "C:/Users/petr/Downloads/igaD/igaD/clean/k2023/"
 #  variance inflation factor (VIF) to avoid over-fitting !!! - najít citaca Araujo Standards
 # Jak dokážu, že jsem nezpůsobil overfitting volbou korelovaných proměnných???
 
-#Spatial filtering to reduce sampling bias can improve the performance of ecological niche models:
+# Spatial filtering to reduce sampling bias can improve the performance of ecological niche models:
 # To quantify overfitting and model performance, we calculated evaluation AUC, the difference between calibration and evaluation AUC (=AUCdiff), and omission rates.
 
 
@@ -49,31 +49,51 @@ library(magrittr)
 
 ### k maximám potřebuju i prediktory, kterýma toho bylo dosaženo!!!
 
-lsd162 <- readRDS("C:/Users/petr/Downloads/igaD/igaD/clean/clean/occurrences/lsd-PA-162sq-198sp118selectes.rds")
+# lsd162 <- readRDS("C:/Users/petr/Downloads/igaD/igaD/clean/clean/occurrences/lsd-PA-162sq-198sp118selectes.rds")
 
 # st_write(lsd162, "C:/Users/petr/Downloads/igaD/igaD/clean/clean/occurrences/lsd-PA-162sq-198sp118selectes.shp")
 
-k2023m <- readRDS("C:/Users/petr/Downloads/igaD/igaD/clean/k2023/postprocess/k2023-selected-median.rds")
 
+#
+# vstupní zpracovaný soubor z R/kostelec2023/NB/kostelec-kombinace-prediktoru-lsd-glm-sdm-postprocess.R
+#
+
+#  k2023m <- readRDS("C:/Users/petr/Downloads/igaD/igaD/clean/k2023/postprocess/k2023-selected-median.rds")
+
+
+k2023m <- readRDS("/home/petr/Documents/igaD/k2023p16/k5--k2023p16-dAUC.3repl.selected-median.rds")
+# k2023m <- readRDS("/home/petr/Documents/igaD/k2023p16/varImp-glm--k2023p16-dAUC.3repl.selected-median.rds")
+#  k2023m <- readRDS("/home/petr/Documents/igaD/k2023p16/varImp-glmnet--k2023p16-dAUC.3repl.selected-median.rds")
+
+# k2023m <- readRDS(paste0(path.igaD, "k2023-selected-median-varImp-all.rds"))
+k.max <- 5
 k2023m$preds %<>% as.factor
 
 summary(k2023m)
 k2023m.f <- k2023m %>% filter(AUC.cv <= 15 & Deviance <= 1.2 & COR.cv <= 94) # cílem je odstranit "nestabilní" modely
-summary( k2023m.f)
+summary(k2023m.f)
 
 # # # # # vybrat 30+ presencí druhy, ikdyž jich bude jen 74; 162 lokalit
 
 
-sp.count <- readRDS("C:/Users/petr/Downloads/igaD/igaD/clean/clean/occurrences/lsd-PA-162sq-198sp118.rds")
-sp.count.f <- sp.count %>% filter(p >= 30)  %>% dplyr::select(species)
+#  sp.count <- readRDS("C:/Users/petr/Downloads/igaD/igaD/clean/clean/occurrences/lsd-PA-162sq-198sp118.rds")
+spstat <- readRDS(paste0(wd, "/R/kostelec2023/NB/clean/lsd-PA-162sq-198sp118.rds"))
+spstat %<>% mutate(species = str_replace(species, " ", "_"))
+sp.count <- spstat
+
+sp.count.f <- sp.count %>%
+  filter(p >= 30) %>%
+  dplyr::select(species)
 sp.count.f <- gsub(" ", "_", unlist(sp.count.f))
 
-k2023m.fs  <- k2023m %>% filter(species %in% sp.count.f)
-summary( k2023m.fs)
+k2023m.fs <- k2023m %>% filter(species %in% sp.count.f)
+summary(k2023m.fs)
 
-m.f <- list("all" = k2023m,
-            "fcv" = k2023m.f,
-            "f30" = k2023m.fs)
+m.f <- list(
+  "all" = k2023m,
+  "fcv" = k2023m.f,
+  "f30" = k2023m.fs
+)
 
 m.v.names <- c("all", "bio", "l8")
 
@@ -84,33 +104,28 @@ m.v <- list()
 m.v2 <- list()
 
 
-for (f in names(m.f) ){
 
-  for (k in 1:4) {
-    
+for (f in names(m.f)) {
+  for (k in 1:k.max) {
     m.v[[f]][[m.v.names[2]]][[as.character(k)]] <-
       m.f[[f]] %>% filter(l.bio == TRUE & l.l8 == FALSE & preds.n == k)
-    
+
     m.v[[f]][[m.v.names[3]]][[as.character(k)]] <-
       m.f[[f]] %>% filter(l.bio == FALSE & l.l8 == TRUE & preds.n == k)
-    
+
     m.v[[f]][[m.v.names[1]]][[as.character(k)]] <-
       m.f[[f]] %>% filter(preds.n == k)
-    
-    
-    
+
+
+
     m.v2[[f]][[m.v.names[2]]][[as.character(k)]] <-
       m.f[[f]] %>% filter(l.bio == TRUE & l.l8 == FALSE & preds.n <= k)
-    
+
     m.v2[[f]][[m.v.names[3]]][[as.character(k)]] <-
       m.f[[f]] %>% filter(l.bio == FALSE & l.l8 == TRUE & preds.n <= k)
-    
+
     m.v2[[f]][[m.v.names[1]]][[as.character(k)]] <-
       m.f[[f]] %>% filter(preds.n <= k)
-    
-    
-    
-    
   }
 }
 
@@ -123,24 +138,30 @@ m.max <- list()
 m.max2 <- list()
 m.max.alt <- list() # zachová ostatní sloupce - asi lepší
 m.max.alt2 <- list() # zachová ostatní sloupce - asi lepší
-for (f in names(m.f) ) {
+for (f in names(m.f)) {
   for (m.v.name in m.v.names) {
-    for (k in 1:4) {
+    for (k in 1:k.max) {
       m.max[[f]][[m.v.name]][[as.character(k)]] <-
-        m.v[[f]][[m.v.name]][[as.character(k)]] %>% group_by(species) %>% summarise(auc.max = max(AUC))
-      
-      
+        m.v[[f]][[m.v.name]][[as.character(k)]] %>%
+        group_by(species) %>%
+        summarise(auc.max = max(AUC))
+
+
       m.max2[[f]][[m.v.name]][[as.character(k)]] <-
-        m.v2[[f]][[m.v.name]][[as.character(k)]] %>% group_by(species) %>% summarise(auc.max = max(AUC))
-      
-      
+        m.v2[[f]][[m.v.name]][[as.character(k)]] %>%
+        group_by(species) %>%
+        summarise(auc.max = max(AUC))
+
+
       m.max.alt[[f]][[m.v.name]][[as.character(k)]] <-
-        m.v[[f]][[m.v.name]][[as.character(k)]] %>% group_by(species)  %>% slice_max(AUC , n = 1, with_ties = FALSE)
-      
+        m.v[[f]][[m.v.name]][[as.character(k)]] %>%
+        group_by(species) %>%
+        slice_max(AUC, n = 1, with_ties = FALSE)
+
       m.max.alt2[[f]][[m.v.name]][[as.character(k)]] <-
-        m.v2[[f]][[m.v.name]][[as.character(k)]] %>% group_by(species)  %>% slice_max(AUC , n = 1, with_ties = FALSE)
-      
-      
+        m.v2[[f]][[m.v.name]][[as.character(k)]] %>%
+        group_by(species) %>%
+        slice_max(AUC, n = 1, with_ties = FALSE)
     }
   }
 }
@@ -148,16 +169,49 @@ for (f in names(m.f) ) {
 # m.max[["all"]][["all"]][[as.character(4)]]$auc.max
 # m.max.alt[["all"]][["all"]][[as.character(4)]]$AUC)
 
+compare.comb <- m.max2$all$all$`5` %>% arrange(as.character(species))
+##  saveRDS(compare.comb, paste0(path.igaD, "compare.comb.rds"))
+# compare.comb <- resdRDS(paste0(path.igaD, "compare.comb.rds"))
 
+compare.varImp <- m.max2$all$all$`16` %>% arrange(as.character(species))
+
+compare.varImp.glmnet <- m.max2$all$all$`16` %>% arrange(as.character(species))
+
+
+# saveRDS(compare.varImp, paste0(path.igaD, "compare.varImp.rds"))
+
+boxplot(list("comb" = compare.comb$auc.max, "varImp" = compare.varImp$auc.max),
+  main = "comb: cum. 5comb; varImp: max. 1-16", sub = paste0(median(compare.comb$auc.max), " / ", median(compare.varImp$auc.max))
+)
+boxplot(sort(compare.comb$auc.max - compare.varImp$auc.max), main = "diff AUCcomb-AUCvarImp")
+
+# + glmnet
+boxplot(list("comb" = compare.comb$auc.max, "varImp" = compare.varImp$auc.max, "varImp.glmnet" = compare.varImp.glmnet$auc.max),
+  main = "comb: cum. 5comb; varImp: max. 1-16", sub = paste0(median(compare.comb$auc.max), " / ", median(compare.varImp$auc.max), " / ", median(compare.varImp.glmnet$auc.max))
+)
+
+
+
+
+# varImp kumulativní 23, maxAuc-počet prediktorů
+# boxplot(m.max.alt2$all$all$`16`$preds.n, sub="varImp.glmnet kumulativní 16, maxAuc-počet prediktorů")
+boxplot(m.max.alt2$all$all$`5`$preds.n, sub = "comb kumulativní 5, maxAuc-počet prediktorů")
+
+
+cor.alt2 <- m.max.alt2$all$all$`4` %>% arrange(AUC)
+plot(cor.alt2$AUC, cor.alt2$preds.n)
+
+
+
+stop()
 
 
 m.max.median <- list()
-for (f in names(m.f) ) {
+for (f in names(m.f)) {
   for (m.v.name in m.v.names) {
     for (k in 1:4) {
       m.max.median[[f]][[m.v.name]][[as.character(k)]] <-
         median(m.max[[f]][[m.v.name]][[as.character(k)]]$auc.max)
-      
     }
   }
 }
@@ -183,32 +237,31 @@ create.tibble <- TRUE
 cn <- c("l1_species", "l2_predsSets", "l3_predsComb", "spCountAuc75")
 
 
-for(l1 in names(m.max)){
- 
-  for(l2 in names(m.max[[l1]])){
-   
+for (l1 in names(m.max)) {
+  for (l2 in names(m.max[[l1]])) {
+
     # m.max.kostelec1 <- list()
     # m.max.kostelec2 <- list()
-    for(l3 in names(m.max[[l1]][[l2]])){
-    
-      
+    for (l3 in names(m.max[[l1]][[l2]])) {
+
+
       # m.max.kostelec1[[l3]] <- m.max[[l1]][[l2]][[l3]]$auc.max
       # m.max.kostelec2[[l3]] <- m.max2[[l1]][[l2]][[l3]]$auc.max
-      
-      
+
+
       m.max.kostelec3[[l1]][[l2]][[l3]] <- m.max[[l1]][[l2]][[l3]]$auc.max
       # m.max.kostelec3.median[[l1]][[l2]][[l3]] <- median(m.max[[l1]][[l2]][[l3]]$auc.max)
       m.max.kostelec3.thr[[l1]][[l2]][[l3]] <- sum(m.max[[l1]][[l2]][[l3]]$auc.max >= 0.75)
 
-      
+
       m.max.kostelec3c[[l1]][[l2]][[l3]] <- m.max2[[l1]][[l2]][[l3]]$auc.max
       # m.max.kostelec3.median[[l1]][[l2]][[l3]] <- median(m.max[[l1]][[l2]][[l3]]$auc.max)
       m.max.kostelec3c.thr[[l1]][[l2]][[l3]] <- sum(m.max2[[l1]][[l2]][[l3]]$auc.max >= 0.75)
-      
-      
-      row <- c(l1, l2, l3, m.max.kostelec3.thr[[l1]][[l2]][[l3]] )
-      row2 <- c(l1, l2, l3, m.max.kostelec3c.thr[[l1]][[l2]][[l3]] )
-      
+
+
+      row <- c(l1, l2, l3, m.max.kostelec3.thr[[l1]][[l2]][[l3]])
+      row2 <- c(l1, l2, l3, m.max.kostelec3c.thr[[l1]][[l2]][[l3]])
+
       names(row) <- cn
       names(row2) <- cn
       if (create.tibble) {
@@ -220,35 +273,27 @@ for(l1 in names(m.max)){
         tbl %<>% add_row(bind_rows(row))
         tbl2 %<>% add_row(bind_rows(row2))
       }
-      
-      
-      
-      
-      
-      
-    } 
-    
+    }
+
     # png(paste0(path.igaD, "png/0-",paste(l1, l2),".png"),width = 400, height = 500)
     # par(mfrow= c(2, 1))
     # boxplot(m.max.kostelec1, main= paste(l1, l2), xlab= "třída kombinace prediktorů", ylab = "AUC")
     # boxplot(m.max.kostelec2, main= paste(l1, l2), xlab= "třída kombinace prediktorů (kumulativní)", ylab = "AUC")
     # dev.off()
-    
+
     # png(paste0(path.igaD, "png/0-",paste(l1, l2),".png"),width = 400, height = 400)
-    # 
+    #
     # boxplot(m.max.kostelec1, main= paste(l1, l2), xlab= "třída kombinace prediktorů", ylab = "AUC",
     #         ylim = c(0.5, 1))
-    # 
+    #
     # dev.off()
-    
-  } 
-  
+  }
+
   # png(paste0(path.igaD, "png/0-",paste(l1, l2),".png"),width = 400, height = 500)
   # par(mfrow= c(2, 1))
   # boxplot(m.max.kostelec1, main= paste(l1, l2), xlab= "třída kombinace prediktorů", ylab = "AUC")
   # boxplot(m.max.kostelec2, main= paste(l1, l2), xlab= "třída kombinace prediktorů (kumulativní)", ylab = "AUC")
   # dev.off()
-  
 }
 
 # počet druhů které projdou tresholdem nad AUC 0.75 ve všech variantách
@@ -261,45 +306,45 @@ print(tbl2)
 # write.csv(tbl, file = paste0(path.igaD, "speciesCounts.csv"))
 # write.csv(tbl2, file = paste0(path.igaD, "speciesCounts-cumulative.csv"))
 
-as.numeric(tbl2$spCountAuc75) -  as.numeric(tbl$spCountAuc75) 
+as.numeric(tbl2$spCountAuc75) - as.numeric(tbl$spCountAuc75)
 
 
 
-png(paste0(path.igaD, "png/all-3x2.png"),width = 1200, height = 800)
-par(mar=c(5, 5, 2.5, 2.5))
-par(cex.lab=3) # is for y-axis
+png(paste0(path.igaD, "png/all-3x2.png"), width = 1200, height = 800)
+par(mar = c(5, 5, 2.5, 2.5))
+par(cex.lab = 3) # is for y-axis
 
-par(cex.axis=2) # is for x-axis
-par(cex.main=2)
+par(cex.axis = 2) # is for x-axis
+par(cex.main = 2)
 
-par(mfrow= c(2, 3))
-boxplot(m.max.kostelec3[["all"]][["bio"]], ylim = c(0.5, 1), main= "Bioclim [8]", ylab = ">10 lokalit [118]")
-boxplot(m.max.kostelec3[["all"]][["l8"]], ylim = c(0.5, 1), main= "Landsat 8 [15]")
-boxplot(m.max.kostelec3[["all"]][["all"]], ylim = c(0.5, 1), main= "Bioclim+Landsat 8 [23]")
+par(mfrow = c(2, 3))
+boxplot(m.max.kostelec3[["all"]][["bio"]], ylim = c(0.5, 1), main = "Bioclim [8]", ylab = ">10 lokalit [118]")
+boxplot(m.max.kostelec3[["all"]][["l8"]], ylim = c(0.5, 1), main = "Landsat 8 [15]")
+boxplot(m.max.kostelec3[["all"]][["all"]], ylim = c(0.5, 1), main = "Bioclim+Landsat 8 [23]")
 
 
 boxplot(m.max.kostelec3[["f30"]][["bio"]], ylim = c(0.5, 1), ylab = ">30 lokalit [74]")
-boxplot(m.max.kostelec3[["f30"]][["l8"]], ylim = c(0.5, 1), xlab= "třída kombinace prediktorů")
+boxplot(m.max.kostelec3[["f30"]][["l8"]], ylim = c(0.5, 1), xlab = "třída kombinace prediktorů")
 boxplot(m.max.kostelec3[["f30"]][["all"]], ylim = c(0.5, 1))
 
 dev.off()
 
 # kumulativní
-png(paste0(path.igaD, "png/all-3x2-cumulative.png"),width = 1200, height = 800)
-par(mar=c(5, 5, 2.5, 2.5))
-par(cex.lab=3) # is for y-axis
+png(paste0(path.igaD, "png/all-3x2-cumulative.png"), width = 1200, height = 800)
+par(mar = c(5, 5, 2.5, 2.5))
+par(cex.lab = 3) # is for y-axis
 
-par(cex.axis=2) # is for x-axis
-par(cex.main=2)
+par(cex.axis = 2) # is for x-axis
+par(cex.main = 2)
 
-par(mfrow= c(2, 3))
-boxplot(m.max.kostelec3c[["all"]][["bio"]], ylim = c(0.5, 1), main= "Bioclim [8]", ylab = ">10 lokalit [118]")
-boxplot(m.max.kostelec3c[["all"]][["l8"]], ylim = c(0.5, 1), main= "Landsat 8 [15]")
-boxplot(m.max.kostelec3c[["all"]][["all"]], ylim = c(0.5, 1), main= "Bioclim+Landsat 8 [23]")
+par(mfrow = c(2, 3))
+boxplot(m.max.kostelec3c[["all"]][["bio"]], ylim = c(0.5, 1), main = "Bioclim [8]", ylab = ">10 lokalit [118]")
+boxplot(m.max.kostelec3c[["all"]][["l8"]], ylim = c(0.5, 1), main = "Landsat 8 [15]")
+boxplot(m.max.kostelec3c[["all"]][["all"]], ylim = c(0.5, 1), main = "Bioclim+Landsat 8 [23]")
 
 
 boxplot(m.max.kostelec3c[["f30"]][["bio"]], ylim = c(0.5, 1), ylab = ">30 lokalit [74]")
-boxplot(m.max.kostelec3c[["f30"]][["l8"]], ylim = c(0.5, 1), xlab= "třída kombinace prediktorů")
+boxplot(m.max.kostelec3c[["f30"]][["l8"]], ylim = c(0.5, 1), xlab = "třída kombinace prediktorů")
 boxplot(m.max.kostelec3c[["f30"]][["all"]], ylim = c(0.5, 1))
 
 dev.off()
@@ -315,7 +360,7 @@ dev.off()
 
 raster_stack_100_na_23 <- readRDS("C:/Users/petr/Downloads/igaD/igaD/clean/k2023/raster_stack_100_na_23.rds")
 
-#writeRaster(raster_stack_100_na_23, "C:/Users/petr/Downloads/igaD/igaD/clean/k2023/raster_stack_100_na_23", "GTiff")
+# writeRaster(raster_stack_100_na_23, "C:/Users/petr/Downloads/igaD/igaD/clean/k2023/raster_stack_100_na_23", "GTiff")
 
 
 library(usdm)
@@ -323,21 +368,19 @@ ths <- c(3:6) * 0.1
 vc.ths.n <- list()
 vc.ths.p <- list()
 
-for(th in ths){
-  
-  vc <- vifcor(raster_stack_100_na_23, th=th)
-  vc.ths.n[[as.character(th)]] <-  vc@excluded
+for (th in ths) {
+  vc <- vifcor(raster_stack_100_na_23, th = th)
+  vc.ths.n[[as.character(th)]] <- vc@excluded
   vc.ths.p[[as.character(th)]] <- vc@results$Variables
-  
+
   # vcPB <- usdmPB::vifcor(raster_stack_100_na_23, th=0.6)
   # saveRDS( vcPB, paste0(path.igaD, "vcPB.ths.n.RDS"))
-  
 }
 vc.ths.n[["0.7"]] <- c()
 vc.ths.p[["0.7"]] <- names(raster_stack_100_na_23)
 
-#saveRDS(vc.ths.n, paste0(path.igaD, "vc.ths.n.RDS"))
-#saveRDS(vc.ths.p, paste0(path.igaD, "vc.ths.p.RDS"))
+# saveRDS(vc.ths.n, paste0(path.igaD, "vc.ths.n.RDS"))
+# saveRDS(vc.ths.p, paste0(path.igaD, "vc.ths.p.RDS"))
 vc.ths.n <- readRDS(paste0(path.igaD, "vc.ths.n.RDS"))
 vc.ths.p <- readRDS(paste0(path.igaD, "vc.ths.p.RDS"))
 
@@ -346,18 +389,17 @@ vc.ths.n[["0.7"]] <- c("xxx")
 
 m.v.vif <- list()
 
-for (vf in names(vc.ths.n) ) {
-for (f in names(m.f) ) {
-  for (m.v.name in m.v.names) {
-    for (k in 1:4) {
-      print(vf)
-      m.v.vif[[f]][[m.v.name]][[as.character(k)]][[vf]] <-
-        m.v[[f]][[m.v.name]][[as.character(k)]] %>% filter(!str_detect(preds, paste(vc.ths.n[[vf]], collapse="|")))
-     # m.v[[f]][[m.v.name]][[as.character(k)]] %>% filter(!grepl(vc.ths.n[[vf]],preds))
-      
+for (vf in names(vc.ths.n)) {
+  for (f in names(m.f)) {
+    for (m.v.name in m.v.names) {
+      for (k in 1:4) {
+        print(vf)
+        m.v.vif[[f]][[m.v.name]][[as.character(k)]][[vf]] <-
+          m.v[[f]][[m.v.name]][[as.character(k)]] %>% filter(!str_detect(preds, paste(vc.ths.n[[vf]], collapse = "|")))
+        # m.v[[f]][[m.v.name]][[as.character(k)]] %>% filter(!grepl(vc.ths.n[[vf]],preds))
+      }
     }
   }
-}
 }
 
 
@@ -371,19 +413,19 @@ m.v.vif.s <- m.v.vif[["all"]][["all"]][[as.character(4)]]
 # m.v.vif.s <- readRDS(paste0(path.igaD, "m.v.vif.s.RDS"))
 # length(unlist(unique(m.v.vif.s$`0.7`$preds)))
 
-# 
+#
 # median(m.v.vif.s$`0.7`$AUC)
 # median(m.v.vif.s$`0.6`$AUC)
 # median(m.v.vif.s$`0.3`$AUC)
-# 
+#
 # mean(m.v.vif.s$`0.7`$AUC)
 # mean(m.v.vif.s$`0.6`$AUC)
 # mean(m.v.vif.s$`0.3`$AUC)
-# 
+#
 # length(m.v.vif.s$`0.7`$AUC)
 # length(m.v.vif.s$`0.6`$AUC)
 # length(m.v.vif.s$`0.3`$AUC)
-# 
+#
 # length(unique(m.v.vif.s$`0.7`$preds))
 # length(unique(m.v.vif.s$`0.6`$preds))
 # length(unique(m.v.vif.s$`0.3`$preds))
@@ -393,16 +435,17 @@ m.v.vif.s <- m.v.vif[["all"]][["all"]][[as.character(4)]]
 m.v.vif.max.l <- list()
 m.v.vif.max <- list()
 m.v.vif.max.median <- list()
-for (vf in names(vc.ths.n) ) {
+for (vf in names(vc.ths.n)) {
+  m.v.vif.max[[vf]] <-
+    m.v.vif.s[[vf]] %>%
+    group_by(species) %>%
+    slice_max(AUC, n = 1, with_ties = FALSE) # summarise(auc.max = max(AUC))
 
-        m.v.vif.max[[vf]] <-
-          m.v.vif.s[[vf]] %>% group_by(species) %>%  slice_max(AUC , n = 1, with_ties = FALSE) # summarise(auc.max = max(AUC))
-        
-        print(vf)
-        print(length(unique( m.v.vif.max[[vf]]$preds)))
-        
-        m.v.vif.max.median[[vf]] <- mean(m.v.vif.max[[vf]]$AUC)
-        m.v.vif.max.l[[vf]] <-  m.v.vif.max[[vf]]$AUC
+  print(vf)
+  print(length(unique(m.v.vif.max[[vf]]$preds)))
+
+  m.v.vif.max.median[[vf]] <- mean(m.v.vif.max[[vf]]$AUC)
+  m.v.vif.max.l[[vf]] <- m.v.vif.max[[vf]]$AUC
 }
 
 
@@ -411,16 +454,16 @@ for (vf in names(vc.ths.n) ) {
 ### # kumulativní nebo pevný počet prediktorů???? - obě varianty! - nechat vybrat?
 ### # Ukázat na Bio i L8 zvlášť a dohromady (nebo na NCEAS? - přidat vlastní prediktory - nebo jen nechat původní a s nimi kombinace)
 
-m.v.vif.max.l.s <-m.v.vif.max.l[order(names(m.v.vif.max.l))]
+m.v.vif.max.l.s <- m.v.vif.max.l[order(names(m.v.vif.max.l))]
 boxplot(m.v.vif.max.l.s)
 
-# tbl %>% group_by(species) %>% slice_max(aucs) %>% group_by(species) %>% arrange(species) 
-# 
+# tbl %>% group_by(species) %>% slice_max(aucs) %>% group_by(species) %>% arrange(species)
+#
 # ggplot(data = res,
-#        mapping = aes(x = Habitat, y = auc_max, fill=Habitat)) + geom_boxplot(size = 1, outlier.size = 3, show.legend = FALSE) + 
-#   theme_bw() + theme(text=element_text(size=30), 
+#        mapping = aes(x = Habitat, y = auc_max, fill=Habitat)) + geom_boxplot(size = 1, outlier.size = 3, show.legend = FALSE) +
+#   theme_bw() + theme(text=element_text(size=30),
 #                      plot.caption = element_text(size=15, face = "italic"),
-#                      plot.title = element_text(hjust = 0.5)) + 
+#                      plot.title = element_text(hjust = 0.5)) +
 #   labs(title = l.title.auc_max, caption = l.caption) +
 #   xlab(l.habitat) + ylab(l.auc) +
 #   scale_fill_manual(values=l.box_colors) +
@@ -432,7 +475,7 @@ boxplot(m.v.vif.max.l.s)
 # varianty bio/l8/all //Habitat
 # vybrat nejlepší modely ze všech variant a na nich udělat predikce, ty pak korelovat
 
-###  
+###
 # how to diferentiate between noise and colinearity/correlation
 # variogram, lisa, elsa, nuget
 
@@ -458,5 +501,3 @@ auc[[7]] <- c(0.05, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.55, 0.95)
 auc[[8]] <- c(0.05, 0.05, 0.05, 0.65, 0.65, 0.65, 0.75, 0.75, 0.75, 0.95)
 auc[[9]] <- c(0.05, 0.65, 0.65, 0.65, 0.65, 0.65, 0.75, 0.75, 0.75, 0.95)
 lapply(auc, raster::cv)
-
-
