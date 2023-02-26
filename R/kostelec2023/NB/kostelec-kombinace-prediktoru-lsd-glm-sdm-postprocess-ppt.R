@@ -10,7 +10,7 @@ lapply(required_packages, require, character.only = TRUE)
 
 
 # wd <- "D:/PERSONAL_DATA/pb/rgee"
-wd <- "C:/Users/petr/Downloads/igaD/rgeeDP/rgee" # samsung500ntfs # paste0(path.expand("~"), "/Downloads/rgee2/rgee")
+wd <- "/mnt/2AA56BAE3BB1EC2E/Downloads/rgee2/rgee" # samsung500ntfs # paste0(path.expand("~"), "/Downloads/rgee2/rgee")
 
 setwd(wd)
 
@@ -59,14 +59,15 @@ library(magrittr)
 #
 
 #  k2023m <- readRDS("C:/Users/petr/Downloads/igaD/igaD/clean/k2023/postprocess/k2023-selected-median.rds")
+# k2023m <- readRDS("/home/petr/Documents/igaD/k2023p16/k5--k2023p16-dAUC.3repl.selected-median.rds")
 
 
-k2023m <- readRDS("/home/petr/Documents/igaD/k2023p16/k5--k2023p16-dAUC.3repl.selected-median.rds")
-# k2023m <- readRDS("/home/petr/Documents/igaD/k2023p16/varImp-glm--k2023p16-dAUC.3repl.selected-median.rds")
-#  k2023m <- readRDS("/home/petr/Documents/igaD/k2023p16/varImp-glmnet--k2023p16-dAUC.3repl.selected-median.rds")
+k2023m <- readRDS("/home/petr/Documents/igaD/k2023p16/k6--k2023p16-dAUC.3repl.selected-median.rds")
+#  k2023m <- readRDS("/home/petr/Documents/igaD/k2023p16/varImp-glm--k2023p16-dAUC.3repl.selected-median.rds")
+# k2023m <- readRDS("/home/petr/Documents/igaD/k2023p16/varImp-glmnet--k2023p16-dAUC.3repl.selected-median.rds")
 
 # k2023m <- readRDS(paste0(path.igaD, "k2023-selected-median-varImp-all.rds"))
-k.max <- 5
+k.max <- 6
 k2023m$preds %<>% as.factor
 
 summary(k2023m)
@@ -169,7 +170,11 @@ for (f in names(m.f)) {
 # m.max[["all"]][["all"]][[as.character(4)]]$auc.max
 # m.max.alt[["all"]][["all"]][[as.character(4)]]$AUC)
 
-compare.comb <- m.max2$all$all$`5` %>% arrange(as.character(species))
+stop()
+
+
+
+compare.comb <- m.max2$all$all$`7` %>% arrange(as.character(species))
 ##  saveRDS(compare.comb, paste0(path.igaD, "compare.comb.rds"))
 # compare.comb <- resdRDS(paste0(path.igaD, "compare.comb.rds"))
 
@@ -181,13 +186,13 @@ compare.varImp.glmnet <- m.max2$all$all$`16` %>% arrange(as.character(species))
 # saveRDS(compare.varImp, paste0(path.igaD, "compare.varImp.rds"))
 
 boxplot(list("comb" = compare.comb$auc.max, "varImp" = compare.varImp$auc.max),
-  main = "comb: cum. 5comb; varImp: max. 1-16", sub = paste0(median(compare.comb$auc.max), " / ", median(compare.varImp$auc.max))
+  main = "comb: cum. 6comb; varImp: max. 1-16", sub = paste0(median(compare.comb$auc.max), " / ", median(compare.varImp$auc.max))
 )
 boxplot(sort(compare.comb$auc.max - compare.varImp$auc.max), main = "diff AUCcomb-AUCvarImp")
 
 # + glmnet
 boxplot(list("comb" = compare.comb$auc.max, "varImp" = compare.varImp$auc.max, "varImp.glmnet" = compare.varImp.glmnet$auc.max),
-  main = "comb: cum. 5comb; varImp: max. 1-16", sub = paste0(median(compare.comb$auc.max), " / ", median(compare.varImp$auc.max), " / ", median(compare.varImp.glmnet$auc.max))
+  main = "comb: cum. 6comb; varImp: max. 1-16", sub = paste0(median(compare.comb$auc.max), " / ", median(compare.varImp$auc.max), " / ", median(compare.varImp.glmnet$auc.max))
 )
 
 
@@ -195,7 +200,7 @@ boxplot(list("comb" = compare.comb$auc.max, "varImp" = compare.varImp$auc.max, "
 
 # varImp kumulativní 23, maxAuc-počet prediktorů
 # boxplot(m.max.alt2$all$all$`16`$preds.n, sub="varImp.glmnet kumulativní 16, maxAuc-počet prediktorů")
-boxplot(m.max.alt2$all$all$`5`$preds.n, sub = "comb kumulativní 5, maxAuc-počet prediktorů")
+boxplot(m.max.alt2$all$all$`5`$preds.n, sub = "comb kumulativní 6, maxAuc-počet prediktorů")
 
 
 cor.alt2 <- m.max.alt2$all$all$`4` %>% arrange(AUC)

@@ -44,13 +44,14 @@ spstat %<>% mutate(species = str_replace(species, " ", "_"))
 
 
 # namePrefix <- "varImp-glm--"
-namePrefix <- "k5--"
+namePrefix <- "k6--"
 # chybně jsem přidal názv y sloupců jen k "1-*.csv" - musím je načíst samostatně se záhlavím a pak zvlášť ostatní bez záhlaví
 
 # 5k/k2023-16-5k
+# 6k/k2023-16
 # varImp/glm
-csv.first.test <- list.files(paste0(path.igaD, "5k/k2023-16-5k"), "^[0-9].*test\\.csv$", full.names = TRUE)
-csv.first.train <- list.files(paste0(path.igaD, "5k/k2023-16-5k"), "^[0-9].*train\\.csv$", full.names = TRUE)
+csv.first.test <- list.files(paste0(path.igaD, "6k/k2023-16"), "^[0-9].*test\\.csv$", full.names = TRUE)
+csv.first.train <- list.files(paste0(path.igaD, "6k/k2023-16"), "^[0-9].*train\\.csv$", full.names = TRUE)
 
 ct <- list(
   "modelID" = "i",
