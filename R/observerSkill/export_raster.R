@@ -178,8 +178,7 @@ output_df <- list()
 for (half in names(sitmap_2rad)) {
     print(half)
     for (season in season_months_range) {
-
-   print(season)
+        print(season)
         ################################################################
         # L8 _SR 'LANDSAT/LC08/C01/T1_SR' - raw bandy
         ################################################################
@@ -326,14 +325,12 @@ for (half in names(sitmap_2rad)) {
             fun = ee$Reducer$median(),
             sf = FALSE
         )
-
-
     }
- saveRDS(output_df, file = paste0(path.igaD, "clean/predictors/kfme16-l8-", half, "_czechia_wc_l8_2019-2022_4-6.rds"))
-output_df <-list()
-gc()
+    saveRDS(output_df, file = paste0(path.igaD, "clean/predictors/kfme16-l8-", half, "_czechia_wc_l8_2019-2022_4-6.rds"))
+    output_df <- list()
+    gc()
 
-# scale_bio <- 927.67
+    # scale_bio <- 927.67
     # ################################################################
     # # Worldclim/Bioclim 'WORLDCLIM/V1/BIO'
     # ################################################################
@@ -352,7 +349,7 @@ gc()
     #     fun = ee$Reducer$stdDev(),
     #     sf = FALSE
     # )
-print("BIOa")
+    print("BIOa")
     output_df[[paste0("wc_", scale, "_", season[1], "_mean")]] <- ee_extract(
         x = wc$select(bands_all[1:10]),
         y = sitmap_2rad[[half]],
@@ -360,12 +357,12 @@ print("BIOa")
         fun = ee$Reducer$median(),
         sf = FALSE
     )
- saveRDS(output_df, file = paste0(path.igaD, "clean/predictors/kfme16-bioA-", half, "_czechia_wc_l8_2019-2022_4-6.rds"))
-output_df <-list()
-gc()
+    saveRDS(output_df, file = paste0(path.igaD, "clean/predictors/kfme16-bioA-", half, "_czechia_wc_l8_2019-2022_4-6.rds"))
+    output_df <- list()
+    gc()
 
 
-print("BIOb")
+    print("BIOb")
     output_df[[paste0("wc_", scale, "_", season[1], "_mean")]] <- ee_extract(
         x = wc$select(bands_all[11:19]),
         y = sitmap_2rad[[half]],
@@ -373,16 +370,13 @@ print("BIOb")
         fun = ee$Reducer$median(),
         sf = FALSE
     )
- saveRDS(output_df, file = paste0(path.igaD, "clean/predictors/kfme16-bioB-", half, "_czechia_wc_l8_2019-2022_4-6.rds"))
-output_df <-list()
-gc()
+    saveRDS(output_df, file = paste0(path.igaD, "clean/predictors/kfme16-bioB-", half, "_czechia_wc_l8_2019-2022_4-6.rds"))
+    output_df <- list()
+    gc()
 
 
     # saveRDS(output_df, file = paste0(path.igaD, "test-kfme16-N_czechia_wc_l8_2018-2021_4-6.rds"))
-    #saveRDS(output_df, file = paste0(path.igaD, "clean/predictors/kfme16-", half, "_czechia_wc_l8_2019-2022_4-6.rds"))
-
-
-
+    # saveRDS(output_df, file = paste0(path.igaD, "clean/predictors/kfme16-", half, "_czechia_wc_l8_2019-2022_4-6.rds"))
 }
 
 end_time <- Sys.time()
@@ -403,19 +397,19 @@ stop()
 # po dokopírování do N a S adresářů
 
 rds_list_N <-
-  list.files(
-    paste0(path.igaD, "clean/predictors/observerSkill"),
-    pattern = paste0("[N][_]"),
-    ignore.case = TRUE,
-    full.names = TRUE
-  )
+    list.files(
+        paste0(path.igaD, "clean/predictors/observerSkill"),
+        pattern = paste0("[N][_]"),
+        ignore.case = TRUE,
+        full.names = TRUE
+    )
 rds_list_S <-
-  list.files(
-    paste0(path.igaD, "clean/predictors/observerSkill"),
-    pattern = paste0("[S][_]"),
-    ignore.case = TRUE,
-    full.names = TRUE
-  )
+    list.files(
+        paste0(path.igaD, "clean/predictors/observerSkill"),
+        pattern = paste0("[S][_]"),
+        ignore.case = TRUE,
+        full.names = TRUE
+    )
 
 
 first <- TRUE
@@ -436,9 +430,9 @@ for (nN in rds_list_N) {
 }
 
 bioName <- "wc_30_6_mean"
-parts.a <- append(list("wc_30_6_mean" = append(parts.out[[1]][[bioName]], parts.out[[2]][[bioName]][,-1])), parts.out[[3]])
+parts.a <- append(list("wc_30_6_mean" = append(parts.out[[1]][[bioName]], parts.out[[2]][[bioName]][, -1])), parts.out[[3]])
 
-kfme16 <- parts.a 
+kfme16 <- parts.a
 
 # ####### nové načítání L8 a WC
 # kfme16.N <- readRDS(paste0(path.igaD, "clean/predictors/kfme16-N_czechia_wc_l8_2019-2022_4-6.rds"))
@@ -486,8 +480,6 @@ for (l1 in names(kfme16)) {
         crs(rr) <- 4326
 
         writeRaster(rr, paste0(path.igaD, "clean/predictors/observerSkill/kfme16-", l1, "-", band, ".tif"), format = "GTiff", overwrite = TRUE)
-
-
     }
 }
 
@@ -497,19 +489,20 @@ for (l1 in names(kfme16)) {
 raster_stack <-
     rasters_dir_stack(
         paste0(
-            path.igaD, "clean/predictors/observerSkill/"),
+            path.igaD, "clean/predictors/observerSkill/"
+        ),
         "tif"
     )
 
 tif_names <-
-  list.files(
-    paste0(path.igaD, "clean/predictors/observerSkill"),
-    pattern = paste0("tif$"),
-    ignore.case = TRUE,
-    full.names = FALSE
-  )
+    list.files(
+        paste0(path.igaD, "clean/predictors/observerSkill"),
+        pattern = paste0("tif$"),
+        ignore.case = TRUE,
+        full.names = FALSE
+    )
 
-names(raster_stack) <- str_replace_all(tif_names, c("\\.tif" = "", "kfme16-" = "", "_mean" = "", "raw-" = "","_30" = "", "-nd" = "", "-constant" = "", "6-bio" = "0_bio"))
+names(raster_stack) <- str_replace_all(tif_names, c("\\.tif" = "", "kfme16-" = "", "_mean" = "", "raw-" = "", "_30" = "", "-nd" = "", "-constant" = "", "6-bio" = "0_bio"))
 
 
 raster_stack <- dropLayer(raster_stack, grep("B10", names(raster_stack), ignore.case = TRUE))
@@ -523,10 +516,10 @@ saveRDS(raster_stack, paste0(path.igaD, "clean/predictors/observerSkill/preds_ba
 
 
 
-pdf(paste0(path.igaD, "clean/predictors/observerSkill/check_visually.pdf"),width = 12, height = 9)
+pdf(paste0(path.igaD, "clean/predictors/observerSkill/check_visually.pdf"), width = 12, height = 9)
 for (l in sort(names(raster_stack))) {
-# plot(normalize(raster_stack[[l]]), main=l)
-plot(raster_stack[[l]], main=l)
+    # plot(normalize(raster_stack[[l]]), main=l)
+    plot(raster_stack[[l]], main = l)
 }
 dev.off()
 
@@ -535,15 +528,13 @@ raster_stack <- dropLayer(raster_stack, grep("_5_|bio08|bio09|bio15", names(rast
 length(names(raster_stack)) # 52
 
 
-pdf(paste0(path.igaD, "clean/predictors/observerSkill/check_visually_final.pdf"),width = 12, height = 9)
+pdf(paste0(path.igaD, "clean/predictors/observerSkill/check_visually_final.pdf"), width = 12, height = 9)
 for (l in sort(names(raster_stack))) {
-# plot(normalize(raster_stack[[l]]), main=l)
-plot(raster_stack[[l]], main=l)
+    # plot(normalize(raster_stack[[l]]), main=l)
+    plot(raster_stack[[l]], main = l)
 }
 dev.off()
 
 rr <- writeRaster(raster_stack, paste0(path.igaD, "clean/predictors/observerSkill/preds_final.grd"), format = "raster", overwrite = TRUE)
 hdr(rr, format = "ENVI")
 saveRDS(raster_stack, paste0(path.igaD, "clean/predictors/observerSkill/preds_final.rds"))
-
-
