@@ -103,6 +103,14 @@ applyScaleFactors <- function(image) {
   return (image$addBands(opticalBands, NULL, TRUE)$addBands(thermalBands, NULL, TRUE))
 }
 
+#  Applies scaling factors - modified from "Explore in Earth Engine" example https://developers.google.com/earth-engine/datasets/catalog/LANDSAT_LC08_C02_T1_L2
+applyScaleFactorsBio <- function(image) {
+
+  m1 <- image$select(c("bio01", "bio02", "bio05", "bio06", "bio07", "bio08", "bio09", "bio10", "bio11"))$multiply(0.1)
+  m01 <- image$select("bio04")$multiply(0.01)
+  nm <- image$select("bio03", "bio12", "bio13", "bio14", "bio15", "bio16", "bio17", "bio18", "bio19")
+  return (image$addBands(m1, NULL, TRUE)$addBands(m01, NULL, TRUE)$addBands(nm, NULL, TRUE))
+}
 
 # odstranění stínů a oblačnosti Sentinel 2, COPERNICUS_S2_SR
 maskS2clouds <- function(image) {
