@@ -516,7 +516,7 @@ synonyms <- function() {
     "Acanthis flammea" = "Carduelis flammea",
     "Dendrocoptes medius" = "Dendrocopos medius",
     "Dryobates minor" = "Dendrocopos minor",
-    "Ardea alba" = "Egretta alba",
+    "Ardea alba" = "Egretta alba", # opačně!!!
     "Ichthyaetus melanocephalus" = "Larus melanocephalus",
     "Poecile montanus" = "Parus montanus",
     "Saxicola rubicola" = "Saxicola torquata",
@@ -526,7 +526,7 @@ synonyms <- function() {
     "Lophophanes cristatus" = "Parus cristatus",
     "Chloris chloris" = "Carduelis chloris",
     "Chroicocephalus ridibundus" = "Larus ridibundus",
-    "Spinus spinus" = "Carduelis spinus",
+    "Spinus spinus" = "Carduelis spinus", # opačně???
     "Linaria cannabina" = "Carduelis cannabina",
     "Regulus ignicapilla" = "Regulus ignicapillus",
     "Delichon urbicum" = "Delichon urbica",
