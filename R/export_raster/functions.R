@@ -475,9 +475,10 @@ nepuvodni_problematicke <- function() {
   )
 
   problematicke <- c(
-    "Turdus merula", # lesní vs. městské populace
-    "Luscinia svecica", # dva poddruhy s odlišnými nároky, nejsem schopný je jednoduše odlišit...
-    "Luscinia luscinia" # problematické nálezy zejména z Červenohorského sedla (>1000mnm, ikdyž jsou vícekrát a dlouhodobě nezávisle potvrzené, možná jde jen o oblíbenou zastávku při průtahu (kam?) nebo záměny s L. mega.? Raději vyloučit.
+    # "Turdus merula", # lesní vs. městské populace
+    # "Luscinia svecica", # dva poddruhy s odlišnými nároky, nejsem schopný je jednoduše odlišit... / odstraněn ssp. svecica z NDOP, ostatní vypadají OK
+    # "Luscinia luscinia" # problematické nálezy zejména z Červenohorského sedla (>1000mnm, ikdyž jsou vícekrát a dlouhodobě nezávisle potvrzené, možná jde jen o oblíbenou zastávku při průtahu (kam?) nebo záměny s L. mega.? Raději vyloučit.
+    # tyhle nálezy jsou ale z léta, ne z hnízdní sezony... - nedotkne se SSOS 2019-2022
   )
 
   # https://www.ochranaprirody.cz/res/archive/372/058764.pdf - Nevhodný pro hodnocení – Not Applicable (NA)
