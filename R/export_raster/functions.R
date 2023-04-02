@@ -537,15 +537,15 @@ synonyms <- function() {
 }
 
 
-synonyms_unite <- function(tbl) {
+synonyms_unite <- function(tbl, spCol = "species") {
   # sjednocení synonym, druh pojmenovaný species
   syns <- synonyms()
-  tbl$species %<>% as.character # factor delá problémy, ikdyž je formálně správně
+  tbl[[spCol]] %<>% as.character # factor delá problémy, ikdyž je formálně správně
   # nahrazení názvů traits druhů novějšími názvy z NDOPu
   for (s in names(syns)) {
-    matched <- tbl %>% filter(species == syns[[s]])
+    matched <- tbl %>% filter(!!spCol == syns[[s]])
     if (nrow(matched) >= 1) {
-      tbl[tbl$species == syns[[s]], "species"] <- s
+      tbl[tbl[[spCol]] == syns[[s]], spCol] <- s
     }
   }
   return(tbl)
