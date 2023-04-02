@@ -533,7 +533,9 @@ synonyms <- function() {
     "Regulus ignicapillus" = "Regulus ignicapilla",
     "Delichon urbicum" = "Delichon urbica",
     "Periparus ater" = "Parus ater",
-    "Poecile palustris" = "Parus palustris"
+    "Poecile palustris" = "Parus palustris",
+    "Coloeus monedula" = "Corvus monedula",
+    "Miliaria calandra" = "Emberiza calandra"
   )
   return(synonyms)
 }
