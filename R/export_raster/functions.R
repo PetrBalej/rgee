@@ -501,35 +501,36 @@ nepuvodni_problematicke <- function() {
 }
 
 synonyms <- function() {
-  synonyms <- list(
+  synonyms <- list( # "synonym" = "valid"
     "Spatula clypeata" = "Anas clypeata",
-    "Phylloscopus sibilatrix" = "Phylloscopus sibillatrix",
+    "Phylloscopus sibillatrix" = "Phylloscopus sibilatrix",
     "Spatula querquedula" = "Anas querquedula",
     "Mareca penelope" = "Anas penelope",
-    "Calidris pugnax" = "Philomachus pugnax",
+    "Philomachus pugnax" = "Calidris pugnax",
     "Dryobates minor" = "Dendrocopos minor",
     # nové oproti traits
     "Acanthis cabaret" = "Acanthis flammea",
     "Mareca strepera" = "Anas strepera",
     "Clanga pomarina" = "Aquila pomarina",
-    "Tetrastes bonasia" = "Bonasa bonasia",
-    "Linaria cannabina" = "Carduelis cannabina",
-    "Acanthis flammea" = "Carduelis flammea",
+    "Bonasa bonasia" = "Tetrastes bonasia",
+    "Tetrao bonasia" = "Tetrastes bonasia",
+    "Carduelis cannabina" = "Linaria cannabina",
+    "Carduelis flammea" = "Acanthis flammea",
     "Dendrocoptes medius" = "Dendrocopos medius",
-    "Dryobates minor" = "Dendrocopos minor",
-    "Ardea alba" = "Egretta alba", # opačně!!!
+    "Egretta alba" = "Ardea alba",
     "Ichthyaetus melanocephalus" = "Larus melanocephalus",
     "Poecile montanus" = "Parus montanus",
     "Saxicola rubicola" = "Saxicola torquata",
-    "Lyrurus tetrix" = "Tetrao tetrix",
-    "Chlidonias hybrida" = "Chlidonias hybridus",
+    "Saxicola torquatus" = "Saxicola torquata",
+    "Tetrao tetrix" = "Lyrurus tetrix",
+    "Chlidonias hybridus" = "Chlidonias hybrida",
     # nové k fkcso
     "Lophophanes cristatus" = "Parus cristatus",
-    "Chloris chloris" = "Carduelis chloris",
+    "Carduelis chloris" = "Chloris chloris",
     "Chroicocephalus ridibundus" = "Larus ridibundus",
-    "Spinus spinus" = "Carduelis spinus", # opačně???
-    "Linaria cannabina" = "Carduelis cannabina",
-    "Regulus ignicapilla" = "Regulus ignicapillus",
+    "Carduelis spinus" = "Spinus spinus",
+    # "Carduelis cannabina" = "Linaria cannabina",
+    "Regulus ignicapillus" = "Regulus ignicapilla",
     "Delichon urbicum" = "Delichon urbica",
     "Periparus ater" = "Parus ater",
     "Poecile palustris" = "Parus palustris"
@@ -544,9 +545,11 @@ synonyms_unite <- function(tbl, spCol = "species") {
   tbl[[spCol]] %<>% as.character # factor delá problémy, ikdyž je formálně správně
   # nahrazení názvů traits druhů novějšími názvy z NDOPu
   for (s in names(syns)) {
-    matched <- tbl %>% filter(!!spCol == syns[[s]])
+    matched <- tbl %>% filter(!!sym(spCol) == s)
     if (nrow(matched) >= 1) {
-      tbl[tbl[[spCol]] == syns[[s]], spCol] <- s
+      print(s)
+      print(syns[[s]])
+      tbl[tbl[[spCol]] == s, spCol] <- syns[[s]]
     }
   }
   return(tbl)
