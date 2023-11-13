@@ -116,13 +116,14 @@ for (minDist in minDists) {
   print(minDist)
   occs.thinned[[as.character(minDist)]] <- ecospat.occ.desaggregation(xy = ndop.v1.druh, min.dist = minDist, by = "DRUH")
 
+  md <- as.character(minDist)
   # uložení průběžných výstupů per minDist
-  write_csv(occs.thinned[[as.character(minDist)]], paste0("ndop.v1_", as.character(minDist), ".csv"))
-  saveRDS(occs.thinned[[as.character(minDist)]], paste0("ndop.v1_", as.character(minDist), ".rds"))
-  geometry <- occs.thinned[[as.character(minDist)]] %>% st_as_sf(coords = c("x", "y"), crs = 5514)
-  st_write(geometry, paste0("ndop.v1_", as.character(minDist), ".shp"))
+  write_csv(occs.thinned[[md]], paste0("ndop.v1_", md, ".csv"))
+  saveRDS(occs.thinned[[md]], paste0("ndop.v1_", md, ".rds"))
+  geometry <- occs.thinned[[md]] %>% st_as_sf(coords = c("x", "y"), crs = 5514)
+  st_write(geometry, paste0("ndop.v1_", md, ".shp"))
 
-  druhy.stat <- occs.thinned[[as.character(minDist)]] %>%
+  druhy.stat <- occs.thinned[[md]] %>%
     group_by(DRUH) %>%
     summarise(n = n()) %>%
     arrange(desc(n))
