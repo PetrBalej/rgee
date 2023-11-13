@@ -94,3 +94,40 @@ print(ndop.v1.roky, n = 100)
 plot(ndop.v1.roky)
 
 
+#
+# UPDATE 2023-11-13, početnější druhy trvají při zpracování ecospat.occ.desaggregation delší dobu, i 15 minut... to vše pro každou minDist
+#
+
+library(sf)
+library(ecospat)
+library(tidyverse)
+minDists <- c(1:3, 5, 10) * 1000 # m
+# ndop.v1 <- readRDS("/home/petr/Downloads/delete/DM/ndop_v1/ndop.v1.rds")
+
+# kvůli ecospat.occ.desaggregation
+ndop.v1$x <- ndop.v1$X
+ndop.v1$y <- ndop.v1$Y
+
+occs.thinned <- list()
+
+ndop.v1.druh <- as.data.frame(ndop.v1 %>% dplyr::select(DRUH, x, y) %>% group_by(DRUH) %>% dplyr::distinct(x, y))
+for (minDist in minDists) {
+  print(paste0(rep("-", 100), collapse = ""))
+  print(minDist)
+  occs.thinned[[as.character(minDist)]] <- ecospat.occ.desaggregation(xy = ndop.v1.druh, min.dist = minDist, by = "DRUH")
+
+  # uložení průběžných výstupů per minDist
+  write_csv(occs.thinned[[as.character(minDist)]], paste0("ndop.v1_", as.character(minDist), ".csv"))
+  saveRDS(occs.thinned[[as.character(minDist)]], paste0("ndop.v1_", as.character(minDist), ".rds"))
+  geometry <- occs.thinned[[as.character(minDist)]] %>% st_as_sf(coords = c("x", "y"), crs = 5514)
+  st_write(geometry, paste0("ndop.v1_", as.character(minDist), ".shp"))
+
+  druhy.stat <- occs.thinned[[as.character(minDist)]] %>%
+    group_by(DRUH) %>%
+    summarise(n = n()) %>%
+    arrange(desc(n))
+  # rychlá statistika po každém thinningu
+  print(minDist)
+  print(druhy.stat, n = 100)
+}
+saveRDS(occs.thinned, "ndop.v1_all.rds")
