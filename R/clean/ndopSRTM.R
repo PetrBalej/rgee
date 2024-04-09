@@ -102,4 +102,4 @@ ndopP.stats.out <- ndopP.export.out %>%
         q90 = quantile(elev, 0.90)
     )
 
-saveRDS(ndopP.stats, paste0(wd, "ndop_elevation_stats_out.rds"))
+saveRDS(ndopP.stats.out, paste0(wd, "ndop_elevation_stats_out.rds"))
